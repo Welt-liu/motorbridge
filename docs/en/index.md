@@ -16,7 +16,7 @@ flowchart TD
   IDX --> TST["testing.md"]
   IDX --> CANDBG["can_debugging.md"]
   IDX --> DIST["distribution_channels.md"]
-  IDX --> CAL["tools/factory_calib_ui/README.md"]
+  IDX --> STUDIO["motorbridge-studio (separate repo)"]
   IDX --> INT["integrations/README.md"]
 ```
 
@@ -32,7 +32,7 @@ flowchart TD
 - Testing Guide: [testing.md](testing.md)
 - CAN Debugging (Linux `slcan` + Windows `pcan`): [can_debugging.md](can_debugging.md)
 - Distribution Channels (APT/Homebrew/Winget/Scoop/Choco): [distribution_channels.md](distribution_channels.md)
-- Factory Calib UI: [`tools/factory_calib_ui/README.md`](../../tools/factory_calib_ui/README.md)
+- MotorBridge Studio: separate repository `motorbridge-studio` (split from `tools/factory_calib_ui_ws`)
 - Integrations: [`integrations/README.md`](../../integrations/README.md)
 - WS Gateway: [`integrations/ws_gateway/README.md`](../../integrations/ws_gateway/README.md)
 

@@ -82,7 +82,7 @@ flowchart LR
   ROOT --> VENDORS["motor_vendors/*"]
   ROOT --> CLI["motor_cli"]
   ROOT --> ABI["motor_abi"]
-  ROOT --> TOOLS["tools/factory_calib_ui"]
+  ROOT --> STUDIO["motorbridge-studio（独立仓库）"]
   ROOT --> INTS["integrations/*"]
   ROOT --> BIND["bindings/*"]
   VENDORS --> VD["damiao"]
@@ -127,6 +127,7 @@ flowchart TB
 - [`motor_abi`](motor_abi): 稳定 C ABI
 - [`bindings/python`](bindings/python): Python SDK + `motorbridge-cli`
 - [`bindings/cpp`](bindings/cpp): C++ RAII wrapper
+- `motorbridge-studio`：独立的 Web 控制台仓库（由 `tools/factory_calib_ui_ws` 拆分而来）
 
 ## 快速开始
 
@@ -564,4 +565,3 @@ pip install --no-binary motorbridge motorbridge
 - 当前发布矩阵故意不产出 macOS x86_64 wheel。
 - 设备矩阵参考：`docs/zh/devices.md`。
 - 分发自动化文档：`docs/zh/distribution_channels.md`。
-

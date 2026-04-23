@@ -17,7 +17,7 @@ flowchart TD
   IDX --> CANDBG["can_debugging.md"]
   IDX --> DIST["distribution_channels.md"]
   IDX --> OPMAN["operation_manual.md"]
-  IDX --> CAL["tools/factory_calib_ui/README.zh-CN.md"]
+  IDX --> STUDIO["motorbridge-studio（独立仓库）"]
   IDX --> INT["integrations/README.md"]
 ```
 
@@ -34,7 +34,7 @@ flowchart TD
 - CAN 调试（Linux `slcan` + Windows `pcan`）：[can_debugging.md](can_debugging.md)
 - 分发渠道（APT/Homebrew/Winget/Scoop/Choco）：[distribution_channels.md](distribution_channels.md)
 - 最终用户操作手册（PCAN 主链路 + Damiao 串口桥备用链路）：[operation_manual.md](operation_manual.md)
-- 工厂标定上位机：[`tools/factory_calib_ui/README.zh-CN.md`](../../tools/factory_calib_ui/README.zh-CN.md)
+- MotorBridge Studio：独立仓库 `motorbridge-studio`（由 `tools/factory_calib_ui_ws` 拆分）
 - 集成目录：[`integrations/README.md`](../../integrations/README.md)
 - WS 网关：[`integrations/ws_gateway/README.zh-CN.md`](../../integrations/ws_gateway/README.zh-CN.md)
 

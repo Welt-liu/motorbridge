@@ -83,7 +83,7 @@ flowchart LR
   ROOT --> VENDORS["motor_vendors/*"]
   ROOT --> CLI["motor_cli"]
   ROOT --> ABI["motor_abi"]
-  ROOT --> TOOLS["tools/factory_calib_ui"]
+  ROOT --> STUDIO["motorbridge-studio (separate repo)"]
   ROOT --> INTS["integrations/*"]
   ROOT --> BIND["bindings/*"]
   VENDORS --> VD["damiao"]
@@ -128,6 +128,7 @@ flowchart TB
 - [`motor_abi`](motor_abi): stable C ABI
 - [`bindings/python`](bindings/python): Python SDK + `motorbridge-cli`
 - [`bindings/cpp`](bindings/cpp): C++ RAII wrapper
+- `motorbridge-studio`: standalone web control UI repository (split out of `tools/factory_calib_ui_ws`)
 
 ## Quick Start
 

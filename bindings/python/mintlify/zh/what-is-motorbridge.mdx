@@ -104,7 +104,7 @@ rust_dm/
 ├── integrations/
 │   └── ws_gateway/      # WebSocket 网关（远程控制）
 └── tools/
-    └── factory_calib_ui/ # 工厂标定网页上位机
+└── motorbridge-studio/ # 独立 Web 控制台仓库
 ```
 
 ## 为什么叫 "Python 绑定" 不是 "SDK"？
@@ -319,7 +319,9 @@ cargo run -p ws_gateway -- --bind 127.0.0.1:9002
 电机校准工具：
 
 ```bash
-python3 tools/factory_calib_ui/server.py --bind 0.0.0.0 --port 18100
+cd ../motorbridge-studio
+npm install
+npm run dev
 ```
 
 ## 与其他方案对比

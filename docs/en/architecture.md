@@ -63,8 +63,6 @@ motorbridge/
 ├── integrations/
 │   ├── ros2_bridge/             # ROS2 bridge
 │   └── ws_gateway/              # Rust WebSocket gateway
-├── tools/
-│   └── factory_calib_ui/        # Factory web UI (calls motor_cli for scan/set-id/verify)
 ├── bindings/
 │   ├── python/                 # Python SDK package + CLI
 │   └── cpp/                    # C++ RAII wrapper + CMake package
@@ -72,6 +70,9 @@ motorbridge/
 └── docs/
     ├── en/
     └── zh/
+
+Separate repo:
+- `motorbridge-studio/`          # Web control UI extracted from `tools/factory_calib_ui_ws`
 ```
 
 ## Core Layers
