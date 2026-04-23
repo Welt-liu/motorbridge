@@ -10,6 +10,11 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 
 > Chinese version: [README.zh-CN.md](README.zh-CN.md)
 
+## Companion Repos
+
+- `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
+  Standalone web control UI built on top of `ws_gateway`.
+
 ## Transport Legend
 
 - `[STD-CAN]`: classic CAN path (`socketcan`/`pcan`)

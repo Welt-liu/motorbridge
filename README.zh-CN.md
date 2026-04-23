@@ -10,6 +10,11 @@
 
 > English version: [README.md](README.md)
 
+## 配套仓库
+
+- `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
+  基于 `ws_gateway` 的独立 Web 控制台。
+
 ## 传输链路标识
 
 - `[STD-CAN]`：标准 CAN 路径（`socketcan` / `pcan`）
