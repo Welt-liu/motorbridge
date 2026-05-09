@@ -269,7 +269,7 @@ motorbridge-cli scan [OPTIONS]
 | `--model` | `4340` | Motor model |
 | `--start-id` | `0x01` | Start ID for scan |
 | `--end-id` | `0x10` | End ID for scan |
-| `--feedback-ids` | `0xFD,0xFF,0xFE,0x00,0xAA` | RobStride feedback IDs to try |
+| `--feedback-ids` | `0xFD,0xFF,0xFE,0x00,0xAA` | RobStride host_id candidates to try; these are not motor/device IDs |
 | `--feedback-base` | `0x10` | Damiao feedback ID base |
 | `--timeout-ms` | `80` | Per-ID timeout |
 | `--param-id` | `0x7019` | RobStride parameter ID for probe |
@@ -292,8 +292,10 @@ motorbridge-cli scan --vendor damiao --channel can0 --start-id 0x01 --end-id 0x2
 #### Scan RobStride
 
 ```bash
-motorbridge-cli scan --vendor robstride --channel can0 --start-id 1 --end-id 127 --feedback-ids 0xFD
+motorbridge-cli scan --vendor robstride --channel can0 --start-id 1 --end-id 127 --feedback-ids 0xFD,0xFF,0xFE,0x00,0xAA
 ```
+
+For RobStride, `probe` / `device_id` is the motor ID. `feedback_id` / `host_id` such as `0xFD` is the host-side ID.
 
 #### Scan MyActuator
 
@@ -402,7 +404,7 @@ rid= 23 (f32) = 10.000000
 
 ## id-set
 
-Write ID registers to Damiao motors and optionally store to flash.
+Write motor IDs and optionally store to flash. Damiao supports `ESC_ID/MST_ID`; RobStride supports changing `device_id`.
 
 ### Usage
 
@@ -414,14 +416,14 @@ motorbridge-cli id-set [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--vendor` | `damiao` | Must be damiao |
+| `--vendor` | `damiao` | `damiao` or `robstride` |
 | `--channel` | `can0` | CAN interface |
 | `--transport` | `auto` | Transport type |
 | `--model` | `4340` | Motor model |
 | `--motor-id` | `0x01` | Current motor ID |
 | `--feedback-id` | `0x11` | Current feedback ID |
 | `--new-motor-id` | (same) | New motor ID to set |
-| `--new-feedback-id` | (same) | New feedback ID to set |
+| `--new-feedback-id` | (same) | New Damiao feedback ID; ignored/not supported for RobStride host_id |
 | `--store` | `1` | Store to flash after write |
 | `--verify` | `1` | Verify after write |
 | `--timeout-ms` | `800` | Verify timeout |
@@ -437,6 +439,19 @@ motorbridge-cli id-set \
     --feedback-id 0x11 \
     --new-motor-id 0x05 \
     --new-feedback-id 0x15 \
+    --store 1 \
+    --verify 1
+```
+
+```bash
+# RobStride: change device_id from 0x7F to 0x7E
+motorbridge-cli id-set \
+    --vendor robstride \
+    --channel can0 \
+    --model rs-00 \
+    --motor-id 0x7F \
+    --feedback-id 0xFD \
+    --new-motor-id 0x7E \
     --store 1 \
     --verify 1
 ```
@@ -473,7 +488,7 @@ motorbridge-cli robstride-read-param [OPTIONS]
 | `--transport` | `auto` | Transport: auto, socketcan, socketcanfd |
 | `--model` | `rs-00` | Motor model (fixed to RobStride) |
 | `--motor-id` | `127` | Motor ID |
-| `--feedback-id` | `0xFD` | Feedback ID (RobStride default) |
+| `--feedback-id` | `0xFD` | RobStride host_id default; not the motor/device ID |
 | `--param-id` | (required) | Parameter ID to read |
 | `--type` | (required) | Data type: i8, u8, u16, u32, f32 |
 | `--timeout-ms` | `500` | Read timeout |
@@ -515,7 +530,7 @@ motorbridge-cli robstride-write-param [OPTIONS]
 | `--transport` | `auto` | Transport: auto, socketcan, socketcanfd |
 | `--model` | `rs-00` | Motor model (fixed to RobStride) |
 | `--motor-id` | `127` | Motor ID |
-| `--feedback-id` | `0xFD` | Feedback ID (RobStride default) |
+| `--feedback-id` | `0xFD` | RobStride host_id default; not the motor/device ID |
 | `--param-id` | (required) | Parameter ID to write |
 | `--type` | (required) | Data type: i8, u8, u16, u32, f32 |
 | `--value` | (required) | Value to write (parsed according to `--type`) |

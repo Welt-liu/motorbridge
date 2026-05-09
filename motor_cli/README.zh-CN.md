@@ -61,6 +61,7 @@ motor_cli -h
 ## 1. 参数解析规则
 
 - 仅解析 `--key value` 形式。
+- 支持裸 mode 简写，例如 `motor_cli scan --vendor robstride ...` 等价于 `--mode scan`。
 - 单独开关（如 `--help`）会按值 `1` 处理。
 - ID 类参数支持十进制（如 `20`）与十六进制（如 `0x14`）。
 - 未被代码使用的参数即使传入，也不会生效。
@@ -94,7 +95,7 @@ motor_cli \
 | `--channel` | CAN 通道名（Linux 为网卡名；Windows 可带 `@bitrate`） |
 | `--model` | 型号名称，用于该品牌下的限值/能力边界与编码映射 |
 | `--motor-id` | 目标电机 ID（发送命令目标） |
-| `--feedback-id` | 反馈帧 ID（接收状态来源） |
+| `--feedback-id` | 反馈帧/主机侧 ID；RobStride 下是 host_id，不是电机 ID |
 | `--mode` | 控制/查询动作类型（不同品牌支持集合不同） |
 | `--loop` / `--dt-ms` | 循环发送次数 / 周期 |
 | `--ensure-mode` | 控制前是否自动切控制模式（Damiao 等支持） |
@@ -298,6 +299,9 @@ motor_cli $DM_SERIAL --motor-id 0x04 --feedback-id 0x14 \
 |---|---|---|---|---|
 | `--start-id` | u16 | `1` | scan | 扫描起始 ID（1..255） |
 | `--end-id` | u16 | `255` | scan | 扫描结束 ID（1..255） |
+| `--feedback-ids` | csv u16 | `0xFD,0xFF,0xFE,0x00,0xAA` | scan | RobStride host_id 候选列表，不是电机 ID |
+| `--timeout-ms` | u64 | `80` | scan | ping 探测超时 |
+| `--param-timeout-ms` | u64 | `120` | scan | 参数回退探测超时 |
 | `--manual-vel` | f32 | `0.2` | scan 回退 | 盲探速度 |
 | `--manual-ms` | u64 | `200` | scan 回退 | 每个 ID 脉冲时长 |
 | `--manual-gap-ms` | u64 | `200` | scan 回退 | ID 间隔 |
@@ -370,6 +374,11 @@ motor_cli \
 motor_cli \
   --vendor robstride --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
   --set-motor-id 11 --store 1
+
+# Python CLI 等价改 ID
+motorbridge-cli id-set \
+  --vendor robstride --channel can0 --model rs-00 \
+  --motor-id 1 --feedback-id 0xFD --new-motor-id 11 --store 1 --verify 1
 
 # 设零（实验时序）
 motor_cli \
@@ -531,7 +540,6 @@ motor_cli \
 - RobStride 默认 `--feedback-id` 为 `0xFD`，内部会回退探测 `0xFF/0xFE`。
 - RobStride 的 `pos-vel` 下 `--vel/--kd/--tau` 为无效参数，仅告警不报错。
 - MyActuator 若 `0x9A` 返回错误码 `0x0004`（欠压），电机会在线但不转，需要先恢复供电电压。
-
 
 
 

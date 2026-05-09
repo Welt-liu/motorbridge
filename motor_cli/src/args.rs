@@ -13,6 +13,11 @@ pub fn parse_args() -> HashMap<String, String> {
             continue;
         }
         if !k.starts_with("--") {
+            // Accept the Python CLI style `motor_cli scan --vendor ...` as a
+            // shorthand for the Rust CLI's historical `--mode scan` form.
+            if out.get("mode").is_none() && is_mode_word(&k) {
+                out.insert("mode".to_string(), k);
+            }
             continue;
         }
         let key = k.trim_start_matches("--").to_string();
@@ -28,6 +33,41 @@ pub fn parse_args() -> HashMap<String, String> {
         }
     }
     out
+}
+
+fn is_mode_word(s: &str) -> bool {
+    matches!(
+        s,
+        "scan"
+            | "ping"
+            | "enable"
+            | "disable"
+            | "stop"
+            | "status"
+            | "current"
+            | "vel"
+            | "pos"
+            | "version"
+            | "mode-query"
+            | "read"
+            | "mit"
+            | "pos-vel"
+            | "force-pos"
+            | "zero"
+            | "set-zero"
+            | "save"
+            | "zero-by-offset"
+            | "read-param"
+            | "write-param"
+            | "tqe"
+            | "volt"
+            | "cur"
+            | "pos-vel-tqe"
+            | "brake"
+            | "rezero"
+            | "conf-write"
+            | "timed-read"
+    )
 }
 
 pub fn get_str(args: &HashMap<String, String>, key: &str, default: &str) -> String {
@@ -93,15 +133,43 @@ pub fn get_opt_u16_hex_or_dec(
     }
 }
 
+pub fn get_u16_list_hex_or_dec(
+    args: &HashMap<String, String>,
+    key: &str,
+    default: &[u16],
+) -> Result<Vec<u16>, String> {
+    let Some(raw) = args.get(key) else {
+        return Ok(default.to_vec());
+    };
+    let mut out = Vec::new();
+    for part in raw.split(',') {
+        let part = part.trim();
+        if part.is_empty() {
+            continue;
+        }
+        let value = parse_u16_hex_or_dec(part, key)?;
+        if !out.contains(&value) {
+            out.push(value);
+        }
+    }
+    if out.is_empty() {
+        return Err(format!("invalid --{key}: expected comma-separated id list"));
+    }
+    Ok(out)
+}
+
 pub fn print_help() {
     println!(
         "motor_cli\n\
 Usage:\n\
   motor_cli -h | --help\n\
+  motor_cli scan --vendor robstride --start-id 1 --end-id 127\n\
   motor_cli --vendor damiao --mode scan --start-id 1 --end-id 16\n\
   motor_cli --vendor robstride --mode ping --motor-id 127 --feedback-id 0xFF\n\n\
 Behavior:\n\
   no arguments: print this help (no motor command is sent)\n\n\
+Mode shorthand:\n\
+  A bare mode word (for example `scan`) is accepted as shorthand for `--mode scan`.\n\n\
 CLI form:\n\
   motor_cli --vendor damiao --channel can0 --model 4340P --motor-id 0x01 --feedback-id 0x11 \\\n\
     --mode mit --pos 0 --vel 0 --kp 2 --kd 1 --tau 0 --loop 200 --dt-ms 20\n\n\
@@ -147,12 +215,16 @@ Damiao extras:\n\
 RobStride extras:\n\
   --param-id <hex|dec>      for read-param / write-param\n\
   --param-value <number>    for write-param\n\
+  --feedback-ids <list>     for scan host_id candidates, default 0xFD,0xFF,0xFE,0x00,0xAA\n\
+  --timeout-ms <ms>         for scan ping timeout, default 80\n\
+  --param-timeout-ms <ms>   for scan parameter fallback timeout, default 120\n\
   --zero-exp 1/0            for zero/set-zero, default 0 (run experimental sequence: disable -> set-zero -> optional save)\n\
   --offset-negate 1/0       for zero-by-offset, default 0 (write +mechPos to 0x2005)\n\
   --store 1/0               for zero-by-offset and zero-exp, default 1 (send save-parameters)\n\
   --start-id <hex|dec>      for scan, default 1\n\
   --end-id <hex|dec>        for scan, default 255\n\
-  (scan auto-fallbacks to blind pulse probing if no ping replies)\n\
+  Note: RobStride feedback_id/host_id (for example 0xFD/0xFE) is not motor_id/device_id.\n\
+  (scan auto-fallbacks to blind pulse probing if no ping/parameter replies)\n\
 \n\
 MyActuator extras:\n\
   --current <A>          for --mode current\n\
@@ -202,6 +274,23 @@ mod tests {
         assert_eq!(
             get_u16_hex_or_dec(&args, "motor-id", 0x01).expect("default"),
             0x01
+        );
+    }
+
+    #[test]
+    fn recognizes_positional_mode_words() {
+        assert!(is_mode_word("scan"));
+        assert!(is_mode_word("read-param"));
+        assert!(!is_mode_word("can0"));
+    }
+
+    #[test]
+    fn get_u16_list_hex_or_dec_parses_and_deduplicates() {
+        let mut args = HashMap::new();
+        args.insert("feedback-ids".to_string(), "0xFD, 0xFF,253".to_string());
+        assert_eq!(
+            get_u16_list_hex_or_dec(&args, "feedback-ids", &[0xAA]).expect("list"),
+            vec![0xFD, 0xFF]
         );
     }
 }

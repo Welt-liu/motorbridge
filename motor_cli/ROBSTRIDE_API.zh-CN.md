@@ -142,7 +142,9 @@ motor_cli \
 
 ```bash
 motor_cli \
-  --vendor robstride --channel can0 --model rs-06 --mode scan --start-id 1 --end-id 255
+  scan --vendor robstride --channel can0 --model rs-06 \
+  --start-id 1 --end-id 255 \
+  --feedback-ids 0xFD,0xFF,0xFE,0x00,0xAA
 ```
 
 联调建议（更快）：
@@ -156,6 +158,9 @@ motorbridge-cli scan \
 说明：
 
 - 第一阶段：`ping + 参数查询探测`。
+- `probe` / `device_id` 是电机 ID。
+- `feedback_id` / `host_id`（例如 `0xFD`）是上位机侧 ID，不是电机 ID。
+- `--feedback-ids` 是扫描时尝试的 host_id 逗号列表。
 - 若全范围无 ping 命中：自动回退到盲探脉冲（观察电机是否转动）。
   - `--manual-vel`（默认 `0.2`）
   - `--manual-ms`（默认 `200`）
@@ -169,9 +174,19 @@ motor_cli \
   --motor-id 127 --feedback-id 0xFD --set-motor-id 126 --store 1
 ```
 
+Python CLI 等价命令：
+
+```bash
+motorbridge-cli id-set \
+  --vendor robstride --channel can0 --model rs-06 \
+  --motor-id 127 --feedback-id 0xFD \
+  --new-motor-id 126 --store 1 --verify 1
+```
+
 与上位机抓包对齐的报文说明：
 
 - 改 ID 使用 `comm_type=7`。
+- 该操作只修改 RobStride `device_id`，不会修改 `feedback_id` / `host_id`。
 - 该路径下扩展 ID 组成为：
   - `0x07 [new_id] [host_id] [old_id]`
   - 例如（`old_id=1`、`new_id=11`、`host_id=0xFD`）：`0x070BFD01`
@@ -264,6 +279,5 @@ with Controller("can0") as ctrl:
 - 压测前先确认 CAN 接线、终端电阻和接口状态。
 - 长时间控制前先做 ping/读参验证。
 - 始终保留急停路径。
-
 
 

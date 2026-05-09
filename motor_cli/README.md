@@ -74,12 +74,14 @@ Current status:
 | Set feedback ID | Yes (`--set-feedback-id`) | No (host id is configured by `--feedback-id`) |
 
 Notes:
-- RobStride default `--feedback-id` is `0xFD` and probes `0xFF/0xFE` as fallback.
+- RobStride default `--feedback-id` is `0xFD`; scan defaults to `--feedback-ids 0xFD,0xFF,0xFE,0x00,0xAA`.
+- RobStride `feedback_id` / `host_id` is not the motor `device_id`; scan reports the motor ID as `probe` / `device_id`.
 - RobStride `pos-vel` ignores `--vel/--kd/--tau` by design (warning only, no hard error).
 
 ## 1. Argument Parsing Rules
 
 - Only `--key value` style options are parsed.
+- A bare mode word, for example `motor_cli scan --vendor robstride ...`, is accepted as shorthand for `--mode scan`.
 - A standalone flag (for example `--help`) is treated as value `1`.
 - Numeric IDs accept decimal (`20`) and hex (`0x14`).
 - Unknown keys are parsed but ignored unless used by code paths.
@@ -225,6 +227,9 @@ motor_cli \
 |---|---|---|---|---|
 | `--start-id` | u16 | `1` | scan | Scan start, 1..255 |
 | `--end-id` | u16 | `255` | scan | Scan end, 1..255 |
+| `--feedback-ids` | csv u16 | `0xFD,0xFF,0xFE,0x00,0xAA` | scan | RobStride host_id candidates; not motor IDs |
+| `--timeout-ms` | u64 | `80` | scan | Ping timeout |
+| `--param-timeout-ms` | u64 | `120` | scan | Parameter fallback timeout |
 | `--manual-vel` | f32 | `0.2` | scan fallback | Blind pulse velocity |
 | `--manual-ms` | u64 | `200` | scan fallback | Pulse duration per ID |
 | `--manual-gap-ms` | u64 | `200` | scan fallback | Gap between IDs |
@@ -297,6 +302,11 @@ motor_cli \
 motor_cli \
   --vendor robstride --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
   --set-motor-id 11 --store 1
+
+# Python CLI equivalent for RobStride ID update
+motorbridge-cli id-set \
+  --vendor robstride --channel can0 --model rs-00 \
+  --motor-id 1 --feedback-id 0xFD --new-motor-id 11 --store 1 --verify 1
 
 # Zero (experimental sequence)
 motor_cli \

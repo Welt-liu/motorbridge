@@ -48,7 +48,8 @@
 
 - Damiao：`scan / enable / disable / MIT / POS_VEL / VEL / FORCE_POS / set-id / set-zero` 均已纳入生产基线。
 - RobStride：`scan / ping / enable / disable / MIT / POS_VEL / VEL / 参数读写 / set-id / zero` 已可用。
-- RobStride 默认 host/feedback 路径为 `0xFD`（内部回退探测 `0xFF/0xFE`）。
+- RobStride 默认 host/feedback 路径为 `0xFD`；扫描默认尝试 `0xFD,0xFF,0xFE,0x00,0xAA`。
+- RobStride 的 `feedback_id` / `host_id` 是上位机侧 ID，不是电机 `device_id`；扫描命中的电机 ID 看 `probe` / `device_id`。
 - RobStride `pos-vel` 的 `--vel/--kd/--tau` 属于无效参数：CLI 仅 warning，不会中断。
 
 ## 架构
@@ -222,6 +223,18 @@ cargo run -p motor_cli --release -- \
 ```bash
 cargo run -p motor_cli --release -- \
   --vendor all --channel can0 --mode scan --start-id 1 --end-id 255
+```
+
+RobStride 单独扫描（Rust CLI 与 Python CLI 默认 host-id 列表一致）：
+
+```bash
+cargo run -p motor_cli --release -- \
+  scan --vendor robstride --channel can0 --start-id 1 --end-id 127 \
+  --feedback-ids 0xFD,0xFF,0xFE,0x00,0xAA
+
+motorbridge-cli scan \
+  --vendor robstride --channel can0 --start-id 1 --end-id 127 \
+  --feedback-ids 0xFD,0xFF,0xFE,0x00,0xAA
 ```
 
 ## Windows 实验支持（PCAN-USB）
@@ -455,7 +468,8 @@ cargo run -p motor_cli --release -- --vendor damiao \
 结果解读：
 
 - `vendor=damiao id=<n>`：发现一个 Damiao 电机，电机 ID 为 `<n>`。
-- `vendor=robstride id=<n> responder_id=<m>`：发现一个 RobStride 电机并返回响应 ID。
+- `vendor=robstride ... probe=<n> ... device_id=<n>`：发现一个 RobStride 电机，电机 ID 为 `<n>`。
+- RobStride 输出中的 `feedback_id` / `host_id`（如 `0xFD`、`0xFE`）不是电机 ID。
 - `vendor=hightorque ... [hit] id=<n> ...`：通过原生 ht_can v1.5.5 发现一个 HighTorque 电机。
 - `vendor=myactuator id=<n>`：发现一个 MyActuator 电机并返回版本响应。
 - 每段扫描结尾的 `hits=<k>` 表示该厂商命中的在线设备数量。
@@ -508,6 +522,7 @@ ABI/绑定中的统一模式 ID（`ensure_mode`）：
 RobStride 专属 ABI / binding 能力包括:
 
 - `robstride_ping`
+- `robstride_set_device_id`
 - `robstride_get_param_*`
 - `robstride_write_param_*`
 

@@ -83,7 +83,8 @@
 
 - RobStride 统一高层当前覆盖 `MIT` / `POS_VEL` / `VEL`。
 - `TORQUE/CURRENT` 对 RobStride 仍为参数级能力（`robstride_write_param_*`），尚未提供独立统一模式。
-- RobStride 建议默认使用 `feedback-id=0xFD`（运行时可回退探测 `0xFF/0xFE`）。
+- RobStride 建议默认使用 `feedback-id=0xFD`；扫描默认尝试 `0xFD,0xFF,0xFE,0x00,0xAA`。
+- RobStride 的 `feedback_id` / `host_id` 不是电机 `device_id`；扫描命中的电机 ID 看 `probe` / `device_id`。
 
 ## 快速开始
 
@@ -230,6 +231,19 @@ motorbridge-cli robstride-read-param \
 motorbridge-cli scan --vendor all --channel can0 --start-id 0x01 --end-id 0xFF
 ```
 
+RobStride 单独扫描和改 ID：
+
+```bash
+motorbridge-cli scan \
+  --vendor robstride --channel can0 --start-id 1 --end-id 127 \
+  --feedback-ids 0xFD,0xFF,0xFE,0x00,0xAA
+
+motorbridge-cli id-set \
+  --vendor robstride --channel can0 \
+  --motor-id 127 --feedback-id 0xFD \
+  --new-motor-id 126 --store 1 --verify 1
+```
+
 通过绑定使用 HighTorque：
 
 ```python
@@ -328,7 +342,8 @@ python3 bindings/python/examples/robstride_wrapper_demo.py \
 
 ## 说明
 
-- `id-dump`、`id-set` 仍是 Damiao 工作流；`scan` 支持 `damiao|hexfellow|myactuator|robstride|hightorque|all`。
+- `id-dump` 仍是 Damiao 工作流；`id-set` 支持 Damiao 和 RobStride；`scan` 支持 `damiao|hexfellow|myactuator|robstride|hightorque|all`。
+- RobStride `id-set` 中，`--new-motor-id` 修改 `device_id`；`--feedback-id` 仍是上位机侧 host_id。
 - MyActuator 在 ABI wrapper 中不支持 `Mode.MIT` 与 `send_force_pos`。
 - Hexfellow 在 ABI wrapper 中支持 `MIT` 与 `POS_VEL`，`VEL` / `FORCE_POS` 会返回不支持。
 - Damiao 的完整调参参考仍保留在:

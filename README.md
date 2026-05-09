@@ -49,7 +49,8 @@ Current status:
 
 - Damiao production baseline now covers: `scan / enable / disable / MIT / POS_VEL / VEL / FORCE_POS / set-id / set-zero`.
 - RobStride production baseline now covers: `scan / ping / enable / disable / MIT / POS_VEL / VEL / parameter read-write / set-id / zero`.
-- RobStride default host/feedback path is `0xFD` (with internal fallback probing to `0xFF/0xFE`).
+- RobStride default host/feedback path is `0xFD`; scan now tries `0xFD,0xFF,0xFE,0x00,0xAA` by default.
+- RobStride `feedback_id` / `host_id` is host-side addressing, not the motor `device_id`; scan hits report the motor ID as `probe` / `device_id`.
 - In RobStride `pos-vel`, `--vel/--kd/--tau` are intentionally ignored and reported as warnings (no hard error).
 
 ## Architecture
@@ -223,6 +224,18 @@ Unified scan (all vendors):
 ```bash
 cargo run -p motor_cli --release -- \
   --vendor all --channel can0 --mode scan --start-id 1 --end-id 255
+```
+
+Focused RobStride scan (Rust CLI and Python CLI use the same host-id defaults):
+
+```bash
+cargo run -p motor_cli --release -- \
+  scan --vendor robstride --channel can0 --start-id 1 --end-id 127 \
+  --feedback-ids 0xFD,0xFF,0xFE,0x00,0xAA
+
+motorbridge-cli scan \
+  --vendor robstride --channel can0 --start-id 1 --end-id 127 \
+  --feedback-ids 0xFD,0xFF,0xFE,0x00,0xAA
 ```
 
 ## Experimental Windows Support (PCAN-USB)
@@ -452,7 +465,8 @@ For deterministic troubleshooting of Linux `slcan` and Windows `pcan`, use:
 Interpretation:
 
 - `vendor=damiao id=<n>` means one Damiao motor is online at motor ID `<n>`.
-- `vendor=robstride id=<n> responder_id=<m>` means one RobStride motor responded.
+- `vendor=robstride ... probe=<n> ... device_id=<n>` means one RobStride motor responded at motor/device ID `<n>`.
+- In RobStride output, `feedback_id` / `host_id` such as `0xFD` or `0xFE` is not the motor ID.
 - `vendor=hightorque ... [hit] id=<n> ...` means one HighTorque motor responded via native ht_can v1.5.5.
 - `vendor=myactuator id=<n>` means one MyActuator motor responded.
 - `hits=<k>` at the end of each scan block is the count of discovered devices.
@@ -505,6 +519,7 @@ Vendor-specific protocol naming/mapping and unsupported operations are documente
 RobStride-specific ABI/binding helpers include:
 
 - `robstride_ping`
+- `robstride_set_device_id`
 - `robstride_get_param_*`
 - `robstride_write_param_*`
 

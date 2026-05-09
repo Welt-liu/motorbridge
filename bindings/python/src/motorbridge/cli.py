@@ -130,10 +130,17 @@ def _build_parser() -> argparse.ArgumentParser:
     dump.add_argument("--timeout-ms", type=int, default=500)
     dump.add_argument("--rids", default="7,8,9,10,21,22,23")
 
-    set_id = sub.add_parser("id-set", help="write ESC_ID/MST_ID and optionally store")
+    set_id = sub.add_parser(
+        "id-set",
+        help="change motor ID; Damiao supports ESC_ID/MST_ID, RobStride supports device_id",
+    )
     _add_common_args(set_id)
     set_id.add_argument("--new-motor-id", default="")
-    set_id.add_argument("--new-feedback-id", default="")
+    set_id.add_argument(
+        "--new-feedback-id",
+        default="",
+        help="Damiao MST_ID only; RobStride host_id is not changed",
+    )
     set_id.add_argument("--store", type=int, default=1)
     set_id.add_argument("--verify", type=int, default=1)
     set_id.add_argument("--timeout-ms", type=int, default=800)
@@ -153,13 +160,26 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--serial-port", default="/dev/ttyACM0")
     scan.add_argument("--serial-baud", type=int, default=921600)
     scan.add_argument("--model", default="4340")
-    scan.add_argument("--start-id", default="0x01")
-    scan.add_argument("--end-id", default="0x10")
-    scan.add_argument("--feedback-ids", default="0xFD,0xFF,0xFE,0x00,0xAA")
-    scan.add_argument("--feedback-base", default="0x10")
-    scan.add_argument("--timeout-ms", type=int, default=80)
-    scan.add_argument("--param-id", default="0x7019")
-    scan.add_argument("--param-timeout-ms", type=int, default=120)
+    scan.add_argument("--start-id", default="0x01", help="first motor/device ID to probe")
+    scan.add_argument("--end-id", default="0x10", help="last motor/device ID to probe")
+    scan.add_argument(
+        "--feedback-ids",
+        default="0xFD,0xFF,0xFE,0x00,0xAA",
+        help="RobStride host_id candidates; these are not motor/device IDs",
+    )
+    scan.add_argument("--feedback-base", default="0x10", help="Damiao feedback ID base")
+    scan.add_argument("--timeout-ms", type=int, default=80, help="scan ping/status timeout in ms")
+    scan.add_argument(
+        "--param-id",
+        default="0x7019",
+        help="RobStride parameter used as scan fallback",
+    )
+    scan.add_argument(
+        "--param-timeout-ms",
+        type=int,
+        default=120,
+        help="RobStride parameter fallback timeout in ms",
+    )
 
     rs_read = sub.add_parser("robstride-read-param", help="read a RobStride parameter")
     _add_common_args(rs_read)
@@ -347,15 +367,59 @@ def _id_dump_command(args: argparse.Namespace) -> None:
 
 
 def _id_set_command(args: argparse.Namespace) -> None:
-    if args.vendor != "damiao":
-        raise ValueError("id-set currently supports Damiao only")
+    if args.vendor not in ("damiao", "robstride"):
+        raise ValueError("id-set currently supports Damiao and RobStride only")
     args.model, args.feedback_id = _vendor_defaults(args.vendor, args.model, args.feedback_id)
     motor_id = _parse_id(args.motor_id)
     feedback_id = _parse_id(args.feedback_id)
     new_motor_id = _parse_id(args.new_motor_id) if args.new_motor_id else motor_id
     new_feedback_id = _parse_id(args.new_feedback_id) if args.new_feedback_id else feedback_id
+
+    if args.vendor == "robstride":
+        if args.new_feedback_id and new_feedback_id != feedback_id:
+            raise ValueError(
+                "RobStride id-set changes device_id only; feedback_id/host_id is not motor_id"
+            )
+        print(
+            f"command=id-set vendor=robstride transport={args.transport} channel={args.channel} model={args.model} "
+            f"old_motor_id=0x{motor_id:X} feedback_id/host_id=0x{feedback_id:X} new_motor_id=0x{new_motor_id:X}"
+        )
+        print("[info] RobStride feedback_id/host_id is the host-side ID, not the motor/device ID")
+        ctrl = _open_controller(args, args.vendor)
+        motor = ctrl.add_robstride_motor(motor_id, feedback_id, args.model)
+        try:
+            motor.robstride_set_device_id(new_motor_id)
+            print(f"robstride_set_device_id requested: 0x{motor_id:X} -> 0x{new_motor_id:X}")
+            if args.store:
+                motor.store_parameters()
+                print("save_parameters sent")
+        finally:
+            motor.close()
+            ctrl.close_bus()
+            ctrl.close()
+
+        if not args.verify:
+            return
+
+        time.sleep(0.12)
+        verify_ctrl = _open_controller(args, args.vendor)
+        verify_motor = verify_ctrl.add_robstride_motor(new_motor_id, feedback_id, args.model)
+        try:
+            device_id, responder_id = verify_motor.robstride_ping()
+            print(f"verify ping ok: device_id=0x{device_id:X} responder_id=0x{responder_id:X}")
+            if device_id != new_motor_id:
+                raise RuntimeError(
+                    f"verify failed: expected device_id=0x{new_motor_id:X}, got 0x{device_id:X}"
+                )
+            print("verify ok")
+        finally:
+            verify_motor.close()
+            verify_ctrl.close_bus()
+            verify_ctrl.close()
+        return
+
     print(
-        f"command=id-set transport={args.transport} channel={args.channel} model={args.model} "
+        f"command=id-set vendor=damiao transport={args.transport} channel={args.channel} model={args.model} "
         f"old_motor_id=0x{motor_id:X} old_feedback_id=0x{feedback_id:X} "
         f"new_motor_id=0x{new_motor_id:X} new_feedback_id=0x{new_feedback_id:X}"
     )
@@ -434,6 +498,10 @@ def _scan_robstride(args: argparse.Namespace, start_id: int, end_id: int) -> lis
         f"[scan:robstride] channel={args.channel} model={args.model} "
         f"id_range=[0x{start_id:X},0x{end_id:X}] timeout_ms={args.timeout_ms} "
         f"feedback_ids={','.join(f'0x{x:X}' for x in feedback_ids)} param_id=0x{param_id:X}"
+    )
+    print(
+        "[scan:robstride] note: probe/device_id is the motor ID; "
+        "feedback_id/host_id is the host-side ID"
     )
     for mid in range(start_id, end_id + 1):
         hit_meta = None

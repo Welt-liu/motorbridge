@@ -539,13 +539,13 @@ from motorbridge import Controller, Mode
 
 # ============ 配置 ============
 DEVICE_ID = 127        # RobStride 设备 ID
-RESPONDER_ID = 0xFD    # 响应者 ID
+HOST_ID = 0xFD         # host_id / 上位机侧 ID，不是电机 ID
 MODEL = "rs-00"        # 型号
 CHANNEL = "can0"
 # ==============================
 
 with Controller(CHANNEL) as ctrl:
-    motor = ctrl.add_robstride_motor(DEVICE_ID, RESPONDER_ID, MODEL)
+    motor = ctrl.add_robstride_motor(DEVICE_ID, HOST_ID, MODEL)
 
     # ===== Ping 电机 =====
     print("=== Ping 电机 ===")

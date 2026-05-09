@@ -174,3 +174,13 @@ cargo run -p motor_cli --release -- \
 cargo run -p motor_cli --release -- \
   --vendor all --channel can0 --mode scan --start-id 1 --end-id 255
 ```
+
+RobStride 单独扫描：
+
+```bash
+cargo run -p motor_cli --release -- \
+  scan --vendor robstride --channel can0 --start-id 1 --end-id 127 \
+  --feedback-ids 0xFD,0xFF,0xFE,0x00,0xAA
+```
+
+RobStride 输出中，`probe` / `device_id` 是电机 ID；`feedback_id` / `host_id`（如 `0xFD`）是上位机侧 ID，不是电机 ID。

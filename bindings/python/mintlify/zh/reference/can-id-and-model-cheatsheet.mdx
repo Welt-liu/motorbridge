@@ -100,7 +100,7 @@ with Controller.from_dm_serial("/dev/ttyACM0", 921600) as ctrl:
 
 ```
 motor_id:    127 (设备 ID，可配置 1-127)
-feedback_id: 0xFD（响应者 ID，运行时可回退 0xFF/0xFE）
+feedback_id: 0xFD（host_id / 上位机侧 ID，不是电机 ID；运行时可回退 0xFF/0xFE）
 
 默认:
   motor_id = 127
@@ -115,7 +115,7 @@ from motorbridge import Controller, Mode
 with Controller("can0") as ctrl:
     motor = ctrl.add_robstride_motor(
         motor_id=127,       # 设备 ID
-        feedback_id=0xFD,   # 响应者 ID
+        feedback_id=0xFD,   # host_id，上位机侧 ID，不是电机 ID
         model="rs-00"       # 型号字符串
     )
 

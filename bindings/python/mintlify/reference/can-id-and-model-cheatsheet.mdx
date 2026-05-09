@@ -106,7 +106,7 @@ from motorbridge import Controller, Mode
 with Controller("can0") as ctrl:
     motor = ctrl.add_robstride_motor(
         motor_id=127,       # Device ID
-        feedback_id=0xFD,   # Responder ID
+        feedback_id=0xFD,   # host_id, not the motor/device ID
         model="rs-00"       # Model string
     )
 

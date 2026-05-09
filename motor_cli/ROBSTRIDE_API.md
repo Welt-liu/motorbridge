@@ -115,12 +115,17 @@ motor_cli \
 
 ```bash
 motor_cli \
-  --vendor robstride --channel can0 --model rs-06 --mode scan --start-id 1 --end-id 255
+  scan --vendor robstride --channel can0 --model rs-06 \
+  --start-id 1 --end-id 255 \
+  --feedback-ids 0xFD,0xFF,0xFE,0x00,0xAA
 ```
 
 Notes:
 
 - Fast pass: ping + query-parameter probe.
+- `probe` / `device_id` is the motor ID.
+- `feedback_id` / `host_id` (for example `0xFD`) is the host-side ID, not the motor ID.
+- `--feedback-ids` is a comma-separated list of host IDs to try during scan.
 - If no ping replies in full range, CLI auto-falls back to blind pulse probing:
   - `--manual-vel` (default `0.2`)
   - `--manual-ms` (default `200`)
@@ -134,9 +139,19 @@ motor_cli \
   --motor-id 127 --feedback-id 0xFD --set-motor-id 126 --store 1
 ```
 
+Python CLI equivalent:
+
+```bash
+motorbridge-cli id-set \
+  --vendor robstride --channel can0 --model rs-06 \
+  --motor-id 127 --feedback-id 0xFD \
+  --new-motor-id 126 --store 1 --verify 1
+```
+
 Raw protocol alignment (with official upper software):
 
 - Set-ID frame uses `comm_type=7`.
+- This changes the RobStride `device_id` only; it does not change `feedback_id` / `host_id`.
 - Extended ID format in this command path is:
   - `0x07 [new_id] [host_id] [old_id]`
   - example (`old_id=1`, `new_id=11`, `host_id=0xFD`): `0x070BFD01`
@@ -229,5 +244,4 @@ Main improvement opportunities:
 - Confirm CAN wiring/termination and interface state before stress tests.
 - Prefer ping/read-param verification before long periodic control.
 - Keep emergency stop path available.
-
 

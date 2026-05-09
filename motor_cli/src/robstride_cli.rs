@@ -1,5 +1,6 @@
 use crate::args::{
-    get_f32, get_opt_u16_hex_or_dec, get_str, get_u16_hex_or_dec, get_u64, parse_u16_hex_or_dec,
+    get_f32, get_opt_u16_hex_or_dec, get_str, get_u16_hex_or_dec, get_u16_list_hex_or_dec, get_u64,
+    parse_u16_hex_or_dec,
 };
 use motor_vendor_robstride::{
     model_limits as robstride_model_limits, ControlMode as RobstrideControlMode, ParameterDataType,
@@ -100,20 +101,23 @@ pub fn run_robstride(
     }
     if feedback_id != 0x00FD {
         println!(
-            "[info] robstride will probe multiple host_id candidates (including --feedback-id=0x{:X}, 0xFD, 0xFF, 0xFE) for control/read robustness",
+            "[info] robstride feedback_id is host_id, not motor_id; probing candidates including --feedback-id=0x{:X}, 0xFD, 0xFF, 0xFE for control/read robustness",
             feedback_id
         );
     } else {
         println!(
-            "[info] robstride host_id candidates: 0xFD (primary), then 0xFF/0xFE fallback"
+            "[info] robstride feedback_id/host_id candidates: 0xFD (primary), then 0xFF/0xFE fallback; host_id is not motor_id"
         );
     }
 
-    let query_ping = |m: &std::sync::Arc<motor_vendor_robstride::RobstrideMotor>| -> Option<u16> {
-        if m.get_parameter(0x7005, Duration::from_millis(120)).is_ok() {
-            return Some(0x7005);
+    let query_ping = |m: &std::sync::Arc<motor_vendor_robstride::RobstrideMotor>,
+                      param_id: u16,
+                      timeout: Duration|
+     -> Option<u16> {
+        if m.get_parameter(param_id, timeout).is_ok() {
+            return Some(param_id);
         }
-        if m.get_parameter(0x7019, Duration::from_millis(120)).is_ok() {
+        if param_id != 0x7019 && m.get_parameter(0x7019, timeout).is_ok() {
             return Some(0x7019);
         }
         None
@@ -138,11 +142,47 @@ pub fn run_robstride(
         if start_id > end_id {
             return Err("invalid scan range after clamping".into());
         }
+        let scan_feedback_ids = if vendor_name == "robstride" {
+            get_u16_list_hex_or_dec(
+                args,
+                "feedback-ids",
+                &[0x00FD, 0x00FF, 0x00FE, 0x0000, 0x00AA],
+            )?
+        } else {
+            vec![feedback_id]
+        };
+        let timeout_ms = get_u64(
+            args,
+            "timeout-ms",
+            if vendor_name == "hightorque" { 40 } else { 80 },
+        )?;
+        let param_timeout_ms = get_u64(args, "param-timeout-ms", 120)?;
+        let param_id = get_u16_hex_or_dec(args, "param-id", 0x7019)?;
 
-        println!(
-            "[scan] probing {} IDs {}..{} on {}",
-            vendor_name, start_id, end_id, channel
-        );
+        if vendor_name == "robstride" {
+            println!(
+                "[scan:robstride] channel={} model={} id_range=[0x{:X},0x{:X}] timeout_ms={} feedback_ids={} param_id=0x{:04X}",
+                channel,
+                model,
+                start_id,
+                end_id,
+                timeout_ms,
+                scan_feedback_ids
+                    .iter()
+                    .map(|v| format!("0x{v:X}"))
+                    .collect::<Vec<_>>()
+                    .join(","),
+                param_id
+            );
+            println!(
+                "[scan:robstride] note: probe/device_id is the motor ID; feedback_id/host_id is the host-side ID"
+            );
+        } else {
+            println!(
+                "[scan] probing {} IDs {}..{} on {}",
+                vendor_name, start_id, end_id, channel
+            );
+        }
         if vendor_name == "hightorque" && (raw_start_id != start_id || raw_end_id != end_id) {
             println!(
                 "[scan] vendor=hightorque range clamped to {}..{} (requested {}..{})",
@@ -151,34 +191,45 @@ pub fn run_robstride(
         }
         let mut hits = 0usize;
         for id in start_id..=end_id {
-            let probe_ctrl = RobstrideController::new_socketcan(channel)?;
-            let candidate = probe_ctrl.add_motor(id, feedback_id, model)?;
             let mut hit = false;
-            if let Ok(reply) =
-                candidate.ping(Duration::from_millis(if vendor_name == "hightorque" {
-                    40
-                } else {
-                    80
-                }))
-            {
-                println!(
-                    "[hit] vendor={} id={} responder_id={} model_hint={} payload={:02x?}",
-                    vendor_name, reply.device_id, reply.responder_id, model, reply.payload
-                );
-                hit = true;
-            } else if vendor_name != "hightorque" {
-                if let Some(pid) = query_ping(&candidate) {
+            for fid in &scan_feedback_ids {
+                let probe_ctrl = RobstrideController::new_socketcan(channel)?;
+                let candidate = probe_ctrl.add_motor(id, *fid, model)?;
+                if let Ok(reply) = candidate.ping(Duration::from_millis(timeout_ms)) {
                     println!(
-                        "[hit] vendor={} id={} by=query-param(0x{:04X}) model_hint={}",
-                        vendor_name, id, pid, model
+                        "[hit] probe=0x{:02X} vendor={} via=ping feedback_id=0x{:X} device_id={} responder_id={} model_hint={} payload={:02x?}",
+                        id,
+                        vendor_name,
+                        fid,
+                        reply.device_id,
+                        reply.responder_id,
+                        model,
+                        reply.payload
                     );
                     hit = true;
+                } else if vendor_name != "hightorque" {
+                    if let Some(pid) = query_ping(
+                        &candidate,
+                        param_id,
+                        Duration::from_millis(param_timeout_ms),
+                    ) {
+                        println!(
+                            "[hit] probe=0x{:02X} vendor={} via=read-param feedback_id=0x{:X} device_id={} param_id=0x{:04X} model_hint={}",
+                            id, vendor_name, fid, id, pid, model
+                        );
+                        hit = true;
+                    }
+                }
+                probe_ctrl.close_bus()?;
+                if hit {
+                    break;
                 }
             }
             if hit {
                 hits += 1;
+            } else if vendor_name == "robstride" {
+                println!("[.. ] vendor=robstride probe=0x{id:02X} no reply");
             }
-            probe_ctrl.close_bus()?;
             std::thread::sleep(Duration::from_millis(2));
         }
         if hits == 0 {
@@ -195,7 +246,7 @@ pub fn run_robstride(
                 manual_vel, manual_ms, manual_gap_ms
             );
             for id in start_id..=end_id {
-                let candidate = fallback.add_motor(id, feedback_id, model)?;
+                let candidate = fallback.add_motor(id, scan_feedback_ids[0], model)?;
                 let _ = candidate.enable();
                 let _ = candidate.set_mode(RobstrideControlMode::Velocity);
                 let mut state_seen = false;
@@ -295,7 +346,7 @@ pub fn run_robstride(
                     "[ok] ping device_id={} responder_id={} payload={:02x?}",
                     reply.device_id, reply.responder_id, reply.payload
                 );
-            } else if let Some(pid) = query_ping(&motor) {
+            } else if let Some(pid) = query_ping(&motor, 0x7019, Duration::from_millis(120)) {
                 println!("[ok] ping(by query) param 0x{pid:04X} responded");
             } else {
                 return Err(format!(
@@ -440,9 +491,7 @@ pub fn run_robstride(
                         "[warn] robstride set-zero requires experimental sequence; no CAN frame sent. Re-run with --zero-exp 1"
                     );
                 } else {
-                    let pre_mech = motor
-                        .get_parameter(0x7019, Duration::from_millis(200))
-                        .ok();
+                    let pre_mech = motor.get_parameter(0x7019, Duration::from_millis(200)).ok();
                     // Experimental calibration sequence:
                     // disable -> set-zero -> optional save -> readback hints.
                     let _ = controller.disable_all();
@@ -520,8 +569,7 @@ pub fn run_robstride(
                 )?;
             }
             "pos-vel" => {
-                if args.contains_key("vel") || args.contains_key("kd") || args.contains_key("tau")
-                {
+                if args.contains_key("vel") || args.contains_key("kd") || args.contains_key("tau") {
                     println!(
                         "[warn] robstride pos-vel maps to native Position mode; --vel/--kd/--tau are ignored"
                     );

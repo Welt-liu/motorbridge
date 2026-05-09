@@ -7,6 +7,19 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-05-09
+
+### Added
+
+- Python CLI `id-set --vendor robstride` now supports RobStride device ID updates with optional store and verify.
+- Rust `motor_cli` accepts Python-style bare mode shorthand, for example `motor_cli scan --vendor robstride ...`.
+- Rust RobStride scan now accepts `--feedback-ids`, `--timeout-ms`, `--param-id`, and `--param-timeout-ms`, matching the Python scan entrypoint.
+
+### Changed
+
+- RobStride scan output and documentation now consistently distinguish motor `device_id` / `probe` from host-side `feedback_id` / `host_id`.
+- Python and Rust RobStride scan defaults are aligned around host ID candidates `0xFD,0xFF,0xFE,0x00,0xAA`.
+
 ## [0.2.3] - 2026-04-16
 
 ### Changed

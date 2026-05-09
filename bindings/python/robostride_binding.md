@@ -56,8 +56,8 @@ FID=0xFD
   - CLI：命令行参数入口（`--mode ...`）。
   - SDK：先 `Controller(\"can0\")`，再 `add_robstride_motor(motor_id, feedback_id, model)`。
 - 例外覆盖面：
-  - Python CLI 目前无 RobStride 专用 set-id 子命令；
-  - set-id 建议用 Core CLI 或 SDK API。
+  - Python CLI 已支持 RobStride `id-set`，但只修改 `device_id`；
+  - `feedback_id` / `host_id` 是上位机侧 ID，不是电机 ID。
 
 ## 1）扫描（scan）
 
@@ -68,7 +68,8 @@ FID=0xFD
 - 有效：`start-id/end-id/feedback-ids/param-timeout-ms`。
 
 默认值：
-- 推荐 `feedback-ids=0xFD`（或完整回退列表）。
+- 默认完整回退列表：`feedback-ids=0xFD,0xFF,0xFE,0x00,0xAA`。
+- 扫描输出中的 `probe` / `device_id` 是电机 ID；`feedback_id` / `host_id` 不是电机 ID。
 
 原厂协议对应：
 - 先走 ping 探测；必要时走参数读取探测。
@@ -407,7 +408,7 @@ with Controller("can0") as ctrl:
 
 参数有效性：
 - Core CLI：`--set-motor-id`、`--store`。
-- Python CLI：当前无 RobStride 专用改 ID 子命令。
+- Python CLI：`id-set --vendor robstride --new-motor-id ... --store ... --verify ...`。
 - Python SDK：`robstride_set_device_id()` + `store_parameters()`。
 
 默认值：
@@ -425,8 +426,11 @@ $CLI --vendor robstride --channel "$CH" --model "$MODEL" --motor-id "$MID" --fee
 
 ### Python CLI
 
-```text
-当前无专用子命令（建议用 Core CLI 或 Python SDK）。
+```bash
+motorbridge-cli id-set \
+  --vendor robstride --channel "$CH" --model "$MODEL" \
+  --motor-id "$MID" --feedback-id "$FID" \
+  --new-motor-id 126 --store 1 --verify 1
 ```
 
 ### Python SDK
@@ -498,7 +502,8 @@ motorbridge-cli robstride-read-param \
 
 ## 12）最终口径（给查证者）
 
-- 三通道在 RobStride 上的控制语义已对齐；主要差异在“入口形式”和少量命令覆盖面（如 Python CLI 暂无 set-id 子命令）。
+- 三通道在 RobStride 上的控制语义已对齐；主要差异在“入口形式”和少量命令覆盖面。
+- Python CLI 已支持 RobStride `scan / ping(run) / read-param / write-param / id-set`。
 - 参数“有效/无效”请以本手册各节为准，尤其：
   - `mit`：`pos/vel/kp/kd/tau` 全有效。
   - `pos-vel`：仅 `pos/vlim` 主有效；`vel/kd/tau` 无效。

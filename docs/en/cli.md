@@ -174,3 +174,13 @@ cargo run -p motor_cli --release -- \
 cargo run -p motor_cli --release -- \
   --vendor all --channel can0 --mode scan --start-id 1 --end-id 255
 ```
+
+RobStride focused scan:
+
+```bash
+cargo run -p motor_cli --release -- \
+  scan --vendor robstride --channel can0 --start-id 1 --end-id 127 \
+  --feedback-ids 0xFD,0xFF,0xFE,0x00,0xAA
+```
+
+For RobStride, `probe` / `device_id` is the motor ID. `feedback_id` / `host_id` (for example `0xFD`) is the host-side ID, not the motor ID.

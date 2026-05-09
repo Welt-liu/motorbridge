@@ -90,7 +90,8 @@ Note:
 
 - RobStride unified high-level control currently covers `MIT` / `POS_VEL` / `VEL`.
 - Torque/current is parameter-level only for RobStride (`robstride_write_param_*`), not a dedicated unified mode.
-- RobStride feedback/host default should use `0xFD` (runtime can fallback probe `0xFF/0xFE` when needed).
+- RobStride feedback/host default should use `0xFD`; scan tries `0xFD,0xFF,0xFE,0x00,0xAA` by default.
+- RobStride `feedback_id` / `host_id` is not the motor `device_id`; scan hits report the motor ID as `probe` / `device_id`.
 
 ## Quick Start
 
@@ -188,6 +189,19 @@ Unified scan (all vendors):
 
 ```bash
 motorbridge-cli scan --vendor all --channel can0 --start-id 0x01 --end-id 0xFF
+```
+
+RobStride-focused scan and ID update:
+
+```bash
+motorbridge-cli scan \
+  --vendor robstride --channel can0 --start-id 1 --end-id 127 \
+  --feedback-ids 0xFD,0xFF,0xFE,0x00,0xAA
+
+motorbridge-cli id-set \
+  --vendor robstride --channel can0 \
+  --motor-id 127 --feedback-id 0xFD \
+  --new-motor-id 126 --store 1 --verify 1
 ```
 
 HighTorque via binding:
@@ -288,7 +302,8 @@ python3 bindings/python/examples/robstride_wrapper_demo.py \
 
 ## Notes
 
-- `id-dump` and `id-set` are Damiao workflows; `scan` supports `damiao|hexfellow|myactuator|robstride|hightorque|all`.
+- `id-dump` is a Damiao workflow; `id-set` supports Damiao and RobStride; `scan` supports `damiao|hexfellow|myactuator|robstride|hightorque|all`.
+- For RobStride `id-set`, `--new-motor-id` changes `device_id`; `--feedback-id` remains the host-side ID.
 - `Mode.MIT` and `send_force_pos` are not available for MyActuator in ABI wrapper.
 - Hexfellow supports `MIT` and `POS_VEL` through ABI wrapper; `VEL` and `FORCE_POS` return unsupported.
 - Full Damiao tuning reference stays in:
