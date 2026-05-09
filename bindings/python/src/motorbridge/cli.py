@@ -26,6 +26,18 @@ def _parse_rids(text: str) -> list[int]:
     return [int(x.strip(), 0) for x in text.split(",") if x.strip()]
 
 
+def _robstride_device_id(value: int, name: str) -> int:
+    if not 1 <= value <= 255:
+        raise ValueError(f"RobStride {name} must be in 1..255, got {value}")
+    return value
+
+
+def _robstride_host_id(value: int, name: str) -> int:
+    if not 0 <= value <= 255:
+        raise ValueError(f"RobStride {name}/host_id must be in 0..255, got {value}")
+    return value
+
+
 def _add_common_args(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--vendor",
@@ -376,6 +388,9 @@ def _id_set_command(args: argparse.Namespace) -> None:
     new_feedback_id = _parse_id(args.new_feedback_id) if args.new_feedback_id else feedback_id
 
     if args.vendor == "robstride":
+        _robstride_device_id(motor_id, "motor_id")
+        _robstride_device_id(new_motor_id, "new_motor_id")
+        _robstride_host_id(feedback_id, "feedback_id")
         if args.new_feedback_id and new_feedback_id != feedback_id:
             raise ValueError(
                 "RobStride id-set changes device_id only; feedback_id/host_id is not motor_id"
@@ -492,6 +507,10 @@ def _scan_damiao(args: argparse.Namespace, start_id: int, end_id: int) -> list[t
 
 def _scan_robstride(args: argparse.Namespace, start_id: int, end_id: int) -> list[tuple[int, str]]:
     feedback_ids = _parse_rids(args.feedback_ids)
+    if not 1 <= start_id <= 255 or not 1 <= end_id <= 255:
+        raise ValueError("RobStride scan range must be within 1..255")
+    for fid in feedback_ids:
+        _robstride_host_id(fid, "feedback-ids")
     param_id = _parse_id(args.param_id)
     found: list[tuple[int, str]] = []
     print(
@@ -511,7 +530,7 @@ def _scan_robstride(args: argparse.Namespace, start_id: int, end_id: int) -> lis
                 motor = ctrl.add_robstride_motor(mid, fid, args.model)
                 try:
                     try:
-                        device_id, responder_id = motor.robstride_ping()
+                        device_id, responder_id = motor.robstride_ping_host_id(fid, args.timeout_ms)
                         hit_meta = (
                             f"vendor=robstride via=ping feedback_id=0x{fid:X} "
                             f"device_id={device_id} responder_id={responder_id}"
@@ -519,7 +538,9 @@ def _scan_robstride(args: argparse.Namespace, start_id: int, end_id: int) -> lis
                         break
                     except Exception:
                         try:
-                            value = motor.robstride_get_param_f32(param_id, args.param_timeout_ms)
+                            value = motor.robstride_get_param_f32_host_id(
+                                param_id, fid, args.param_timeout_ms
+                            )
                             hit_meta = (
                                 f"vendor=robstride via=read-param feedback_id=0x{fid:X} "
                                 f"param_id=0x{param_id:X} value={value}"

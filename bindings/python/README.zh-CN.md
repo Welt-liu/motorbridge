@@ -24,8 +24,8 @@
    作用：Python binding 总览（安装、API 范围、常用命令）。
 2. [examples/READMEzh_cn.md](examples/READMEzh_cn.md)（中文） / [examples/README.md](examples/README.md)（英文）  
    作用：所有 Python 示例的入口说明（从最简单到高级示例）。
-2.5. [mintlify/README.md](mintlify/README.md)  
-   作用：Python binding 的 Mintlify 文档站入口（教程 + API 手册风格）。
+2.5. [`../motorbridge-docs`](../../../motorbridge-docs)
+   作用：正式 Mintlify 文档站入口（教程 + API 手册风格）。
 3. [get_started/README.zh-CN.md](get_started/README.zh-CN.md) / [get_started/README.md](get_started/README.md)  
    作用：pip 安装用户的快速上手路径（安装 -> 扫描 -> 运行）。
 4. [DAMIAO_PYTHON_REFERENCE.zh-CN.md](DAMIAO_PYTHON_REFERENCE.zh-CN.md)  
@@ -344,6 +344,8 @@ python3 bindings/python/examples/robstride_wrapper_demo.py \
 
 - `id-dump` 仍是 Damiao 工作流；`id-set` 支持 Damiao 和 RobStride；`scan` 支持 `damiao|hexfellow|myactuator|robstride|hightorque|all`。
 - RobStride `id-set` 中，`--new-motor-id` 修改 `device_id`；`--feedback-id` 仍是上位机侧 host_id。
+- RobStride `motor_id` / `device_id` 会校验为 `1..255`；`feedback_id` / `host_id` 会校验为 `0..255`，避免 `ctypes` 静默截断。
+- RobStride 扫描会通过指定 host_id 的 ABI helper 精确探测每个 `--feedback-ids`；非法 host_id 会直接报错，不会静默回退。
 - MyActuator 在 ABI wrapper 中不支持 `Mode.MIT` 与 `send_force_pos`。
 - Hexfellow 在 ABI wrapper 中支持 `MIT` 与 `POS_VEL`，`VEL` / `FORCE_POS` 会返回不支持。
 - Damiao 的完整调参参考仍保留在:

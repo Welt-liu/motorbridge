@@ -7,6 +7,7 @@ use motor_vendor_robstride::{
     ParameterValue, RobstrideController,
 };
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::time::Duration;
 
 fn parse_robstride_param_value(param_id: u16, raw: &str) -> Result<ParameterValue, String> {
@@ -55,6 +56,24 @@ fn print_robstride_param_value(param_id: u16, value: ParameterValue) {
     }
 }
 
+fn validate_robstride_device_id(id: u16, name: &str) -> Result<u8, String> {
+    if (1..=255).contains(&id) {
+        Ok(u8::try_from(id).expect("validated RobStride device id"))
+    } else {
+        Err(format!("RobStride {name} must be in 1..255, got {id}"))
+    }
+}
+
+fn validate_robstride_host_id(id: u16, name: &str) -> Result<u16, String> {
+    if id <= 255 {
+        Ok(id)
+    } else {
+        Err(format!(
+            "RobStride {name}/host_id must be in 0..255, got {id}"
+        ))
+    }
+}
+
 pub fn run_robstride(
     args: &HashMap<String, String>,
     channel: &str,
@@ -92,6 +111,15 @@ pub fn run_robstride(
     let zero_exp = get_u64(args, "zero-exp", 0)? != 0;
     let set_motor_id = get_opt_u16_hex_or_dec(args, "set-motor-id")?;
     let store_after_set = get_u64(args, "store", 1)? != 0;
+    let validated_set_motor_id = if vendor_name == "robstride" {
+        validate_robstride_device_id(motor_id, "motor_id")?;
+        validate_robstride_host_id(feedback_id, "feedback_id")?;
+        set_motor_id
+            .map(|id| validate_robstride_device_id(id, "new_motor_id"))
+            .transpose()?
+    } else {
+        set_motor_id.map(|id| id as u8)
+    };
 
     if let Some((pmax, vmax, tmax)) = robstride_model_limits(model) {
         println!(
@@ -143,11 +171,15 @@ pub fn run_robstride(
             return Err("invalid scan range after clamping".into());
         }
         let scan_feedback_ids = if vendor_name == "robstride" {
-            get_u16_list_hex_or_dec(
+            let ids = get_u16_list_hex_or_dec(
                 args,
                 "feedback-ids",
                 &[0x00FD, 0x00FF, 0x00FE, 0x0000, 0x00AA],
-            )?
+            )?;
+            for fid in &ids {
+                validate_robstride_host_id(*fid, "feedback-ids")?;
+            }
+            ids
         } else {
             vec![feedback_id]
         };
@@ -195,7 +227,9 @@ pub fn run_robstride(
             for fid in &scan_feedback_ids {
                 let probe_ctrl = RobstrideController::new_socketcan(channel)?;
                 let candidate = probe_ctrl.add_motor(id, *fid, model)?;
-                if let Ok(reply) = candidate.ping(Duration::from_millis(timeout_ms)) {
+                if let Ok(reply) =
+                    candidate.ping_with_host_id(*fid, Duration::from_millis(timeout_ms))
+                {
                     println!(
                         "[hit] probe=0x{:02X} vendor={} via=ping feedback_id=0x{:X} device_id={} responder_id={} model_hint={} payload={:02x?}",
                         id,
@@ -208,11 +242,29 @@ pub fn run_robstride(
                     );
                     hit = true;
                 } else if vendor_name != "hightorque" {
-                    if let Some(pid) = query_ping(
-                        &candidate,
-                        param_id,
-                        Duration::from_millis(param_timeout_ms),
-                    ) {
+                    let exact_param = candidate
+                        .get_parameter_with_host_id(
+                            param_id,
+                            *fid,
+                            Duration::from_millis(param_timeout_ms),
+                        )
+                        .map(|_| param_id)
+                        .or_else(|_| {
+                            if param_id == 0x7019 {
+                                Err(())
+                            } else {
+                                candidate
+                                    .get_parameter_with_host_id(
+                                        0x7019,
+                                        *fid,
+                                        Duration::from_millis(param_timeout_ms),
+                                    )
+                                    .map(|_| 0x7019)
+                                    .map_err(|_| ())
+                            }
+                        })
+                        .ok();
+                    if let Some(pid) = exact_param {
                         println!(
                             "[hit] probe=0x{:02X} vendor={} via=read-param feedback_id=0x{:X} device_id={} param_id=0x{:04X} model_hint={}",
                             id, vendor_name, fid, id, pid, model
@@ -294,14 +346,15 @@ pub fn run_robstride(
     let controller = RobstrideController::new_socketcan(channel)?;
     let motor = controller.add_motor(motor_id, feedback_id, model)?;
 
-    if let Some(new_motor_id) = set_motor_id {
+    if let Some(new_motor_id_u8) = validated_set_motor_id {
+        let new_motor_id = u16::from(new_motor_id_u8);
         if mode != "ping" {
             println!(
                 "[info] robstride id-set requested; --mode {} is ignored during id-set flow",
                 mode
             );
         }
-        motor.set_device_id(new_motor_id as u8)?;
+        motor.set_device_id(new_motor_id_u8)?;
         println!(
             "[id-set] {} device id update requested: {} -> {}",
             vendor_name, motor_id, new_motor_id

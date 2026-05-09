@@ -299,13 +299,13 @@ motor_cli $DM_SERIAL --motor-id 0x04 --feedback-id 0x14 \
 |---|---|---|---|---|
 | `--start-id` | u16 | `1` | scan | 扫描起始 ID（1..255） |
 | `--end-id` | u16 | `255` | scan | 扫描结束 ID（1..255） |
-| `--feedback-ids` | csv u16 | `0xFD,0xFF,0xFE,0x00,0xAA` | scan | RobStride host_id 候选列表，不是电机 ID |
+| `--feedback-ids` | csv u16 | `0xFD,0xFF,0xFE,0x00,0xAA` | scan | RobStride host_id 候选列表，范围 0..255；不是电机 ID |
 | `--timeout-ms` | u64 | `80` | scan | ping 探测超时 |
 | `--param-timeout-ms` | u64 | `120` | scan | 参数回退探测超时 |
 | `--manual-vel` | f32 | `0.2` | scan 回退 | 盲探速度 |
 | `--manual-ms` | u64 | `200` | scan 回退 | 每个 ID 脉冲时长 |
 | `--manual-gap-ms` | u64 | `200` | scan 回退 | ID 间隔 |
-| `--set-motor-id` | u16 可选 | 无 | 改 ID 流程 | 设置新设备 ID |
+| `--set-motor-id` | u16 可选 | 无 | 改 ID 流程 | 设置新设备 ID，范围 1..255 |
 | `--store` | `0/1` | `1` | 改 ID 流程 | 保存参数 |
 | `--param-id` | u16 | 参数模式必填 | 读写参数 | 参数 ID |
 | `--param-value` | 类型化值 | 写参数必填 | write-param | 按参数元数据解析 |
@@ -540,7 +540,6 @@ motor_cli \
 - RobStride 默认 `--feedback-id` 为 `0xFD`，内部会回退探测 `0xFF/0xFE`。
 - RobStride 的 `pos-vel` 下 `--vel/--kd/--tau` 为无效参数，仅告警不报错。
 - MyActuator 若 `0x9A` 返回错误码 `0x0004`（欠压），电机会在线但不转，需要先恢复供电电压。
-
 
 
 

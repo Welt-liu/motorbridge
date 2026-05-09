@@ -126,6 +126,8 @@ Notes:
 - `probe` / `device_id` is the motor ID.
 - `feedback_id` / `host_id` (for example `0xFD`) is the host-side ID, not the motor ID.
 - `--feedback-ids` is a comma-separated list of host IDs to try during scan.
+- RobStride `motor_id` / `device_id` must be `1..255`; `feedback_id` / `host_id` must be `0..255`.
+- During scan, each listed `--feedback-ids` entry is probed exactly; invalid host IDs are rejected instead of silently falling back.
 - If no ping replies in full range, CLI auto-falls back to blind pulse probing:
   - `--manual-vel` (default `0.2`)
   - `--manual-ms` (default `200`)
@@ -152,6 +154,7 @@ Raw protocol alignment (with official upper software):
 
 - Set-ID frame uses `comm_type=7`.
 - This changes the RobStride `device_id` only; it does not change `feedback_id` / `host_id`.
+- `--set-motor-id` / `--new-motor-id` is validated as `1..255`; out-of-range values are rejected instead of being truncated.
 - Extended ID format in this command path is:
   - `0x07 [new_id] [host_id] [old_id]`
   - example (`old_id=1`, `new_id=11`, `host_id=0xFD`): `0x070BFD01`
@@ -244,4 +247,3 @@ Main improvement opportunities:
 - Confirm CAN wiring/termination and interface state before stress tests.
 - Prefer ping/read-param verification before long periodic control.
 - Keep emergency stop path available.
-

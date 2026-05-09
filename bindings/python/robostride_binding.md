@@ -56,8 +56,9 @@ FID=0xFD
   - CLI：命令行参数入口（`--mode ...`）。
   - SDK：先 `Controller(\"can0\")`，再 `add_robstride_motor(motor_id, feedback_id, model)`。
 - 例外覆盖面：
-  - Python CLI 已支持 RobStride `id-set`，但只修改 `device_id`；
-  - `feedback_id` / `host_id` 是上位机侧 ID，不是电机 ID。
+- Python CLI 已支持 RobStride `id-set`，但只修改 `device_id`；
+- `feedback_id` / `host_id` 是上位机侧 ID，不是电机 ID。
+- ID 范围会显式校验：`device_id/motor_id/new_motor_id` 为 `1..255`，`feedback_id/host_id` 为 `0..255`，避免底层 `u8`/`ctypes` 静默截断。
 
 ## 1）扫描（scan）
 

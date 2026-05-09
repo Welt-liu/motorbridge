@@ -181,5 +181,5 @@ python3 -m http.server 18080
 
 ## Notes
 
-- `id-dump` and `id-set` are Damiao-oriented workflows; unified `scan` is available in Rust CLI (`--vendor all`) and Python SDK CLI (`motorbridge.cli scan --vendor all`).
+- `id-dump` is a Damiao-oriented workflow; `id-set` supports Damiao and RobStride device ID updates. Unified `scan` is available in Rust CLI (`--vendor all`) and Python SDK CLI (`motorbridge.cli scan --vendor all`).
 - RobStride examples focus on ping, parameter access, MIT, and velocity control.

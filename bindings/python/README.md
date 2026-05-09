@@ -24,8 +24,8 @@ If this is your first time in this folder, read in this order:
    Purpose: Python binding overview (install, API scope, common commands).
 2. [examples/README.md](examples/README.md) (English) / [examples/READMEzh_cn.md](examples/READMEzh_cn.md) (Chinese)  
    Purpose: practical demo index and run instructions (from simplest to advanced).
-2.5. [mintlify/README.md](mintlify/README.md)  
-   Purpose: Mintlify documentation site entry for Python binding (tutorial + API style docs).
+2.5. [`../motorbridge-docs`](../../../motorbridge-docs)
+   Purpose: canonical Mintlify documentation site (tutorial + API style docs).
 3. [get_started/README.md](get_started/README.md) / [get_started/README.zh-CN.md](get_started/README.zh-CN.md)  
    Purpose: pip-first onboarding path (install -> scan -> run).
 4. [DAMIAO_PYTHON_REFERENCE.zh-CN.md](DAMIAO_PYTHON_REFERENCE.zh-CN.md)  
@@ -304,6 +304,8 @@ python3 bindings/python/examples/robstride_wrapper_demo.py \
 
 - `id-dump` is a Damiao workflow; `id-set` supports Damiao and RobStride; `scan` supports `damiao|hexfellow|myactuator|robstride|hightorque|all`.
 - For RobStride `id-set`, `--new-motor-id` changes `device_id`; `--feedback-id` remains the host-side ID.
+- RobStride `motor_id` / `device_id` is validated as `1..255`; `feedback_id` / `host_id` is validated as `0..255` to prevent silent `ctypes` truncation.
+- RobStride scan probes each `--feedback-ids` host_id exactly through host-id-specific ABI helpers; invalid host IDs are rejected instead of silently falling back.
 - `Mode.MIT` and `send_force_pos` are not available for MyActuator in ABI wrapper.
 - Hexfellow supports `MIT` and `POS_VEL` through ABI wrapper; `VEL` and `FORCE_POS` return unsupported.
 - Full Damiao tuning reference stays in:

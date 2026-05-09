@@ -112,4 +112,4 @@ python3 bindings/python/get_started/courses/09-multi-motor.py
 - 完整示例目录：`bindings/python/examples/READMEzh_cn.md`
 - CLI 全参数文档：`motor_cli/README.zh-CN.md`
 - 课程总纲（全接口导向）：`bindings/python/get_started/courses/README.zh-CN.md`
-- Mintlify 文档站（教程 + API）：`bindings/python/mintlify/README.md`
+- Mintlify 文档站（教程 + API）：`../motorbridge-docs`

@@ -96,6 +96,10 @@ class Controller:
         return Motor(m)
 
     def add_robstride_motor(self, motor_id: int, feedback_id: int, model: str) -> "Motor":
+        if not 1 <= int(motor_id) <= 255:
+            raise ValueError(f"RobStride motor_id must be in 1..255, got {motor_id}")
+        if not 0 <= int(feedback_id) <= 255:
+            raise ValueError(f"RobStride feedback_id/host_id must be in 0..255, got {feedback_id}")
         m = self._abi.lib.motor_controller_add_robstride_motor(
             self._ptr, motor_id, feedback_id, model.encode()
         )
@@ -212,7 +216,34 @@ class Motor:
         )
         return int(device_id.value), int(responder_id.value)
 
+    def robstride_ping_host_id(self, host_id: int, timeout_ms: int = 500) -> tuple[int, int]:
+        if not 0 <= int(host_id) <= 255:
+            raise ValueError(f"RobStride host_id must be in 0..255, got {host_id}")
+        device_id = c_uint8(0)
+        responder_id = c_uint8(0)
+        _ok(
+            self._abi.lib.motor_handle_robstride_ping_host_id(
+                self._ptr, host_id, timeout_ms, ctypes.byref(device_id), ctypes.byref(responder_id)
+            ),
+            "robstride_ping_host_id",
+        )
+        return int(device_id.value), int(responder_id.value)
+
+    def robstride_get_param_f32_host_id(self, param_id: int, host_id: int, timeout_ms: int = 1000) -> float:
+        if not 0 <= int(host_id) <= 255:
+            raise ValueError(f"RobStride host_id must be in 0..255, got {host_id}")
+        out = c_float(0.0)
+        _ok(
+            self._abi.lib.motor_handle_robstride_get_param_f32_host_id(
+                self._ptr, param_id, host_id, timeout_ms, ctypes.byref(out)
+            ),
+            "robstride_get_param_f32_host_id",
+        )
+        return float(out.value)
+
     def robstride_set_device_id(self, new_device_id: int) -> None:
+        if not 1 <= int(new_device_id) <= 255:
+            raise ValueError(f"RobStride new_device_id must be in 1..255, got {new_device_id}")
         _ok(self._abi.lib.motor_handle_robstride_set_device_id(self._ptr, new_device_id), "robstride_set_device_id")
 
     def robstride_write_param_i8(self, param_id: int, value: int) -> None:

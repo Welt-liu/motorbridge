@@ -7,6 +7,27 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-05-09
+
+### Added
+
+- RobStride host-id-specific ABI helpers for exact scan probing from Python:
+  `motor_handle_robstride_ping_host_id` and `motor_handle_robstride_get_param_f32_host_id`.
+- Python SDK wrappers `robstride_ping_host_id(...)` and `robstride_get_param_f32_host_id(...)`.
+- Release test note `release_test_notes/0.2.6.md` covering Rust core/CLI, Python binding/CLI,
+  package smoke checks, and full RobStride/Damiao CLI command examples.
+
+### Changed
+
+- RobStride `motor_id` / `device_id` is now validated as `1..255`; `feedback_id` / `host_id` is
+  validated as `0..255` across core, Rust CLI, Python SDK/CLI, and websocket gateway flows.
+- Rust and Python RobStride scan now probe each listed `--feedback-ids` host ID exactly instead of
+  silently falling back inside each candidate probe.
+- RobStride parameter response filtering now requires the response `device_id` to match the target
+  motor, reducing cross-talk risk on multi-motor buses.
+- The embedded `bindings/python/mintlify` documentation copy was removed; canonical Mintlify docs now
+  live in the sibling `motorbridge-docs` repository.
+
 ## [0.2.5] - 2026-05-09
 
 ### Added

@@ -36,6 +36,13 @@ This project currently focuses on deterministic unit tests for protocol and pars
 cargo test --workspace --all-targets
 ```
 
+## Release Test Notes
+
+Every release should add a repeatable release test note that records core, Rust CLI, Python binding/CLI,
+hardware-in-the-loop commands, and dangerous command boundaries.
+
+- Current version: [`release_test_notes/0.2.6.md`](../../release_test_notes/0.2.6.md)
+
 ## Recommended Local Quality Gate
 
 ```bash

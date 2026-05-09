@@ -130,6 +130,8 @@ struct ParameterState {
 
 impl RobstrideMotor {
     pub fn new(motor_id: u16, feedback_id: u16, model: &str, bus: Arc<dyn CanBus>) -> Result<Self> {
+        Self::validate_device_id(motor_id, "motor_id")?;
+        Self::validate_host_id(feedback_id, "feedback_id")?;
         let spec = ROBSTRIDE_CATALOG.get(model).ok_or_else(|| {
             MotorError::InvalidArgument(format!("unknown RobStride model: {model}"))
         })?;
@@ -154,16 +156,11 @@ impl RobstrideMotor {
     }
 
     fn device_id_u8(&self) -> Result<u8> {
-        u8::try_from(self.motor_id).map_err(|_| {
-            MotorError::InvalidArgument(format!("motor_id {} out of u8 range", self.motor_id))
-        })
+        Ok(self.motor_id as u8)
     }
 
     fn host_id_u16(&self) -> u16 {
-        match u8::try_from(self.feedback_id) {
-            Ok(v) => u16::from(v),
-            Err(_) => 0x00FD,
-        }
+        self.feedback_id
     }
 
     fn host_id_u8(&self) -> u8 {
@@ -172,15 +169,32 @@ impl RobstrideMotor {
 
     fn host_id_candidates(&self) -> Vec<u16> {
         let mut cands = Vec::new();
-        if let Ok(fid) = u8::try_from(self.feedback_id) {
-            cands.push(u16::from(fid));
-        }
+        cands.push(self.feedback_id);
         cands.push(0x00FD);
         cands.push(0x00FF);
         cands.push(0x00FE);
-        cands.sort_unstable();
         cands.dedup();
         cands
+    }
+
+    fn validate_device_id(id: u16, name: &str) -> Result<()> {
+        if (1..=255).contains(&id) {
+            Ok(())
+        } else {
+            Err(MotorError::InvalidArgument(format!(
+                "RobStride {name} must be in 1..255, got {id}"
+            )))
+        }
+    }
+
+    fn validate_host_id(id: u16, name: &str) -> Result<()> {
+        if id <= 255 {
+            Ok(())
+        } else {
+            Err(MotorError::InvalidArgument(format!(
+                "RobStride {name}/host_id must be in 0..255, got {id}"
+            )))
+        }
     }
 
     fn send_ext(&self, comm_type: u32, extra_data: u16, data: [u8; 8], dlc: u8) -> Result<()> {
@@ -222,28 +236,39 @@ impl RobstrideMotor {
         let cands = self.host_id_candidates();
         let per_try = Duration::from_millis((timeout.as_millis() as u64).max(120));
         for host in cands {
-            self.ping_reply
-                .lock()
-                .map_err(|_| MotorError::Io("ping reply lock poisoned".to_string()))?
-                .take();
-            self.send_ext(CommunicationType::GET_DEVICE_ID, host, [0u8; 8], 8)?;
-            let deadline = Instant::now() + per_try;
-            loop {
-                if let Some(reply) = *self
-                    .ping_reply
-                    .lock()
-                    .map_err(|_| MotorError::Io("ping reply lock poisoned".to_string()))?
-                {
-                    return Ok(reply);
-                }
-                if Instant::now() >= deadline {
-                    break;
-                }
-                std::thread::sleep(Duration::from_millis(8));
+            if let Ok(reply) = self.ping_with_host_id(host, per_try) {
+                return Ok(reply);
             }
         }
         Err(MotorError::Timeout(format!(
             "ping {} timed out",
+            self.motor_id
+        )))
+    }
+
+    pub fn ping_with_host_id(&self, host_id: u16, timeout: Duration) -> Result<PingReply> {
+        Self::validate_host_id(host_id, "feedback_id")?;
+        self.ping_reply
+            .lock()
+            .map_err(|_| MotorError::Io("ping reply lock poisoned".to_string()))?
+            .take();
+        self.send_ext(CommunicationType::GET_DEVICE_ID, host_id, [0u8; 8], 8)?;
+        let deadline = Instant::now() + timeout;
+        loop {
+            if let Some(reply) = *self
+                .ping_reply
+                .lock()
+                .map_err(|_| MotorError::Io("ping reply lock poisoned".to_string()))?
+            {
+                return Ok(reply);
+            }
+            if Instant::now() >= deadline {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(8));
+        }
+        Err(MotorError::Timeout(format!(
+            "ping {} timed out for host_id 0x{host_id:X}",
             self.motor_id
         )))
     }
@@ -273,6 +298,7 @@ impl RobstrideMotor {
     }
 
     pub fn set_device_id(&self, new_id: u8) -> Result<()> {
+        Self::validate_device_id(u16::from(new_id), "new_device_id")?;
         let extra = (u16::from(new_id) << 8) | u16::from(self.host_id_u8());
         let payload = self.ping(Duration::from_millis(140))?.payload;
         self.send_ext(CommunicationType::SET_DEVICE_ID, extra, payload, 8)
@@ -359,36 +385,52 @@ impl RobstrideMotor {
         let per_try = Duration::from_millis((timeout.as_millis() as u64).max(150));
 
         for host in cands {
-            let mut ps = self
-                .param_state
-                .lock()
-                .map_err(|_| MotorError::Io("param state lock poisoned".to_string()))?;
-            ps.values.remove(&param_id);
-            ps.pending.replace(param_id);
-            drop(ps);
-            let data = encode_parameter_read(param_id);
-            self.send_ext(CommunicationType::READ_PARAMETER, host, data, 8)?;
-
-            let deadline = Instant::now() + per_try;
-            loop {
-                if let Some(value) = self
-                    .param_state
-                    .lock()
-                    .map_err(|_| MotorError::Io("param state lock poisoned".to_string()))?
-                    .values
-                    .get(&param_id)
-                    .copied()
-                {
-                    return Ok(value);
-                }
-                if Instant::now() >= deadline {
-                    break;
-                }
-                std::thread::sleep(Duration::from_millis(8));
+            if let Ok(value) = self.get_parameter_with_host_id(param_id, host, per_try) {
+                return Ok(value);
             }
         }
         Err(MotorError::Timeout(format!(
             "parameter 0x{param_id:04X} not received within {:?}",
+            timeout
+        )))
+    }
+
+    pub fn get_parameter_with_host_id(
+        &self,
+        param_id: u16,
+        host_id: u16,
+        timeout: Duration,
+    ) -> Result<ParameterValue> {
+        Self::validate_host_id(host_id, "feedback_id")?;
+        let mut ps = self
+            .param_state
+            .lock()
+            .map_err(|_| MotorError::Io("param state lock poisoned".to_string()))?;
+        ps.values.remove(&param_id);
+        ps.pending.replace(param_id);
+        drop(ps);
+        let data = encode_parameter_read(param_id);
+        self.send_ext(CommunicationType::READ_PARAMETER, host_id, data, 8)?;
+
+        let deadline = Instant::now() + timeout;
+        loop {
+            if let Some(value) = self
+                .param_state
+                .lock()
+                .map_err(|_| MotorError::Io("param state lock poisoned".to_string()))?
+                .values
+                .get(&param_id)
+                .copied()
+            {
+                return Ok(value);
+            }
+            if Instant::now() >= deadline {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(8));
+        }
+        Err(MotorError::Timeout(format!(
+            "parameter 0x{param_id:04X} not received within {:?} for host_id 0x{host_id:X}",
             timeout
         )))
     }
@@ -516,14 +558,11 @@ impl MotorDevice for RobstrideMotor {
         if !frame.is_extended {
             return false;
         }
-        let (comm_type, extra_data, responder_id) = ext_id_parts(frame.arbitration_id);
+        let (comm_type, extra_data, _responder_id) = ext_id_parts(frame.arbitration_id);
         let device_id = (extra_data & 0xFF) as u16;
         match comm_type {
             CommunicationType::GET_DEVICE_ID => device_id == self.motor_id,
-            // READ_PARAMETER responses may use host id in responder_id depending on firmware.
-            CommunicationType::READ_PARAMETER => {
-                device_id == self.motor_id || responder_id == self.host_id_u8()
-            }
+            CommunicationType::READ_PARAMETER => device_id == self.motor_id,
             // Status/fault frames must belong to this motor. Accepting only by responder_id
             // can pollute state with frames from other motors on the same bus.
             CommunicationType::OPERATION_STATUS | CommunicationType::FAULT_REPORT => {
@@ -541,6 +580,7 @@ impl MotorDevice for RobstrideMotor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use motor_core::device::MotorDevice;
     use motor_core::test_support::MockBus;
 
     #[test]
@@ -551,5 +591,44 @@ mod tests {
             .get_parameter(0x7019, Duration::from_millis(5))
             .expect_err("timeout expected");
         assert!(matches!(err, MotorError::Timeout(_)));
+    }
+
+    #[test]
+    fn constructor_rejects_out_of_range_ids() {
+        let bus: Arc<dyn CanBus> = Arc::new(MockBus::new());
+        assert!(RobstrideMotor::new(0, 0xFD, "rs-00", Arc::clone(&bus)).is_err());
+        assert!(RobstrideMotor::new(256, 0xFD, "rs-00", Arc::clone(&bus)).is_err());
+        assert!(RobstrideMotor::new(1, 0x100, "rs-00", bus).is_err());
+    }
+
+    #[test]
+    fn ping_with_host_id_uses_exact_host_without_fallback() {
+        let bus = Arc::new(MockBus::new());
+        let motor = RobstrideMotor::new(2, 0xFD, "rs-00", bus.clone()).expect("create motor");
+        let err = motor
+            .ping_with_host_id(0xAA, Duration::from_millis(1))
+            .expect_err("timeout expected");
+        assert!(matches!(err, MotorError::Timeout(_)));
+
+        let sent = bus.sent.lock().expect("sent frames");
+        assert_eq!(sent.len(), 1);
+        let (comm_type, extra_data, node_id) = ext_id_parts(sent[0].arbitration_id);
+        assert_eq!(comm_type, CommunicationType::GET_DEVICE_ID);
+        assert_eq!(extra_data, 0x00AA);
+        assert_eq!(node_id, 2);
+    }
+
+    #[test]
+    fn read_parameter_filter_rejects_other_device_with_same_host() {
+        let bus: Arc<dyn CanBus> = Arc::new(MockBus::new());
+        let motor = RobstrideMotor::new(2, 0xFD, "rs-00", bus).expect("create motor");
+        let frame = CanFrame {
+            arbitration_id: build_ext_id(CommunicationType::READ_PARAMETER, 0x0003, 0xFD),
+            data: encode_parameter_read(0x7019),
+            dlc: 8,
+            is_extended: true,
+            is_rx: true,
+        };
+        assert!(!motor.accepts_frame(&frame));
     }
 }

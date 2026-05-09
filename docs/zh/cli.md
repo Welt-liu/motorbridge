@@ -184,3 +184,4 @@ cargo run -p motor_cli --release -- \
 ```
 
 RobStride 输出中，`probe` / `device_id` 是电机 ID；`feedback_id` / `host_id`（如 `0xFD`）是上位机侧 ID，不是电机 ID。
+RobStride `motor_id` / `device_id` 会校验为 `1..255`；`feedback_id` / `host_id` 会校验为 `0..255`。

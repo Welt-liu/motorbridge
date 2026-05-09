@@ -227,13 +227,13 @@ motor_cli \
 |---|---|---|---|---|
 | `--start-id` | u16 | `1` | scan | Scan start, 1..255 |
 | `--end-id` | u16 | `255` | scan | Scan end, 1..255 |
-| `--feedback-ids` | csv u16 | `0xFD,0xFF,0xFE,0x00,0xAA` | scan | RobStride host_id candidates; not motor IDs |
+| `--feedback-ids` | csv u16 | `0xFD,0xFF,0xFE,0x00,0xAA` | scan | RobStride host_id candidates, 0..255; not motor IDs |
 | `--timeout-ms` | u64 | `80` | scan | Ping timeout |
 | `--param-timeout-ms` | u64 | `120` | scan | Parameter fallback timeout |
 | `--manual-vel` | f32 | `0.2` | scan fallback | Blind pulse velocity |
 | `--manual-ms` | u64 | `200` | scan fallback | Pulse duration per ID |
 | `--manual-gap-ms` | u64 | `200` | scan fallback | Gap between IDs |
-| `--set-motor-id` | u16 opt | none | id-set flow | Set device ID |
+| `--set-motor-id` | u16 opt | none | id-set flow | Set device ID, 1..255 |
 | `--store` | `0/1` | `1` | id-set flow | Save parameters |
 | `--param-id` | u16 | required for param modes | read/write param | Parameter ID |
 | `--param-value` | typed | required for write | write-param | Parsed by parameter metadata |

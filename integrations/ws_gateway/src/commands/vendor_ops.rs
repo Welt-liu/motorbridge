@@ -4,14 +4,30 @@ use motor_vendor_robstride::RobstrideController;
 use serde_json::{json, Value};
 use std::time::Duration;
 
+use super::{
+    as_bool, as_u16, as_u64, build_scan_model_hints, parse_transport_in_msg, parse_vendor_in_msg,
+};
 use crate::vendors::hightorque_ws::{send_hightorque_ext, wait_hightorque_status_for_motor};
 use crate::vendors::transport_ws::{
     myactuator_feedback_default, open_damiao_controller, open_hexfellow_controller,
     open_hightorque_bus, open_myactuator_controller, open_robstride_controller,
 };
-use super::{
-    as_bool, as_u16, as_u64, build_scan_model_hints, parse_transport_in_msg, parse_vendor_in_msg,
-};
+
+fn robstride_device_id(id: u16, name: &str) -> Result<u8, String> {
+    if (1..=255).contains(&id) {
+        Ok(id as u8)
+    } else {
+        Err(format!("robstride {name} must be 1..255, got {id}"))
+    }
+}
+
+fn robstride_host_id(id: u16, name: &str) -> Result<u16, String> {
+    if id <= 255 {
+        Ok(id)
+    } else {
+        Err(format!("robstride {name}/host_id must be 0..255, got {id}"))
+    }
+}
 
 pub(crate) fn cmd_verify(v: &Value, base: &Target) -> Result<Value, String> {
     let vendor = parse_vendor_in_msg(v, base.vendor)?;
@@ -22,7 +38,10 @@ pub(crate) fn cmd_verify(v: &Value, base: &Target) -> Result<Value, String> {
 
     match vendor {
         Vendor::Damiao => {
-            let preferred_model = v.get("model").and_then(Value::as_str).unwrap_or(&base.model);
+            let preferred_model = v
+                .get("model")
+                .and_then(Value::as_str)
+                .unwrap_or(&base.model);
             let model_hints = build_scan_model_hints(preferred_model);
             let mut last_err: Option<String> = None;
             let mut out: Option<Value> = None;
@@ -77,6 +96,8 @@ pub(crate) fn cmd_verify(v: &Value, base: &Target) -> Result<Value, String> {
             }
         }
         Vendor::Robstride => {
+            let mid_u8 = robstride_device_id(mid, "motor_id")?;
+            robstride_host_id(fid, "feedback_id")?;
             let ctrl = open_robstride_controller(base, transport)?;
             let motor = ctrl
                 .add_motor(mid, fid, &base.model)
@@ -92,7 +113,7 @@ pub(crate) fn cmd_verify(v: &Value, base: &Target) -> Result<Value, String> {
                 "feedback_id": fid,
                 "device_id": ping.device_id,
                 "responder_id": ping.responder_id,
-                "ok": ping.device_id == mid as u8,
+                "ok": ping.device_id == mid_u8,
             }))
         }
         Vendor::Hexfellow => {
@@ -141,8 +162,11 @@ pub(crate) fn cmd_verify(v: &Value, base: &Target) -> Result<Value, String> {
         Vendor::Hightorque => {
             let bus = open_hightorque_bus(base, transport)?;
             send_hightorque_ext(bus.as_ref(), mid, &[0x17, 0x01, 0, 0, 0, 0, 0, 0])?;
-            let status =
-                wait_hightorque_status_for_motor(bus.as_ref(), mid, Duration::from_millis(timeout_ms))?;
+            let status = wait_hightorque_status_for_motor(
+                bus.as_ref(),
+                mid,
+                Duration::from_millis(timeout_ms),
+            )?;
             let _ = bus.shutdown();
             Ok(json!({
                 "vendor": "hightorque",
@@ -168,7 +192,10 @@ pub(crate) fn cmd_set_id(v: &Value, base: &Target) -> Result<Value, String> {
             let timeout_ms = as_u64(v, "timeout_ms", 1000);
 
             let ctrl = DamiaoController::new_socketcan(&base.channel).map_err(|e| e.to_string())?;
-            let preferred_model = v.get("model").and_then(Value::as_str).unwrap_or(&base.model);
+            let preferred_model = v
+                .get("model")
+                .and_then(Value::as_str)
+                .unwrap_or(&base.model);
             let model_hints = build_scan_model_hints(preferred_model);
             let mut model_used: Option<String> = None;
             let mut last_err: Option<String> = None;
@@ -232,16 +259,17 @@ pub(crate) fn cmd_set_id(v: &Value, base: &Target) -> Result<Value, String> {
             let old_mid = as_u16(v, "old_motor_id", base.motor_id);
             let fid = as_u16(v, "feedback_id", base.feedback_id);
             let new_mid = as_u16(v, "new_motor_id", old_mid);
-            if new_mid == 0 || new_mid > 0xFF {
-                return Err("robstride new_motor_id must be 1..255".to_string());
-            }
+            robstride_device_id(old_mid, "old_motor_id")?;
+            robstride_host_id(fid, "feedback_id")?;
+            let new_mid_u8 = robstride_device_id(new_mid, "new_motor_id")?;
             let verify = as_bool(v, "verify", true);
             let timeout_ms = as_u64(v, "timeout_ms", 1000);
-            let ctrl = RobstrideController::new_socketcan(&base.channel).map_err(|e| e.to_string())?;
+            let ctrl =
+                RobstrideController::new_socketcan(&base.channel).map_err(|e| e.to_string())?;
             let motor = ctrl
                 .add_motor(old_mid, fid, &base.model)
                 .map_err(|e| e.to_string())?;
-            motor.set_device_id(new_mid as u8).map_err(|e| e.to_string())?;
+            motor.set_device_id(new_mid_u8).map_err(|e| e.to_string())?;
             let _ = ctrl.close_bus();
 
             let mut out = json!({

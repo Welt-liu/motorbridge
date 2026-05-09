@@ -181,5 +181,5 @@ python3 -m http.server 18080
 
 ## 说明
 
-- `id-dump`、`id-set` 仍偏 Damiao 工作流；统一 `scan` 已支持 Rust CLI（`--vendor all`）和 Python SDK CLI（`motorbridge.cli scan --vendor all`）。
+- `id-dump` 仍偏 Damiao 工作流；`id-set` 支持 Damiao 和 RobStride 电机 device ID 修改。统一 `scan` 已支持 Rust CLI（`--vendor all`）和 Python SDK CLI（`motorbridge.cli scan --vendor all`）。
 - RobStride 目前重点覆盖 `ping`、参数访问、MIT、速度控制。

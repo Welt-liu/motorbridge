@@ -204,13 +204,13 @@ python3 bindings/python/get_started/courses/09-multi-motor.py
 
 如果你希望看“教程化 + API 手册化”的完整文档站，请看：
 
-- `bindings/python/mintlify/README.md`
-- 重点页：`tutorials/07-complete-binding-interface-guide`
+- `../motorbridge-docs`
+- 重点页：`sdk/python/reference.mdx`、`zh/sdk/python/reference.mdx`
 
 本地预览：
 
 ```bash
-cd bindings/python/mintlify
+cd ../motorbridge-docs
 npx mintlify dev
 ```
 

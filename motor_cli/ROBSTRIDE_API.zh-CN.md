@@ -161,6 +161,8 @@ motorbridge-cli scan \
 - `probe` / `device_id` 是电机 ID。
 - `feedback_id` / `host_id`（例如 `0xFD`）是上位机侧 ID，不是电机 ID。
 - `--feedback-ids` 是扫描时尝试的 host_id 逗号列表。
+- RobStride `motor_id` / `device_id` 必须是 `1..255`；`feedback_id` / `host_id` 必须是 `0..255`。
+- 扫描时会精确尝试 `--feedback-ids` 中列出的 host_id；非法 host_id 会直接报错，不再静默回退。
 - 若全范围无 ping 命中：自动回退到盲探脉冲（观察电机是否转动）。
   - `--manual-vel`（默认 `0.2`）
   - `--manual-ms`（默认 `200`）
@@ -187,6 +189,7 @@ motorbridge-cli id-set \
 
 - 改 ID 使用 `comm_type=7`。
 - 该操作只修改 RobStride `device_id`，不会修改 `feedback_id` / `host_id`。
+- `--set-motor-id` / `--new-motor-id` 会校验为 `1..255`；超范围值会直接报错，不会被截断。
 - 该路径下扩展 ID 组成为：
   - `0x07 [new_id] [host_id] [old_id]`
   - 例如（`old_id=1`、`new_id=11`、`host_id=0xFD`）：`0x070BFD01`
@@ -279,5 +282,4 @@ with Controller("can0") as ctrl:
 - 压测前先确认 CAN 接线、终端电阻和接口状态。
 - 长时间控制前先做 ping/读参验证。
 - 始终保留急停路径。
-
 

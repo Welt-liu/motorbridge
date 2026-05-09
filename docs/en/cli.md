@@ -184,3 +184,4 @@ cargo run -p motor_cli --release -- \
 ```
 
 For RobStride, `probe` / `device_id` is the motor ID. `feedback_id` / `host_id` (for example `0xFD`) is the host-side ID, not the motor ID.
+RobStride `motor_id` / `device_id` values are validated as `1..255`; `feedback_id` / `host_id` values are validated as `0..255`.
