@@ -157,4 +157,9 @@ pub static RS00_PARAMETER_TABLE: &[ParameterInfo] = &[
     param!(0x7026, "EPScan_time", UInt16),
     param!(0x7028, "canTimeout", UInt32),
     param!(0x7029, "zero_sta", UInt8),
+    param!(0x702A, "damper", UInt8),
+    param!(0x702B, "add_offset", Float32),
+    param!(0x702C, "alveolous_open", UInt8),
+    param!(0x702D, "iq_test", UInt8),
+    param!(0x702E, "dcc_set", Float32),
 ];

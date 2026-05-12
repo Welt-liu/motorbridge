@@ -296,7 +296,7 @@ impl RobstrideMotor {
         self.send_ext(
             CommunicationType::SAVE_PARAMETERS,
             self.host_id_u16(),
-            [0u8; 8],
+            [1, 2, 3, 4, 5, 6, 7, 8],
             8,
         )
     }

@@ -588,6 +588,9 @@ pub fn run_robstride(
                         }
                     }
                     std::thread::sleep(Duration::from_millis(80));
+                    motor.write_parameter(0x7029, ParameterValue::U8(1))?;
+                    println!("[info] wrote zero_sta(0x7029)=1 for -pi..pi startup range");
+                    std::thread::sleep(Duration::from_millis(80));
                     if store_after_set {
                         motor.save_parameters()?;
                         std::thread::sleep(Duration::from_millis(80));

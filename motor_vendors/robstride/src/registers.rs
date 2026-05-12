@@ -49,6 +49,11 @@ pub enum ParameterId {
     EpscanTime = 0x7026,
     CanTimeout = 0x7028,
     ZeroState = 0x7029,
+    Damper = 0x702A,
+    AddOffset = 0x702B,
+    AlveolousOpen = 0x702C,
+    IqTest = 0x702D,
+    DccSet = 0x702E,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -120,6 +125,11 @@ pub static PARAMETER_TABLE: &[ParameterInfo] = &[
     param!(0x7026, "EPScan_time", UInt16),
     param!(0x7028, "canTimeout", UInt32),
     param!(0x7029, "zero_sta", UInt8),
+    param!(0x702A, "damper", UInt8),
+    param!(0x702B, "add_offset", Float32),
+    param!(0x702C, "alveolous_open", UInt8),
+    param!(0x702D, "iq_test", UInt8),
+    param!(0x702E, "dcc_set", Float32),
 ];
 
 pub fn parameter_info(id: u16) -> Option<&'static ParameterInfo> {
@@ -194,6 +204,10 @@ mod tests {
             let pos = parameter_info_for_model(model, 0x7019).expect("mechPos");
             assert_eq!(pos.name, "mechPos");
             assert_eq!(pos.data_type, ParameterDataType::Float32);
+
+            let dcc = parameter_info_for_model(model, 0x702E).expect("dcc_set");
+            assert_eq!(dcc.name, "dcc_set");
+            assert_eq!(dcc.data_type, ParameterDataType::Float32);
         }
     }
 }
