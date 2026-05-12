@@ -102,6 +102,16 @@ fn validate_robstride_host_id(id: u16, name: &str) -> Result<u16, String> {
     }
 }
 
+fn parse_robstride_zero_range(raw: &str) -> Result<(u8, &'static str), String> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "neg-pi-pi" | "-pi-pi" | "signed" | "1" => Ok((1, "-pi..pi")),
+        "zero-2pi" | "0-2pi" | "unsigned" | "0" => Ok((0, "0..2pi")),
+        other => Err(format!(
+            "invalid --zero-range '{other}': expected neg-pi-pi or zero-2pi"
+        )),
+    }
+}
+
 pub fn run_robstride(
     args: &HashMap<String, String>,
     channel: &str,
@@ -137,6 +147,8 @@ pub fn run_robstride(
     let dt_ms = get_u64(args, "dt-ms", 20)?;
     let ensure_mode = get_u64(args, "ensure-mode", 1)? != 0;
     let zero_exp = get_u64(args, "zero-exp", 0)? != 0;
+    let zero_range = get_str(args, "zero-range", "neg-pi-pi");
+    let (zero_sta_target, zero_range_label) = parse_robstride_zero_range(&zero_range)?;
     let set_motor_id = get_opt_u16_hex_or_dec(args, "set-motor-id")?;
     let store_after_set = get_u64(args, "store", 1)? != 0;
     let validated_set_motor_id = if vendor_name == "robstride" {
@@ -574,7 +586,7 @@ pub fn run_robstride(
                 } else {
                     let pre_mech = motor.get_parameter(0x7019, Duration::from_millis(200)).ok();
                     // Experimental calibration sequence:
-                    // disable -> set-zero -> optional save -> readback hints.
+                    // disable -> set-zero -> set startup range -> optional save -> readback hints.
                     let _ = controller.disable_all();
                     std::thread::sleep(Duration::from_millis(80));
                     if let Err(e) = motor.set_zero_position() {
@@ -588,8 +600,11 @@ pub fn run_robstride(
                         }
                     }
                     std::thread::sleep(Duration::from_millis(80));
-                    motor.write_parameter(0x7029, ParameterValue::U8(1))?;
-                    println!("[info] wrote zero_sta(0x7029)=1 for -pi..pi startup range");
+                    motor.write_parameter(0x7029, ParameterValue::U8(zero_sta_target))?;
+                    println!(
+                        "[info] wrote zero_sta(0x7029)={} for {} startup range",
+                        zero_sta_target, zero_range_label
+                    );
                     std::thread::sleep(Duration::from_millis(80));
                     if store_after_set {
                         motor.save_parameters()?;
@@ -616,16 +631,17 @@ pub fn run_robstride(
                         _ => None,
                     };
                     let pos_zero_ok = post_mech_f32.map(|v| v.abs() < 0.05).unwrap_or(false);
-                    let zero_flag_ok = zero_sta_u8.map(|v| v != 0).unwrap_or(false);
+                    let zero_flag_ok = zero_sta_u8.map(|v| v == zero_sta_target).unwrap_or(false);
                     if !(pos_zero_ok || zero_flag_ok) {
                         return Err(format!(
-                            "robstride set-zero verify failed: pre_mechPos={:?}, post_mechPos={:?}, zero_sta={:?}. firmware likely ignored zero command in current state",
-                            pre_mech_f32, post_mech_f32, zero_sta_u8
+                            "robstride set-zero verify failed: pre_mechPos={:?}, post_mechPos={:?}, zero_sta={:?}, expected_zero_sta={}. firmware likely ignored zero command in current state",
+                            pre_mech_f32, post_mech_f32, zero_sta_u8, zero_sta_target
                         )
                         .into());
                     }
                     println!(
-                        "[ok] robstride set-zero experimental sequence finished (store={})",
+                        "[ok] robstride set-zero experimental sequence finished (zero_range={}, store={})",
+                        zero_range_label,
                         if store_after_set { 1 } else { 0 }
                     );
                 }
@@ -743,5 +759,18 @@ mod tests {
             ParameterValue::F32(v) => assert!((v - 1.5).abs() < 1e-6),
             _ => panic!("expected F32"),
         }
+    }
+
+    #[test]
+    fn parse_robstride_zero_range_accepts_both_coordinate_modes() {
+        assert_eq!(
+            parse_robstride_zero_range("neg-pi-pi").unwrap(),
+            (1, "-pi..pi")
+        );
+        assert_eq!(
+            parse_robstride_zero_range("zero-2pi").unwrap(),
+            (0, "0..2pi")
+        );
+        assert!(parse_robstride_zero_range("banana").is_err());
     }
 }

@@ -26,6 +26,15 @@ def _parse_rids(text: str) -> list[int]:
     return [int(x.strip(), 0) for x in text.split(",") if x.strip()]
 
 
+def _zero_range_to_flag(value: str) -> tuple[int, str]:
+    normalized = str(value).strip().lower()
+    if normalized in ("neg-pi-pi", "-pi-pi", "signed", "1"):
+        return 1, "-pi..pi"
+    if normalized in ("zero-2pi", "0-2pi", "unsigned", "0"):
+        return 0, "0..2pi"
+    raise ValueError(f"invalid --zero-range {value!r}: expected neg-pi-pi or zero-2pi")
+
+
 def _robstride_device_id(value: int, name: str) -> int:
     if not 1 <= value <= 255:
         raise ValueError(f"RobStride {name} must be in 1..255, got {value}")
@@ -135,6 +144,12 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--vlim", type=float, default=1.0)
     run.add_argument("--ratio", type=float, default=0.3)
     run.add_argument("--zero-exp", type=int, default=0)
+    run.add_argument(
+        "--zero-range",
+        default="neg-pi-pi",
+        choices=["neg-pi-pi", "zero-2pi", "-pi-pi", "0-2pi", "signed", "unsigned", "1", "0"],
+        help="RobStride zero coordinate range: neg-pi-pi(default) writes zero_sta=1; zero-2pi writes zero_sta=0",
+    )
     run.add_argument("--store", type=int, default=1)
 
     dump = sub.add_parser("id-dump", help="read key ID/mode/timeout registers")
@@ -243,6 +258,11 @@ def _parse_with_legacy_support() -> argparse.Namespace:
     legacy.add_argument("--vlim", type=float, default=1.0)
     legacy.add_argument("--ratio", type=float, default=0.3)
     legacy.add_argument("--zero-exp", type=int, default=0)
+    legacy.add_argument(
+        "--zero-range",
+        default="neg-pi-pi",
+        choices=["neg-pi-pi", "zero-2pi", "-pi-pi", "0-2pi", "signed", "unsigned", "1", "0"],
+    )
     legacy.add_argument("--store", type=int, default=1)
     legacy_args = legacy.parse_args()
     legacy_args.command = "run"
@@ -313,16 +333,24 @@ def _run_command(args: argparse.Namespace) -> None:
                             "no CAN frame sent. Re-run with --zero-exp 1"
                         )
                         break
-                    # Experimental sequence aligned with core CLI: disable -> set-zero -> optional store.
+                    zero_sta, zero_range_label = _zero_range_to_flag(args.zero_range)
+                    # Experimental sequence aligned with core CLI:
+                    # disable -> set-zero -> set startup range -> optional store.
                     try:
                         motor.disable()
                     except Exception as e:
                         print(f"[warn] pre-zero disable failed: {e}; continue")
                     time.sleep(0.05)
                     motor.set_zero_position()
+                    time.sleep(0.05)
+                    motor.robstride_write_param_u8(0x7029, zero_sta)
+                    print(f"[info] wrote zero_sta(0x7029)={zero_sta} for {zero_range_label} startup range")
                     if args.store:
                         motor.store_parameters()
-                    print(f"[ok] robstride zero sequence finished (store={int(bool(args.store))})")
+                    print(
+                        f"[ok] robstride zero sequence finished "
+                        f"(zero_range={zero_range_label}, store={int(bool(args.store))})"
+                    )
                     break
 
                 # Keep feedback state fresh during active control loops.

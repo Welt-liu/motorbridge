@@ -235,7 +235,8 @@ RobStride extras:\n\
   --feedback-ids <list>     for scan host_id candidates, default 0xFD,0xFF,0xFE,0x00,0xAA\n\
   --timeout-ms <ms>         for scan ping timeout, default 80\n\
   --param-timeout-ms <ms>   for scan parameter fallback timeout, default 120\n\
-  --zero-exp 1/0            for zero/set-zero, default 0 (run experimental sequence: disable -> set-zero -> optional save)\n\
+  --zero-exp 1/0            for zero/set-zero, default 0 (run experimental sequence: disable -> set-zero -> range -> optional save)\n\
+  --zero-range <mode>       for zero/set-zero, neg-pi-pi(default) or zero-2pi (writes zero_sta 1/0)\n\
   --offset-negate 1/0       for zero-by-offset, default 0 (write +mechPos to 0x2005)\n\
   --store 1/0               for zero-by-offset and zero-exp, default 1 (send save-parameters)\n\
   --start-id <hex|dec>      for scan, default 1\n\

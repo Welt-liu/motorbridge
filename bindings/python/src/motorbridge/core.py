@@ -152,6 +152,20 @@ class Motor:
     def set_zero_position(self) -> None:
         _ok(self._abi.lib.motor_handle_set_zero_position(self._ptr), "set_zero_position")
 
+    def robstride_set_zero_position(self, zero_range: str = "neg-pi-pi", store: bool = True) -> None:
+        normalized = str(zero_range).strip().lower()
+        if normalized in ("neg-pi-pi", "-pi-pi", "signed", "1"):
+            zero_sta = 1
+        elif normalized in ("zero-2pi", "0-2pi", "unsigned", "0"):
+            zero_sta = 0
+        else:
+            raise ValueError("zero_range must be 'neg-pi-pi' or 'zero-2pi'")
+
+        self.set_zero_position()
+        self.robstride_write_param_u8(0x7029, zero_sta)
+        if store:
+            self.store_parameters()
+
     def ensure_mode(self, mode: Mode, timeout_ms: int = 1000) -> None:
         _ok(self._abi.lib.motor_handle_ensure_mode(self._ptr, int(mode), timeout_ms), "ensure_mode")
 
