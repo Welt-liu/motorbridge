@@ -7,6 +7,23 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-05-12
+
+### Fixed
+
+- Restored the MotorBridge tree to the v0.2.6-compatible unified RobStride interface shape.
+- Completed the RobStride protocol section 4 runtime parameter list through `0x702E`,
+  including `damper`, `add_offset`, `alveolous_open`, `iq_test`, and `dcc_set`.
+- RobStride `set_zero_position()` now keeps the same upper-level command/API shape while
+  writing `zero_sta(0x7029)=1` behind the scenes so zeroed motors use the `-pi..pi`
+  startup coordinate range.
+- RobStride parameter save now sends the official type-22 payload `01 02 03 04 05 06 07 08`.
+
+### Changed
+
+- Python binding package version advanced to `0.2.8`.
+- Rust workspace crates advanced to `0.2.8`.
+
 ## [0.2.6] - 2026-05-09
 
 ### Added
