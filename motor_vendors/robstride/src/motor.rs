@@ -285,7 +285,12 @@ impl RobstrideMotor {
             payload,
             1,
             Duration::from_millis(320),
-        )
+        )?;
+
+        // RobStride zeroing is two-part: type 6 sets the mechanical zero, while
+        // zero_sta selects the startup coordinate range. Keep the unified upper
+        // set-zero API and make RobStride default to -pi..pi after zeroing.
+        self.write_parameter(ParameterId::ZeroState as u16, ParameterValue::U8(1))
     }
 
     pub fn save_parameters(&self) -> Result<()> {
