@@ -158,35 +158,35 @@ pub static PARAMETER_TABLE: &[ParameterInfo] = &[
     // Wire format: index is little-endian in byte0..1, value is little-endian
     // in byte4..7. Writes use communication type 18; parameters that must
     // persist after power-cycle require communication type 22 save afterwards.
-    param!(0x7005, "run_mode", Int8), // 0 MIT, 1 PP, 2 velocity, 3 current, 5 CSP
-    param!(0x7006, "iq_ref", Float32), // A, current-mode Iq target
-    param!(0x700A, "spd_ref", Float32), // rad/s, velocity-mode target
-    param!(0x700B, "limit_torque", Float32), // Nm, torque limit
-    param!(0x7010, "cur_kp", Float32), // current-loop Kp
-    param!(0x7011, "cur_ki", Float32), // current-loop Ki
-    param!(0x7014, "cur_filter_gain", Float32), // 0..1, current filter gain
-    param!(0x7016, "loc_ref", Float32), // rad, position target
-    param!(0x7017, "limit_spd", Float32), // rad/s, CSP position speed limit
-    param!(0x7018, "limit_cur", Float32), // A, velocity/position current limit
-    param!(0x7019, "mechPos", Float32), // rad, load-side counted mechanical angle
-    param!(0x701A, "iqf", Float32),   // A, filtered iq
-    param!(0x701B, "mechVel", Float32), // rad/s, load-side velocity
-    param!(0x701C, "VBUS", Float32),  // V, bus voltage
-    param!(0x701E, "loc_kp", Float32), // position-loop Kp
-    param!(0x701F, "spd_kp", Float32), // speed-loop Kp
-    param!(0x7020, "spd_ki", Float32), // speed-loop Ki
-    param!(0x7021, "spd_filter_gain", Float32), // speed filter gain
-    param!(0x7022, "acc_rad", Float32), // rad/s^2, velocity-mode acceleration
-    param!(0x7024, "vel_max", Float32), // rad/s, PP mode velocity
-    param!(0x7025, "acc_set", Float32), // rad/s^2, PP mode acceleration
-    param!(0x7026, "EPScan_time", UInt16), // report period: 1=10ms, +1 adds 5ms
-    param!(0x7028, "canTimeout", UInt32), // CAN timeout, 20000 means 1s
-    param!(0x7029, "zero_sta", UInt8), // 0: 0..2pi, 1: -pi..pi; save with type 22
-    param!(0x702A, "damper", UInt8),  // 1 disables power-off back-drive damping
-    param!(0x702B, "add_offset", Float32), // rad, zero offset
-    param!(0x702C, "alveolous_open", UInt8), // cogging compensation enable
-    param!(0x702D, "iq_test", UInt8), // initialization calibration switch
-    param!(0x702E, "dcc_set", Float32), // rad/s^2, PP-mode deceleration
+    param!(0x7005, "run_mode", Int8), // W/R, enum: 0 MIT, 1 PP, 2 velocity, 3 current, 5 CSP.
+    param!(0x7006, "iq_ref", Float32), // W/R, A, current-mode Iq target, -43..43.
+    param!(0x700A, "spd_ref", Float32), // W/R, rad/s, velocity-mode target, -20..20.
+    param!(0x700B, "limit_torque", Float32), // W/R, Nm, torque limit, 0..60.
+    param!(0x7010, "cur_kp", Float32), // W/R, current-loop Kp, default 0.17.
+    param!(0x7011, "cur_ki", Float32), // W/R, current-loop Ki, default 0.012.
+    param!(0x7014, "cur_filter_gain", Float32), // W/R, ratio, current filter gain, 0..1, default 0.1.
+    param!(0x7016, "loc_ref", Float32),         // W/R, rad, position target.
+    param!(0x7017, "limit_spd", Float32),       // W/R, rad/s, CSP position speed limit, 0..20.
+    param!(0x7018, "limit_cur", Float32),       // W/R, A, velocity/position current limit, 0..43.
+    param!(0x7019, "mechPos", Float32),         // R, rad, load-side counted mechanical angle.
+    param!(0x701A, "iqf", Float32),             // R, A, filtered iq.
+    param!(0x701B, "mechVel", Float32),         // R, rad/s, load-side velocity.
+    param!(0x701C, "VBUS", Float32),            // R, V, bus voltage.
+    param!(0x701E, "loc_kp", Float32),          // W/R, position-loop Kp, default 60.
+    param!(0x701F, "spd_kp", Float32),          // W/R, speed-loop Kp, default 6.
+    param!(0x7020, "spd_ki", Float32),          // W/R, speed-loop Ki, default 0.02.
+    param!(0x7021, "spd_filter_gain", Float32), // W/R, speed filter gain, default 0.1.
+    param!(0x7022, "acc_rad", Float32), // W/R, rad/s^2, velocity-mode acceleration, default 20.
+    param!(0x7024, "vel_max", Float32), // W/R, rad/s, PP mode velocity, default 10.
+    param!(0x7025, "acc_set", Float32), // W/R, rad/s^2, PP mode acceleration, default 10.
+    param!(0x7026, "EPScan_time", UInt16), // W, report period, default 1: 1=10ms, +1 adds 5ms.
+    param!(0x7028, "canTimeout", UInt32), // W, CAN timeout, default 0; 20000 means 1s.
+    param!(0x7029, "zero_sta", UInt8),  // W, default 0; 0: 0..2pi, 1: -pi..pi; save with type 22.
+    param!(0x702A, "damper", UInt8),    // W/R, switch; 1 disables power-off back-drive damping.
+    param!(0x702B, "add_offset", Float32), // W/R, rad, zero offset, default 0.
+    param!(0x702C, "alveolous_open", UInt8), // W/R, switch; 1 enables cogging compensation.
+    param!(0x702D, "iq_test", UInt8), // W/R, switch; 1 enables more precise initialization calibration.
+    param!(0x702E, "dcc_set", Float32), // W/R, rad/s^2, PP-mode deceleration, default 10.
 ];
 
 pub fn parameter_info(id: u16) -> Option<&'static ParameterInfo> {
