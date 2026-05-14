@@ -80,16 +80,12 @@ macro_rules! define_param_write_ffis_5 {
     ) => {
         #[unsafe(no_mangle)]
         pub extern "C" fn $fn_i8(motor: *mut crate::MotorHandle, param_id: u16, value: i8) -> i32 {
-            crate::param_ffi::common::ffi_run(motor, |m| {
-                $vendor_mod::write_i8(m, param_id, value)
-            })
+            crate::param_ffi::common::ffi_run(motor, |m| $vendor_mod::write_i8(m, param_id, value))
         }
 
         #[unsafe(no_mangle)]
         pub extern "C" fn $fn_u8(motor: *mut crate::MotorHandle, param_id: u16, value: u8) -> i32 {
-            crate::param_ffi::common::ffi_run(motor, |m| {
-                $vendor_mod::write_u8(m, param_id, value)
-            })
+            crate::param_ffi::common::ffi_run(motor, |m| $vendor_mod::write_u8(m, param_id, value))
         }
 
         #[unsafe(no_mangle)]
@@ -98,9 +94,7 @@ macro_rules! define_param_write_ffis_5 {
             param_id: u16,
             value: u16,
         ) -> i32 {
-            crate::param_ffi::common::ffi_run(motor, |m| {
-                $vendor_mod::write_u16(m, param_id, value)
-            })
+            crate::param_ffi::common::ffi_run(motor, |m| $vendor_mod::write_u16(m, param_id, value))
         }
 
         #[unsafe(no_mangle)]
@@ -109,9 +103,7 @@ macro_rules! define_param_write_ffis_5 {
             param_id: u16,
             value: u32,
         ) -> i32 {
-            crate::param_ffi::common::ffi_run(motor, |m| {
-                $vendor_mod::write_u32(m, param_id, value)
-            })
+            crate::param_ffi::common::ffi_run(motor, |m| $vendor_mod::write_u32(m, param_id, value))
         }
 
         #[unsafe(no_mangle)]
@@ -120,9 +112,7 @@ macro_rules! define_param_write_ffis_5 {
             param_id: u16,
             value: f32,
         ) -> i32 {
-            crate::param_ffi::common::ffi_run(motor, |m| {
-                $vendor_mod::write_f32(m, param_id, value)
-            })
+            crate::param_ffi::common::ffi_run(motor, |m| $vendor_mod::write_f32(m, param_id, value))
         }
     };
 }

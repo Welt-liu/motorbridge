@@ -1,5 +1,5 @@
-use crate::vendors::hightorque_ws::open_hightorque_bus;
 use crate::model::{ControllerHandle, MotorHandle, Transport, Vendor};
+use crate::vendors::hightorque_ws::open_hightorque_bus;
 use motor_vendor_damiao::DamiaoController;
 use motor_vendor_hexfellow::HexfellowController;
 use motor_vendor_myactuator::MyActuatorController;
@@ -16,10 +16,13 @@ impl SessionCtx {
                     Transport::Auto | Transport::SocketCan => {
                         DamiaoController::new_socketcan(&self.target.channel)
                     }
-                    Transport::SocketCanFd => DamiaoController::new_socketcanfd(&self.target.channel),
-                    Transport::DmSerial => {
-                        DamiaoController::new_dm_serial(&self.target.serial_port, self.target.serial_baud)
+                    Transport::SocketCanFd => {
+                        DamiaoController::new_socketcanfd(&self.target.channel)
                     }
+                    Transport::DmSerial => DamiaoController::new_dm_serial(
+                        &self.target.serial_port,
+                        self.target.serial_baud,
+                    ),
                 }
                 .map_err(|e| format!("open bus failed: {e}"))?;
                 self.controller = Some(ControllerHandle::Damiao(ctrl));
@@ -40,7 +43,10 @@ impl SessionCtx {
                 }
             }
             Vendor::Hexfellow => {
-                if !matches!(self.target.transport, Transport::Auto | Transport::SocketCanFd) {
+                if !matches!(
+                    self.target.transport,
+                    Transport::Auto | Transport::SocketCanFd
+                ) {
                     return Err("hexfellow requires transport socketcanfd (or auto)".to_string());
                 }
                 let ctrl = HexfellowController::new_socketcanfd(&self.target.channel)

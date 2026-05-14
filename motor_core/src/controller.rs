@@ -480,7 +480,8 @@ mod tests {
         let d1 = Arc::new(FakeDevice::new(1, 0x11));
         ctrl.add_device(d1.clone()).expect("add d1");
 
-        ctrl.poll_feedback_once().expect("manual poll should still work");
+        ctrl.poll_feedback_once()
+            .expect("manual poll should still work");
         assert!(d1.processed_count.load(Ordering::SeqCst) >= 1);
         ctrl.close_bus().expect("close");
     }

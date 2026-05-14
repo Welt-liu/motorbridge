@@ -221,7 +221,8 @@ mod tests {
         let payload = [0u8; 8];
         let ok = decode_read_parameter_value(0x7019, payload).expect("known param");
         assert_eq!(ok, [0, 0, 0, 0]);
-        let unknown = decode_read_parameter_value(0xDEAD, payload).expect("unknown param should pass raw");
+        let unknown =
+            decode_read_parameter_value(0xDEAD, payload).expect("unknown param should pass raw");
         assert_eq!(unknown, [0, 0, 0, 0]);
     }
 }

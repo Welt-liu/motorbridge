@@ -1,7 +1,7 @@
-use crate::vendors::hightorque_ws::{send_hightorque_ext, wait_hightorque_status_for_motor};
-use crate::model::{ControllerHandle, MotorHandle};
 use crate::commands::{as_f32, as_u64};
+use crate::model::{ControllerHandle, MotorHandle};
 use crate::session::SessionCtx;
+use crate::vendors::hightorque_ws::{send_hightorque_ext, wait_hightorque_status_for_motor};
 use serde_json::{json, Value};
 use std::time::Duration;
 
@@ -21,7 +21,8 @@ fn handle_current(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
     let current = as_f32(v, "current", 0.0);
     match ctx.motor.as_ref() {
         Some(MotorHandle::Myactuator(m)) => {
-            m.send_current_setpoint(current).map_err(|e| e.to_string())?;
+            m.send_current_setpoint(current)
+                .map_err(|e| e.to_string())?;
             Ok(json!({"op":"current", "current": current}))
         }
         Some(_) => Err("current is supported for myactuator only".to_string()),

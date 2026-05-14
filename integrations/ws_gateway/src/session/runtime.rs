@@ -1,9 +1,11 @@
+use crate::model::{ActiveCommand, ControllerHandle, MotorHandle};
 use crate::vendors::hightorque_ws::{
     pos_raw_from_rad, send_hightorque_ext, tqe_raw_from_tau, vel_raw_from_rad_s,
     wait_hightorque_status_for_motor, TWO_PI,
 };
-use crate::model::{ActiveCommand, ControllerHandle, MotorHandle};
-use motor_vendor_hexfellow::{MitTarget as HexfellowMitTarget, PosVelTarget as HexfellowPosVelTarget};
+use motor_vendor_hexfellow::{
+    MitTarget as HexfellowMitTarget, PosVelTarget as HexfellowPosVelTarget,
+};
 use motor_vendor_robstride::ParameterValue as RobstrideParameterValue;
 use serde_json::{json, Value};
 use std::time::Duration;
@@ -14,12 +16,18 @@ impl SessionCtx {
     pub(crate) fn apply_active(&self) -> Result<(), String> {
         match self.motor.as_ref() {
             Some(MotorHandle::Damiao(motor)) => match self.active.as_ref() {
-                Some(ActiveCommand::Mit { pos, vel, kp, kd, tau }) => motor
+                Some(ActiveCommand::Mit {
+                    pos,
+                    vel,
+                    kp,
+                    kd,
+                    tau,
+                }) => motor
                     .send_cmd_mit(*pos, *vel, *kp, *kd, *tau)
                     .map_err(|e| e.to_string()),
-                Some(ActiveCommand::PosVel { pos, vlim }) => {
-                    motor.send_cmd_pos_vel(*pos, *vlim).map_err(|e| e.to_string())
-                }
+                Some(ActiveCommand::PosVel { pos, vlim }) => motor
+                    .send_cmd_pos_vel(*pos, *vlim)
+                    .map_err(|e| e.to_string()),
                 Some(ActiveCommand::Vel { vel }) => {
                     motor.send_cmd_vel(*vel).map_err(|e| e.to_string())
                 }
@@ -29,7 +37,13 @@ impl SessionCtx {
                 None => Ok(()),
             },
             Some(MotorHandle::Hexfellow(motor)) => match self.active.as_ref() {
-                Some(ActiveCommand::Mit { pos, vel, kp, kd, tau }) => motor
+                Some(ActiveCommand::Mit {
+                    pos,
+                    vel,
+                    kp,
+                    kd,
+                    tau,
+                }) => motor
                     .command_mit(
                         HexfellowMitTarget {
                             position_rev: *pos / TWO_PI,
@@ -102,7 +116,13 @@ impl SessionCtx {
                 None => Ok(()),
             },
             Some(MotorHandle::Robstride(motor)) => match self.active.as_ref() {
-                Some(ActiveCommand::Mit { pos, vel, kp, kd, tau }) => motor
+                Some(ActiveCommand::Mit {
+                    pos,
+                    vel,
+                    kp,
+                    kd,
+                    tau,
+                }) => motor
                     .send_cmd_mit(*pos, *vel, *kp, *kd, *tau)
                     .map_err(|e| e.to_string()),
                 Some(ActiveCommand::Vel { vel }) => {

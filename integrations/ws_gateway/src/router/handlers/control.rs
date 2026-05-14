@@ -1,14 +1,16 @@
+use crate::commands::{as_bool, as_f32, as_u64};
+use crate::model::{ActiveCommand, ControllerHandle, MotorHandle};
+use crate::session::SessionCtx;
 use crate::vendors::hightorque_ws::{
     pos_raw_from_rad, send_hightorque_ext, tqe_raw_from_tau, vel_raw_from_rad_s, TWO_PI,
 };
-use crate::model::{ActiveCommand, ControllerHandle, MotorHandle};
-use crate::commands::{as_bool, as_f32, as_u64};
-use crate::session::SessionCtx;
 use motor_vendor_damiao::ControlMode as DamiaoControlMode;
 use motor_vendor_hexfellow::{
     MitTarget as HexfellowMitTarget, PosVelTarget as HexfellowPosVelTarget,
 };
-use motor_vendor_robstride::{ControlMode as RobstrideControlMode, ParameterValue as RobstrideParameterValue};
+use motor_vendor_robstride::{
+    ControlMode as RobstrideControlMode, ParameterValue as RobstrideParameterValue,
+};
 use serde_json::{json, Value};
 use std::time::Duration;
 
@@ -38,20 +40,41 @@ fn handle_mit(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
                 Duration::from_millis(as_u64(v, "ensure_timeout_ms", 1000)),
             )
             .map_err(|e| e.to_string())?;
-            if let ActiveCommand::Mit { pos, vel, kp, kd, tau } = cmd {
+            if let ActiveCommand::Mit {
+                pos,
+                vel,
+                kp,
+                kd,
+                tau,
+            } = cmd
+            {
                 m.send_cmd_mit(pos, vel, kp, kd, tau)
                     .map_err(|e| e.to_string())?;
             }
         }
         Some(MotorHandle::Robstride(m)) => {
             ensure_robstride_mode(ctx, m, RobstrideControlMode::Mit, 0, "mit")?;
-            if let ActiveCommand::Mit { pos, vel, kp, kd, tau } = cmd {
+            if let ActiveCommand::Mit {
+                pos,
+                vel,
+                kp,
+                kd,
+                tau,
+            } = cmd
+            {
                 m.send_cmd_mit(pos, vel, kp, kd, tau)
                     .map_err(|e| e.to_string())?;
             }
         }
         Some(MotorHandle::Hexfellow(m)) => {
-            if let ActiveCommand::Mit { pos, vel, kp, kd, tau } = cmd {
+            if let ActiveCommand::Mit {
+                pos,
+                vel,
+                kp,
+                kd,
+                tau,
+            } = cmd
+            {
                 m.command_mit(
                     HexfellowMitTarget {
                         position_rev: pos / TWO_PI,
@@ -163,8 +186,12 @@ fn handle_pos_vel(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
             };
             Ok(json!({"op":"pos_vel","continuous": as_bool(v, "continuous", false)}))
         }
-        Some(MotorHandle::Hightorque(_)) => Err("pos_vel is not supported for hightorque".to_string()),
-        Some(MotorHandle::Myactuator(_)) => Err("pos_vel is not supported for myactuator".to_string()),
+        Some(MotorHandle::Hightorque(_)) => {
+            Err("pos_vel is not supported for hightorque".to_string())
+        }
+        Some(MotorHandle::Myactuator(_)) => {
+            Err("pos_vel is not supported for myactuator".to_string())
+        }
         None => Err("motor not connected".to_string()),
     }
 }
@@ -176,7 +203,9 @@ fn ensure_robstride_mode(
     expect: i8,
     mode_name: &str,
 ) -> Result<(), String> {
-    if let Ok(RobstrideParameterValue::I8(v)) = motor.get_parameter(0x7005, Duration::from_millis(120)) {
+    if let Ok(RobstrideParameterValue::I8(v)) =
+        motor.get_parameter(0x7005, Duration::from_millis(120))
+    {
         if v == expect {
             return Ok(());
         }
@@ -291,10 +320,18 @@ fn handle_force_pos(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
             };
             Ok(json!({"op":"force_pos","continuous": as_bool(v, "continuous", false)}))
         }
-        Some(MotorHandle::Robstride(_)) => Err("force_pos is not supported for robstride".to_string()),
-        Some(MotorHandle::Hexfellow(_)) => Err("force_pos is not supported for hexfellow".to_string()),
-        Some(MotorHandle::Hightorque(_)) => Err("force_pos is not supported for hightorque".to_string()),
-        Some(MotorHandle::Myactuator(_)) => Err("force_pos is not supported for myactuator".to_string()),
+        Some(MotorHandle::Robstride(_)) => {
+            Err("force_pos is not supported for robstride".to_string())
+        }
+        Some(MotorHandle::Hexfellow(_)) => {
+            Err("force_pos is not supported for hexfellow".to_string())
+        }
+        Some(MotorHandle::Hightorque(_)) => {
+            Err("force_pos is not supported for hightorque".to_string())
+        }
+        Some(MotorHandle::Myactuator(_)) => {
+            Err("force_pos is not supported for myactuator".to_string())
+        }
         None => Err("motor not connected".to_string()),
     }
 }

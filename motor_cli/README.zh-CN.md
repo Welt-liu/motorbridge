@@ -325,7 +325,7 @@ motor_cli $DM_SERIAL --motor-id 0x04 --feedback-id 0x14 \
 - `TORQUE/CURRENT` 目前仍是参数级能力（通过 `write-param` 写 `iq_ref` 与限幅参数），尚未开放统一模式。
 - RobStride 的 `mit` 五个参数都生效：`--pos`、`--vel`、`--kp`、`--kd`、`--tau`。
 - RobStride 的 `mit` 单位：`pos(rad)`、`vel(rad/s)`、`tau(Nm)`，`kp/kd` 为 MIT 闭环增益。
-- RobStride 的 `pos-vel` 仅消费 `--pos`、`--vlim`、可选 `--kp`/`--loc-kp`。
+- RobStride 的 `pos-vel` 仅消费 `--pos`、`--vlim`、可选 `--kp`/`--loc-kp`；写一次位置目标建议用 `--loop 1`。
 - RobStride 的 `pos-vel` 会忽略 `--vel`、`--kd`、`--tau`（CLI 在传入时会打印 warning）。
 
 ### 4.4 扫描行为细节
@@ -348,12 +348,12 @@ motor_cli \
 # MIT 控制
 motor_cli \
   --vendor robstride --channel can0 --model rs-06 --motor-id 20 --feedback-id 0xFD \
-  --mode mit --pos 3.14 --vel 0 --kp 0.5 --kd 0.2 --tau 0 --loop 120 --dt-ms 20
+  --mode mit --ensure-strict 1 --pos 0.5 --vel 0 --kp 20.0 --kd 0.5 --tau 0 --loop 100 --dt-ms 20
 
 # POS_VEL（映射到原生 Position）
 motor_cli \
   --vendor robstride --channel can0 --model rs-06 --motor-id 20 --feedback-id 0xFD \
-  --mode pos-vel --pos 1.0 --vlim 1.5 --loop 1 --dt-ms 20
+  --mode pos-vel --pos 1.5 --vlim 1.0 --loc-kp 5.0 --loop 1 --dt-ms 20
 
 # 速度模式
 motor_cli \
@@ -540,6 +540,5 @@ motor_cli \
 - RobStride 默认 `--feedback-id` 为 `0xFD`，内部会回退探测 `0xFF/0xFE`。
 - RobStride 的 `pos-vel` 下 `--vel/--kd/--tau` 为无效参数，仅告警不报错。
 - MyActuator 若 `0x9A` 返回错误码 `0x0004`（欠压），电机会在线但不转，需要先恢复供电电压。
-
 
 

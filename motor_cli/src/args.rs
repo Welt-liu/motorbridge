@@ -215,15 +215,17 @@ Damiao extras:\n\
 RobStride extras:\n\
   --param-id <hex|dec>      for read-param / write-param\n\
   --param-value <number>    for write-param\n\
+  --loc-kp <float>          for pos-vel native position-loop gain; --kp is accepted as fallback\n\
   --feedback-ids <list>     for scan host_id candidates, default 0xFD,0xFF,0xFE,0x00,0xAA\n\
   --timeout-ms <ms>         for scan ping timeout, default 80\n\
   --param-timeout-ms <ms>   for scan parameter fallback timeout, default 120\n\
   --zero-exp 1/0            for zero/set-zero, default 0 (run experimental sequence: disable -> set-zero -> optional save)\n\
-  --offset-negate 1/0       for zero-by-offset, default 0 (write +mechPos to 0x2005)\n\
-  --store 1/0               for zero-by-offset and zero-exp, default 1 (send save-parameters)\n\
+  --offset-negate 1/0       accepted for zero-by-offset, but zero-by-offset is temporarily disabled\n\
+  --store 1/0               for zero-exp, default 1 (send save-parameters); zero-by-offset sends no frames while disabled\n\
   --start-id <hex|dec>      for scan, default 1\n\
   --end-id <hex|dec>        for scan, default 255\n\
   Note: RobStride feedback_id/host_id (for example 0xFD/0xFE) is not motor_id/device_id.\n\
+  Note: zero-by-offset currently prints a firmware-safety warning and sends no calibration CAN frames.\n\
   (scan auto-fallbacks to blind pulse probing if no ping/parameter replies)\n\
 \n\
 MyActuator extras:\n\
@@ -247,8 +249,14 @@ All-vendor scan:\n\
 Examples:\n\
   motor_cli --vendor robstride --channel can0 --model rs-00 --motor-id 127 --mode ping\n\
 \n\
-  motor_cli --vendor robstride --channel can0 --model rs-00 --motor-id 127 \\\n\
-    --mode mit --pos 0.0 --vel 0.0 --kp 8 --kd 0.2 --tau 0 --loop 200 --dt-ms 20\n"
+  motor_cli --vendor robstride --channel can0 --model rs-00 --motor-id 127 --feedback-id 0xFD \\\n\
+    --mode read-param --param-id 0x7019\n\
+\n\
+  motor_cli --vendor robstride --channel can0 --model rs-00 --motor-id 127 --feedback-id 0xFD \\\n\
+    --mode pos-vel --pos 1.5 --vlim 1.0 --loc-kp 5.0 --loop 1 --dt-ms 20\n\
+\n\
+  motor_cli --vendor robstride --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \\\n\
+    --mode mit --ensure-mode 1 --pos 0.5 --vel 0 --kp 20.0 --kd 0.5 --tau 0 --loop 100 --dt-ms 20\n"
     );
 }
 

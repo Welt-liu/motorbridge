@@ -195,6 +195,19 @@ cargo run -p motor_cli --release -- \
   --mode vel --vel 0.3 --loop 40 --dt-ms 50
 ```
 
+RobStride MIT / POS_VEL quick checks:
+
+```bash
+cargo run -p motor_cli --release -- \
+  --vendor robstride --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode mit --ensure-strict 1 --pos 0.5 --vel 0 --kp 20.0 --kd 0.5 --tau 0 \
+  --loop 100 --dt-ms 20
+
+cargo run -p motor_cli --release -- \
+  --vendor robstride --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode pos-vel --pos 1.5 --vlim 1.0 --loc-kp 5.0 --loop 1 --dt-ms 20
+```
+
 HighTorque CLI (native ht_can v1.5.5):
 
 ```bash

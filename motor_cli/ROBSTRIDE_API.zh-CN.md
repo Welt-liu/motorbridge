@@ -97,7 +97,7 @@ MIT 映射说明（统一接口 -> RobStride 原生）：
 ```bash
 motor_cli \
   --vendor robstride --channel can0 --model rs-06 --motor-id 127 --feedback-id 0xFD \
-  --mode mit --pos 0 --vel 0 --kp 0.5 --kd 0.2 --tau 0 --loop 40 --dt-ms 50
+  --mode mit --ensure-strict 1 --pos 0.5 --vel 0 --kp 20.0 --kd 0.5 --tau 0 --loop 100 --dt-ms 20
 ```
 
 ### 2.3 速度模式
@@ -113,7 +113,7 @@ motor_cli \
 ```bash
 motor_cli \
   --vendor robstride --channel can0 --model rs-06 --motor-id 127 --feedback-id 0xFD \
-  --mode pos-vel --pos 1.0 --vlim 1.5 --loop 1 --dt-ms 20
+  --mode pos-vel --pos 1.5 --vlim 1.0 --loc-kp 5.0 --loop 1 --dt-ms 20
 ```
 
 说明：

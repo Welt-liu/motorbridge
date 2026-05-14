@@ -45,11 +45,12 @@ pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Resul
                         .and_then(|v| v.strip_prefix("Bearer "))
                 });
             if provided != Some(token) {
-                let err_resp: ErrorResponse = tokio_tungstenite::tungstenite::http::Response::builder()
-                    .status(tokio_tungstenite::tungstenite::http::StatusCode::UNAUTHORIZED)
-                    .header("content-type", "text/plain; charset=utf-8")
-                    .body(Some("unauthorized websocket client".to_string()))
-                    .expect("build unauthorized response");
+                let err_resp: ErrorResponse =
+                    tokio_tungstenite::tungstenite::http::Response::builder()
+                        .status(tokio_tungstenite::tungstenite::http::StatusCode::UNAUTHORIZED)
+                        .header("content-type", "text/plain; charset=utf-8")
+                        .body(Some("unauthorized websocket client".to_string()))
+                        .expect("build unauthorized response");
                 return Err(err_resp);
             }
         }

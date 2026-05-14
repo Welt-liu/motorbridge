@@ -24,10 +24,8 @@ pub(crate) fn open_damiao_controller(
         Transport::SocketCanFd => {
             DamiaoController::new_socketcanfd(&base.channel).map_err(|e| e.to_string())
         }
-        Transport::DmSerial => {
-            DamiaoController::new_dm_serial(&base.serial_port, base.serial_baud)
-                .map_err(|e| e.to_string())
-        }
+        Transport::DmSerial => DamiaoController::new_dm_serial(&base.serial_port, base.serial_baud)
+            .map_err(|e| e.to_string()),
     }
 }
 
@@ -69,7 +67,9 @@ pub(crate) fn open_hexfellow_controller(
         Transport::Auto | Transport::SocketCanFd => {
             HexfellowController::new_socketcanfd(&base.channel).map_err(|e| e.to_string())
         }
-        Transport::SocketCan => Err("hexfellow requires transport socketcanfd (or auto)".to_string()),
+        Transport::SocketCan => {
+            Err("hexfellow requires transport socketcanfd (or auto)".to_string())
+        }
         Transport::DmSerial => Err("transport dm-serial is damiao-only".to_string()),
     }
 }

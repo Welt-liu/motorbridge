@@ -1,8 +1,8 @@
 use serde_json::Value;
 
 const DAMIAO_SCAN_MODEL_HINTS: &[&str] = &[
-    "4340P", "4340", "4310", "4310P", "3507", "6006", "8006", "8009", "10010L", "10010",
-    "H3510", "G6215", "H6220", "JH11", "6248P",
+    "4340P", "4340", "4310", "4310P", "3507", "6006", "8006", "8009", "10010L", "10010", "H3510",
+    "G6215", "H6220", "JH11", "6248P",
 ];
 
 pub(crate) fn build_scan_model_hints(preferred_model: &str) -> Vec<String> {

@@ -3,10 +3,29 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from typing import Any
 
 from .core import Controller
 from .models import Mode
 from .platform_hints import preflight_can_runtime
+
+DAMIAO_MODEL_LIMITS: dict[str, tuple[float, float, float]] = {
+    "3507": (12.566, 50.0, 5.0),
+    "4310": (12.5, 30.0, 10.0),
+    "4310P": (12.5, 50.0, 10.0),
+    "4340": (12.5, 10.0, 28.0),
+    "4340P": (12.5, 10.0, 28.0),
+    "6006": (12.5, 45.0, 20.0),
+    "8006": (12.5, 45.0, 40.0),
+    "8009": (12.5, 45.0, 54.0),
+    "10010L": (12.5, 25.0, 200.0),
+    "10010": (12.5, 20.0, 200.0),
+    "H3510": (12.5, 280.0, 1.0),
+    "G6215": (12.5, 45.0, 10.0),
+    "H6220": (12.5, 45.0, 10.0),
+    "JH11": (12.5, 10.0, 12.0),
+    "6248P": (12.566, 20.0, 120.0),
+}
 
 
 def _mode_to_enum(mode: str) -> Mode:
@@ -26,6 +45,85 @@ def _parse_rids(text: str) -> list[int]:
     return [int(x.strip(), 0) for x in text.split(",") if x.strip()]
 
 
+def _infer_robstride_param_type(param_id: int, explicit_type: str = "") -> str:
+    if explicit_type:
+        return explicit_type
+    # Match the Rust CLI's most common RobStride parameter typing.
+    if param_id == 0x7005:
+        return "i8"
+    if param_id == 0x7029:
+        return "u8"
+    if param_id == 0x7028:
+        return "u32"
+    return "f32"
+
+
+def _read_robstride_param(motor: Any, param_id: int, param_type: str, timeout_ms: int) -> int | float:
+    if param_type == "i8":
+        return motor.robstride_get_param_i8(param_id, timeout_ms)
+    if param_type == "u8":
+        return motor.robstride_get_param_u8(param_id, timeout_ms)
+    if param_type == "u16":
+        return motor.robstride_get_param_u16(param_id, timeout_ms)
+    if param_type == "u32":
+        return motor.robstride_get_param_u32(param_id, timeout_ms)
+    return motor.robstride_get_param_f32(param_id, timeout_ms)
+
+
+def _write_robstride_param(motor: Any, param_id: int, param_type: str, raw_value: str) -> None:
+    if param_type == "i8":
+        motor.robstride_write_param_i8(param_id, int(raw_value, 0))
+    elif param_type == "u8":
+        motor.robstride_write_param_u8(param_id, int(raw_value, 0))
+    elif param_type == "u16":
+        motor.robstride_write_param_u16(param_id, int(raw_value, 0))
+    elif param_type == "u32":
+        motor.robstride_write_param_u32(param_id, int(raw_value, 0))
+    else:
+        motor.robstride_write_param_f32(param_id, float(raw_value))
+
+
+def _match_damiao_models_by_limits(pmax: float, vmax: float, tmax: float, tol: float) -> list[str]:
+    return [
+        model
+        for model, (mp, mv, mt) in DAMIAO_MODEL_LIMITS.items()
+        if abs(mp - pmax) <= tol and abs(mv - vmax) <= tol and abs(mt - tmax) <= tol
+    ]
+
+
+def _suggest_damiao_models_by_limits(pmax: float, vmax: float, tmax: float, top_n: int = 3) -> list[str]:
+    scored = sorted(
+        (
+            ((mp - pmax) ** 2 + (mv - vmax) ** 2 + (mt - tmax) ** 2, model)
+            for model, (mp, mv, mt) in DAMIAO_MODEL_LIMITS.items()
+        )
+    )
+    return [model for _, model in scored[:top_n]]
+
+
+def _verify_damiao_model(motor: Any, model: str, timeout_ms: int, tol: float) -> None:
+    expected = DAMIAO_MODEL_LIMITS.get(model)
+    if expected is None:
+        raise ValueError(f"unknown Damiao model in catalog: {model}")
+    pmax = motor.get_register_f32(21, timeout_ms)
+    vmax = motor.get_register_f32(22, timeout_ms)
+    tmax = motor.get_register_f32(23, timeout_ms)
+    matched = _match_damiao_models_by_limits(pmax, vmax, tmax, tol)
+    if model in matched:
+        print(
+            f"[ok] model handshake passed: --model {model} "
+            f"matches PMAX/VMAX/TMAX=({pmax:.3f}, {vmax:.3f}, {tmax:.3f})"
+        )
+        return
+    suggested = ", ".join(_suggest_damiao_models_by_limits(pmax, vmax, tmax)) or "none"
+    raise RuntimeError(
+        f"model handshake mismatch: --model {model} expects "
+        f"({expected[0]:.3f}, {expected[1]:.3f}, {expected[2]:.3f}), "
+        f"device reports ({pmax:.3f}, {vmax:.3f}, {tmax:.3f}), "
+        f"suggested: {suggested}. If intentional, run with --verify-model 0"
+    )
+
+
 def _robstride_device_id(value: int, name: str) -> int:
     if not 1 <= value <= 255:
         raise ValueError(f"RobStride {name} must be in 1..255, got {value}")
@@ -43,18 +141,84 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
         "--vendor",
         default="damiao",
         choices=["damiao", "myactuator", "robstride", "hightorque", "hexfellow"],
+        help="motor vendor/protocol family, default damiao",
     )
-    p.add_argument("--channel", default="can0")
+    p.add_argument("--channel", default="can0", help="SocketCAN/CAN-FD channel, default can0")
     p.add_argument(
         "--transport",
         default="auto",
         choices=["auto", "socketcan", "socketcanfd", "dm-serial"],
+        help="transport backend; dm-serial is Damiao-only",
     )
-    p.add_argument("--serial-port", default="/dev/ttyACM0")
-    p.add_argument("--serial-baud", type=int, default=921600)
-    p.add_argument("--model", default="4340")
-    p.add_argument("--motor-id", default="0x01")
-    p.add_argument("--feedback-id", default="0x11")
+    p.add_argument("--serial-port", default="/dev/ttyACM0", help="serial port for dm-serial")
+    p.add_argument("--serial-baud", type=int, default=921600, help="baud rate for dm-serial")
+    p.add_argument("--model", default="4340", help="model name/hint, e.g. 4340P or rs-00")
+    p.add_argument("--motor-id", default="0x01", help="command/device ID, hex or decimal")
+    p.add_argument(
+        "--feedback-id",
+        default="0x11",
+        help="feedback/host ID, hex or decimal; RobStride commonly uses 0xFD",
+    )
+
+
+def _add_run_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "--mode",
+        default="mit",
+        choices=[
+            "enable",
+            "disable",
+            "mit",
+            "pos-vel",
+            "vel",
+            "force-pos",
+            "ping",
+            "zero",
+            "set-zero",
+            "save",
+            "zero-by-offset",
+            "read-param",
+            "write-param",
+        ],
+        help="operation mode; use scan subcommand for wide bus scans",
+    )
+    p.add_argument("--loop", type=int, default=100, help="send cycles for run mode")
+    p.add_argument("--dt-ms", type=int, default=20, help="period between control frames in ms")
+    p.add_argument("--ensure-mode", type=int, default=1, help="mode guard before control, 1/0")
+    p.add_argument("--ensure-strict", type=int, default=0, help="fail if mode guard cannot confirm, 1/0")
+    p.add_argument("--ensure-timeout-ms", type=int, default=1000, help="mode guard timeout")
+    p.add_argument("--print-state", type=int, default=1, help="print returned motor state, 1/0")
+    p.add_argument("--pos", type=float, default=0.0, help="target position in radians")
+    p.add_argument("--vel", type=float, default=0.0, help="target velocity in rad/s")
+    p.add_argument("--kp", type=float, default=30.0, help="MIT kp; RobStride pos-vel fallback for loc_kp")
+    p.add_argument("--loc-kp", type=float, default=None, help="RobStride pos-vel native position-loop gain")
+    p.add_argument("--kd", type=float, default=1.0, help="MIT kd")
+    p.add_argument("--tau", type=float, default=0.0, help="target torque/feed-forward torque")
+    p.add_argument("--vlim", type=float, default=1.0, help="velocity limit for pos-vel/force-pos")
+    p.add_argument("--ratio", type=float, default=0.3, help="force-pos interpolation ratio")
+    p.add_argument("--zero-exp", type=int, default=0, help="RobStride experimental zero sequence, 1/0")
+    p.add_argument(
+        "--offset-negate",
+        type=int,
+        default=0,
+        help="accepted for RobStride zero-by-offset; currently no calibration frames are sent",
+    )
+    p.add_argument("--store", type=int, default=1, help="save/store after supported write/zero operations, 1/0")
+    p.add_argument("--param-id", default="0x0", help="parameter/register ID for read-param/write-param")
+    p.add_argument("--param-value", default="", help="value for write-param")
+    p.add_argument(
+        "--param-type",
+        choices=["i8", "u8", "u16", "u32", "f32"],
+        default="",
+        help="parameter type; inferred for common RobStride params when omitted",
+    )
+    p.add_argument("--timeout-ms", type=int, default=500, help="operation timeout in ms")
+    p.add_argument("--set-motor-id", default="", help="change motor/device ID from run command")
+    p.add_argument("--set-feedback-id", default="", help="Damiao feedback ID change from run command")
+    p.add_argument("--verify-id", type=int, default=1, help="verify ID change, 1/0")
+    p.add_argument("--verify-model", type=int, default=1, help="Damiao model verification before control, 1/0")
+    p.add_argument("--verify-timeout-ms", type=int, default=500, help="model/ID verification timeout")
+    p.add_argument("--verify-tol", type=float, default=0.2, help="Damiao model limit verification tolerance")
 
 
 def _vendor_defaults(vendor: str, model: str, feedback_id: str) -> tuple[str, str]:
@@ -111,67 +275,61 @@ def _open_controller(args: argparse.Namespace, vendor: str) -> Controller:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="motorbridge Python SDK CLI")
+    p = argparse.ArgumentParser(
+        description="motorbridge Python SDK CLI",
+        formatter_class=argparse.RawTextHelpFormatter,
+        epilog=(
+            "Examples:\n"
+            "  motorbridge-cli scan --vendor robstride --channel can0 --start-id 1 --end-id 127\n"
+            "  motorbridge-cli run --vendor robstride --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD --mode enable --loop 1\n"
+            "  motorbridge-cli run --vendor robstride --channel can0 --model rs-00 --motor-id 127 --feedback-id 0xFD --mode read-param --param-id 0x7019\n"
+            "  motorbridge-cli run --vendor robstride --channel can0 --model rs-00 --motor-id 127 --feedback-id 0xFD --mode pos-vel --pos 0 --vlim 1 --loc-kp 1\n"
+            "  motorbridge-cli damiao-read-param --channel can0 --model 4340P --motor-id 1 --feedback-id 0x11 --param-id 10 --type f32\n"
+        ),
+    )
     sub = p.add_subparsers(dest="command")
 
     run = sub.add_parser("run", help="send control commands (default command)")
     _add_common_args(run)
-    run.add_argument(
-        "--mode",
-        default="mit",
-        choices=["enable", "disable", "mit", "pos-vel", "vel", "force-pos", "ping", "zero", "set-zero"],
-    )
-    run.add_argument("--loop", type=int, default=100)
-    run.add_argument("--dt-ms", type=int, default=20)
-    run.add_argument("--ensure-mode", type=int, default=1)
-    run.add_argument("--ensure-strict", type=int, default=0)
-    run.add_argument("--ensure-timeout-ms", type=int, default=1000)
-    run.add_argument("--print-state", type=int, default=1)
-    run.add_argument("--pos", type=float, default=0.0)
-    run.add_argument("--vel", type=float, default=0.0)
-    run.add_argument("--kp", type=float, default=30.0)
-    run.add_argument("--kd", type=float, default=1.0)
-    run.add_argument("--tau", type=float, default=0.0)
-    run.add_argument("--vlim", type=float, default=1.0)
-    run.add_argument("--ratio", type=float, default=0.3)
-    run.add_argument("--zero-exp", type=int, default=0)
-    run.add_argument("--store", type=int, default=1)
+    _add_run_args(run)
 
     dump = sub.add_parser("id-dump", help="read key ID/mode/timeout registers")
     _add_common_args(dump)
-    dump.add_argument("--timeout-ms", type=int, default=500)
-    dump.add_argument("--rids", default="7,8,9,10,21,22,23")
+    dump.add_argument("--timeout-ms", type=int, default=500, help="register read timeout in ms")
+    dump.add_argument("--rids", default="7,8,9,10,21,22,23", help="comma-separated Damiao register IDs")
 
     set_id = sub.add_parser(
         "id-set",
         help="change motor ID; Damiao supports ESC_ID/MST_ID, RobStride supports device_id",
     )
     _add_common_args(set_id)
-    set_id.add_argument("--new-motor-id", default="")
+    set_id.add_argument("--new-motor-id", default="", help="new command/device ID, hex or decimal")
     set_id.add_argument(
         "--new-feedback-id",
         default="",
         help="Damiao MST_ID only; RobStride host_id is not changed",
     )
-    set_id.add_argument("--store", type=int, default=1)
-    set_id.add_argument("--verify", type=int, default=1)
-    set_id.add_argument("--timeout-ms", type=int, default=800)
+    set_id.add_argument("--store", type=int, default=1, help="store ID change when supported, 1/0")
+    set_id.add_argument("--verify", type=int, default=1, help="verify ID change after write, 1/0")
+    set_id.add_argument("--timeout-ms", type=int, default=800, help="verification timeout in ms")
 
     scan = sub.add_parser("scan", help="scan active motor IDs")
     scan.add_argument(
         "--vendor",
         default="damiao",
         choices=["damiao", "myactuator", "robstride", "hightorque", "hexfellow", "all"],
+        help="vendor/protocol to scan, or all for combined scan",
     )
-    scan.add_argument("--channel", default="can0")
+    scan.add_argument("--channel", default="can0", help="SocketCAN/CAN-FD channel")
     scan.add_argument(
         "--transport",
         default="auto",
         choices=["auto", "socketcan", "socketcanfd", "dm-serial"],
+        help="transport backend; dm-serial is Damiao-only",
     )
-    scan.add_argument("--serial-port", default="/dev/ttyACM0")
-    scan.add_argument("--serial-baud", type=int, default=921600)
-    scan.add_argument("--model", default="4340")
+    scan.add_argument("--serial-port", default="/dev/ttyACM0", help="serial port for dm-serial")
+    scan.add_argument("--serial-baud", type=int, default=921600, help="baud rate for dm-serial")
+    scan.add_argument("--model", default="4340", help="model hint used by vendor scanner")
     scan.add_argument("--start-id", default="0x01", help="first motor/device ID to probe")
     scan.add_argument("--end-id", default="0x10", help="last motor/device ID to probe")
     scan.add_argument(
@@ -197,25 +355,49 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_common_args(rs_read)
     rs_read.set_defaults(vendor="robstride")
     rs_read.set_defaults(model="rs-00", feedback_id="0xFD")
-    rs_read.add_argument("--param-id", required=True)
-    rs_read.add_argument("--type", required=True, choices=["i8", "u8", "u16", "u32", "f32"])
-    rs_read.add_argument("--timeout-ms", type=int, default=500)
+    rs_read.add_argument("--param-id", required=True, help="RobStride parameter ID, hex or decimal")
+    rs_read.add_argument("--type", required=True, choices=["i8", "u8", "u16", "u32", "f32"], help="parameter value type")
+    rs_read.add_argument("--timeout-ms", type=int, default=500, help="read timeout in ms")
 
     rs_write = sub.add_parser("robstride-write-param", help="write a RobStride parameter")
     _add_common_args(rs_write)
     rs_write.set_defaults(vendor="robstride")
     rs_write.set_defaults(model="rs-00", feedback_id="0xFD")
-    rs_write.add_argument("--param-id", required=True)
-    rs_write.add_argument("--type", required=True, choices=["i8", "u8", "u16", "u32", "f32"])
-    rs_write.add_argument("--value", required=True)
-    rs_write.add_argument("--verify", type=int, default=1)
-    rs_write.add_argument("--timeout-ms", type=int, default=500)
+    rs_write.add_argument("--param-id", required=True, help="RobStride parameter ID, hex or decimal")
+    rs_write.add_argument("--type", required=True, choices=["i8", "u8", "u16", "u32", "f32"], help="parameter value type")
+    rs_write.add_argument("--value", required=True, help="value to write")
+    rs_write.add_argument("--verify", type=int, default=1, help="read back after write, 1/0")
+    rs_write.add_argument("--timeout-ms", type=int, default=500, help="write/readback timeout in ms")
+
+    dm_read = sub.add_parser("damiao-read-param", help="read a Damiao parameter/register")
+    _add_common_args(dm_read)
+    dm_read.set_defaults(vendor="damiao")
+    dm_read.add_argument("--param-id", required=True, help="Damiao register/parameter ID, hex or decimal")
+    dm_read.add_argument("--type", required=True, choices=["u32", "f32"], help="parameter value type")
+    dm_read.add_argument("--timeout-ms", type=int, default=500, help="read timeout in ms")
+
+    dm_write = sub.add_parser("damiao-write-param", help="write a Damiao parameter/register")
+    _add_common_args(dm_write)
+    dm_write.set_defaults(vendor="damiao")
+    dm_write.add_argument("--param-id", required=True, help="Damiao register/parameter ID, hex or decimal")
+    dm_write.add_argument("--type", required=True, choices=["u32", "f32"], help="parameter value type")
+    dm_write.add_argument("--value", required=True, help="value to write")
+    dm_write.add_argument("--verify", type=int, default=1, help="read back after write, 1/0")
+    dm_write.add_argument("--timeout-ms", type=int, default=500, help="write/readback timeout in ms")
 
     return p
 
 
 def _parse_with_legacy_support() -> argparse.Namespace:
     parser = _build_parser()
+    if len(sys.argv) > 1 and sys.argv[1].startswith("--") and sys.argv[1] not in ("-h", "--help"):
+        legacy = argparse.ArgumentParser(description="motorbridge Python SDK CLI (legacy run mode)")
+        _add_common_args(legacy)
+        _add_run_args(legacy)
+        legacy_args = legacy.parse_args()
+        legacy_args.command = "run"
+        return legacy_args
+
     args, extras = parser.parse_known_args()
     if args.command is not None:
         if extras:
@@ -224,26 +406,7 @@ def _parse_with_legacy_support() -> argparse.Namespace:
 
     legacy = argparse.ArgumentParser(description="motorbridge Python SDK CLI (legacy run mode)")
     _add_common_args(legacy)
-    legacy.add_argument(
-        "--mode",
-        default="mit",
-        choices=["enable", "disable", "mit", "pos-vel", "vel", "force-pos", "ping", "zero", "set-zero"],
-    )
-    legacy.add_argument("--loop", type=int, default=100)
-    legacy.add_argument("--dt-ms", type=int, default=20)
-    legacy.add_argument("--ensure-mode", type=int, default=1)
-    legacy.add_argument("--ensure-strict", type=int, default=0)
-    legacy.add_argument("--ensure-timeout-ms", type=int, default=1000)
-    legacy.add_argument("--print-state", type=int, default=1)
-    legacy.add_argument("--pos", type=float, default=0.0)
-    legacy.add_argument("--vel", type=float, default=0.0)
-    legacy.add_argument("--kp", type=float, default=30.0)
-    legacy.add_argument("--kd", type=float, default=1.0)
-    legacy.add_argument("--tau", type=float, default=0.0)
-    legacy.add_argument("--vlim", type=float, default=1.0)
-    legacy.add_argument("--ratio", type=float, default=0.3)
-    legacy.add_argument("--zero-exp", type=int, default=0)
-    legacy.add_argument("--store", type=int, default=1)
+    _add_run_args(legacy)
     legacy_args = legacy.parse_args()
     legacy_args.command = "run"
     return legacy_args
@@ -258,9 +421,63 @@ def _run_command(args: argparse.Namespace) -> None:
         f"model={args.model} motor_id=0x{motor_id:X} feedback_id=0x{feedback_id:X} mode={args.mode}"
     )
 
+    if args.set_motor_id or args.set_feedback_id:
+        if args.vendor not in ("damiao", "robstride"):
+            raise ValueError("run --set-motor-id/--set-feedback-id supports Damiao and RobStride only")
+        if args.vendor == "robstride" and args.set_feedback_id:
+            raise ValueError("RobStride --set-feedback-id is not supported; feedback_id/host_id is not motor_id")
+        id_args = argparse.Namespace(**vars(args))
+        id_args.command = "id-set"
+        id_args.new_motor_id = args.set_motor_id
+        id_args.new_feedback_id = args.set_feedback_id
+        id_args.verify = args.verify_id
+        id_args.timeout_ms = args.verify_timeout_ms
+        _id_set_command(id_args)
+        return
+
     with _open_controller(args, args.vendor) as ctrl:
         motor = _add_motor(ctrl, args.vendor, motor_id, feedback_id, args.model)
         try:
+            if args.mode in ("read-param", "write-param"):
+                if args.vendor != "robstride":
+                    raise ValueError("run --mode read-param/write-param is currently supported for --vendor robstride only")
+                param_id = _parse_id(args.param_id)
+                param_type = _infer_robstride_param_type(param_id, args.param_type)
+                if args.mode == "read-param":
+                    value = _read_robstride_param(motor, param_id, param_type, args.timeout_ms)
+                    print(
+                        f"command=run mode=read-param vendor=robstride param_id=0x{param_id:X} "
+                        f"type={param_type} value={value}"
+                    )
+                else:
+                    if args.param_value == "":
+                        raise ValueError("run --mode write-param requires --param-value")
+                    _write_robstride_param(motor, param_id, param_type, args.param_value)
+                    time.sleep(0.05)
+                    value = _read_robstride_param(motor, param_id, param_type, args.timeout_ms)
+                    print(
+                        f"command=run mode=write-param vendor=robstride param_id=0x{param_id:X} "
+                        f"type={param_type} value={args.param_value} verify={value}"
+                    )
+                return
+            if args.mode == "save":
+                if args.vendor != "robstride":
+                    raise ValueError("run --mode save is currently supported for --vendor robstride only")
+                motor.store_parameters()
+                print("[ok] save-parameters requested")
+                return
+            if args.mode == "zero-by-offset":
+                if args.vendor != "robstride":
+                    raise ValueError("run --mode zero-by-offset is currently supported for --vendor robstride only")
+                print(
+                    "[warn] robstride zero-by-offset is temporarily disabled due to firmware inconsistency; "
+                    "no calibration CAN frames sent"
+                )
+                return
+
+            if args.vendor == "damiao" and args.verify_model and args.mode not in ("enable", "disable"):
+                _verify_damiao_model(motor, args.model, args.verify_timeout_ms, args.verify_tol)
+
             if args.mode not in ("enable", "disable", "ping", "zero", "set-zero"):
                 ctrl.enable_all()
                 time.sleep(0.3)
@@ -295,7 +512,16 @@ def _run_command(args: argparse.Namespace) -> None:
                         raise ValueError("myactuator does not support mit command")
                     motor.send_mit(args.pos, args.vel, args.kp, args.kd, args.tau)
                 elif args.mode == "pos-vel":
-                    motor.send_pos_vel(args.pos, args.vlim)
+                    if args.vendor == "robstride":
+                        speed = abs(float(args.vlim))
+                        if speed > 0.0:
+                            motor.robstride_write_param_f32(0x7017, speed)
+                        loc_kp = args.loc_kp if args.loc_kp is not None else args.kp
+                        if loc_kp is not None and loc_kp >= 0.0:
+                            motor.robstride_write_param_f32(0x701E, float(loc_kp))
+                        motor.robstride_write_param_f32(0x7016, float(args.pos))
+                    else:
+                        motor.send_pos_vel(args.pos, args.vlim)
                 elif args.mode == "vel":
                     if args.vendor == "hexfellow":
                         raise ValueError("hexfellow does not support vel command")
@@ -677,19 +903,10 @@ def _robstride_read_param_command(args: argparse.Namespace) -> None:
     motor_id = _parse_id(args.motor_id)
     feedback_id = _parse_id(args.feedback_id)
     param_id = _parse_id(args.param_id)
-    with Controller(args.channel) as ctrl:
+    with _open_controller(args, args.vendor) as ctrl:
         motor = ctrl.add_robstride_motor(motor_id, feedback_id, args.model)
         try:
-            if args.type == "i8":
-                value = motor.robstride_get_param_i8(param_id, args.timeout_ms)
-            elif args.type == "u8":
-                value = motor.robstride_get_param_u8(param_id, args.timeout_ms)
-            elif args.type == "u16":
-                value = motor.robstride_get_param_u16(param_id, args.timeout_ms)
-            elif args.type == "u32":
-                value = motor.robstride_get_param_u32(param_id, args.timeout_ms)
-            else:
-                value = motor.robstride_get_param_f32(param_id, args.timeout_ms)
+            value = _read_robstride_param(motor, param_id, args.type, args.timeout_ms)
             print(
                 f"command=robstride-read-param channel={args.channel} model={args.model} "
                 f"motor_id=0x{motor_id:X} param_id=0x{param_id:X} type={args.type} value={value}"
@@ -705,28 +922,63 @@ def _robstride_write_param_command(args: argparse.Namespace) -> None:
     motor_id = _parse_id(args.motor_id)
     feedback_id = _parse_id(args.feedback_id)
     param_id = _parse_id(args.param_id)
-    with Controller(args.channel) as ctrl:
+    with _open_controller(args, args.vendor) as ctrl:
         motor = ctrl.add_robstride_motor(motor_id, feedback_id, args.model)
         try:
-            if args.type == "i8":
-                motor.robstride_write_param_i8(param_id, int(args.value, 0))
-                verify = motor.robstride_get_param_i8(param_id, args.timeout_ms) if args.verify else None
-            elif args.type == "u8":
-                motor.robstride_write_param_u8(param_id, int(args.value, 0))
-                verify = motor.robstride_get_param_u8(param_id, args.timeout_ms) if args.verify else None
-            elif args.type == "u16":
-                motor.robstride_write_param_u16(param_id, int(args.value, 0))
-                verify = motor.robstride_get_param_u16(param_id, args.timeout_ms) if args.verify else None
-            elif args.type == "u32":
-                motor.robstride_write_param_u32(param_id, int(args.value, 0))
-                verify = motor.robstride_get_param_u32(param_id, args.timeout_ms) if args.verify else None
-            else:
-                motor.robstride_write_param_f32(param_id, float(args.value))
-                verify = motor.robstride_get_param_f32(param_id, args.timeout_ms) if args.verify else None
+            _write_robstride_param(motor, param_id, args.type, args.value)
+            verify = _read_robstride_param(motor, param_id, args.type, args.timeout_ms) if args.verify else None
             print(
                 f"command=robstride-write-param channel={args.channel} model={args.model} "
                 f"motor_id=0x{motor_id:X} param_id=0x{param_id:X} type={args.type} "
                 f"value={args.value} verify={verify}"
+            )
+        finally:
+            motor.close()
+
+
+def _damiao_read_param_command(args: argparse.Namespace) -> None:
+    if args.vendor != "damiao":
+        raise ValueError("damiao-read-param is only valid for --vendor damiao")
+    args.model, args.feedback_id = _vendor_defaults(args.vendor, args.model, args.feedback_id)
+    motor_id = _parse_id(args.motor_id)
+    feedback_id = _parse_id(args.feedback_id)
+    param_id = _parse_id(args.param_id)
+    with _open_controller(args, args.vendor) as ctrl:
+        motor = ctrl.add_damiao_motor(motor_id, feedback_id, args.model)
+        try:
+            if args.type == "u32":
+                value = motor.damiao_get_param_u32(param_id, args.timeout_ms)
+            else:
+                value = motor.damiao_get_param_f32(param_id, args.timeout_ms)
+            print(
+                f"command=damiao-read-param transport={args.transport} channel={args.channel} model={args.model} "
+                f"motor_id=0x{motor_id:X} feedback_id=0x{feedback_id:X} "
+                f"param_id=0x{param_id:X} type={args.type} value={value}"
+            )
+        finally:
+            motor.close()
+
+
+def _damiao_write_param_command(args: argparse.Namespace) -> None:
+    if args.vendor != "damiao":
+        raise ValueError("damiao-write-param is only valid for --vendor damiao")
+    args.model, args.feedback_id = _vendor_defaults(args.vendor, args.model, args.feedback_id)
+    motor_id = _parse_id(args.motor_id)
+    feedback_id = _parse_id(args.feedback_id)
+    param_id = _parse_id(args.param_id)
+    with _open_controller(args, args.vendor) as ctrl:
+        motor = ctrl.add_damiao_motor(motor_id, feedback_id, args.model)
+        try:
+            if args.type == "u32":
+                motor.damiao_write_param_u32(param_id, int(args.value, 0))
+                verify = motor.damiao_get_param_u32(param_id, args.timeout_ms) if args.verify else None
+            else:
+                motor.damiao_write_param_f32(param_id, float(args.value))
+                verify = motor.damiao_get_param_f32(param_id, args.timeout_ms) if args.verify else None
+            print(
+                f"command=damiao-write-param transport={args.transport} channel={args.channel} model={args.model} "
+                f"motor_id=0x{motor_id:X} feedback_id=0x{feedback_id:X} "
+                f"param_id=0x{param_id:X} type={args.type} value={args.value} verify={verify}"
             )
         finally:
             motor.close()
@@ -753,6 +1005,10 @@ def main() -> None:
             _robstride_read_param_command(args)
         elif args.command == "robstride-write-param":
             _robstride_write_param_command(args)
+        elif args.command == "damiao-read-param":
+            _damiao_read_param_command(args)
+        elif args.command == "damiao-write-param":
+            _damiao_write_param_command(args)
         else:
             raise RuntimeError(f"unknown command: {args.command}")
     except Exception as e:

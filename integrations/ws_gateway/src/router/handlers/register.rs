@@ -1,10 +1,10 @@
-use crate::vendors::hightorque_ws::send_hightorque_ext;
-use crate::model::{ControllerHandle, MotorHandle};
 use crate::commands::{
     as_u16, as_u64, handle_robstride_read_param, handle_robstride_write_param, parse_damiao_mode,
     parse_robstride_mode,
 };
+use crate::model::{ControllerHandle, MotorHandle};
 use crate::session::SessionCtx;
+use crate::vendors::hightorque_ws::send_hightorque_ext;
 use motor_vendor_robstride::ParameterValue as RobstrideParameterValue;
 use serde_json::{json, Value};
 use std::time::Duration;
@@ -54,9 +54,9 @@ fn handle_set_zero_position(ctx: &mut SessionCtx) -> Result<Value, String> {
     match ctx.motor.as_ref() {
         Some(MotorHandle::Damiao(m)) => m.set_zero_position().map_err(|e| e.to_string())?,
         Some(MotorHandle::Robstride(m)) => m.set_zero_position().map_err(|e| e.to_string())?,
-        Some(MotorHandle::Myactuator(m)) => {
-            m.set_current_position_as_zero().map_err(|e| e.to_string())?
-        }
+        Some(MotorHandle::Myactuator(m)) => m
+            .set_current_position_as_zero()
+            .map_err(|e| e.to_string())?,
         Some(MotorHandle::Hexfellow(_)) => {
             return Err("set_zero_position is not supported for hexfellow".to_string())
         }
@@ -185,7 +185,8 @@ fn handle_write_register_u32(v: &Value, ctx: &mut SessionCtx) -> Result<Value, S
     let value = as_u64(v, "value", 0) as u32;
     match ctx.motor.as_ref() {
         Some(MotorHandle::Damiao(m)) => {
-            m.write_register_u32(rid, value).map_err(|e| e.to_string())?;
+            m.write_register_u32(rid, value)
+                .map_err(|e| e.to_string())?;
             Ok(json!({"rid": rid, "value": value}))
         }
         Some(MotorHandle::Robstride(_)) => {
@@ -202,7 +203,8 @@ fn handle_write_register_f32(v: &Value, ctx: &mut SessionCtx) -> Result<Value, S
     let value = v.get("value").and_then(Value::as_f64).unwrap_or(0.0) as f32;
     match ctx.motor.as_ref() {
         Some(MotorHandle::Damiao(m)) => {
-            m.write_register_f32(rid, value).map_err(|e| e.to_string())?;
+            m.write_register_f32(rid, value)
+                .map_err(|e| e.to_string())?;
             Ok(json!({"rid": rid, "value": value}))
         }
         Some(MotorHandle::Robstride(_)) => {
@@ -270,7 +272,9 @@ fn handle_robstride_read_param_op(v: &Value, ctx: &mut SessionCtx) -> Result<Val
     ctx.ensure_connected()?;
     match ctx.motor.as_ref() {
         Some(MotorHandle::Robstride(m)) => handle_robstride_read_param(m, v),
-        Some(MotorHandle::Damiao(_)) => Err("robstride_read_param requires vendor=robstride".to_string()),
+        Some(MotorHandle::Damiao(_)) => {
+            Err("robstride_read_param requires vendor=robstride".to_string())
+        }
         Some(_) => Err("robstride_read_param requires vendor=robstride".to_string()),
         None => Err("motor not connected".to_string()),
     }

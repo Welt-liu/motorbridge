@@ -208,7 +208,6 @@ ensure_controller!(
     HightorqueController::new_socketcan
 );
 
-
 mod controller_add_motor_ffi;
 mod controller_lifecycle_ffi;
 mod motor_control_ffi;

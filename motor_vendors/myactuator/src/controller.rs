@@ -1,5 +1,5 @@
 use crate::motor::MyActuatorMotor;
-use motor_core::bus::{CanBus, open_socketcan, open_socketcanfd};
+use motor_core::bus::{open_socketcan, open_socketcanfd, CanBus};
 use motor_core::error::Result;
 use motor_core::vendor_controller::VendorController;
 use std::sync::Arc;

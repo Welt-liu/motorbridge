@@ -21,18 +21,53 @@ pub(crate) fn parse_args() -> Result<ServerConfig, String> {
         if k == "--help" || k == "-h" {
             println!(
                 "ws_gateway\n\
-Usage (router mode, recommended):\n\
+Usage:\n\
+  ws_gateway --bind 127.0.0.1:9002\n\
   cargo run -p ws_gateway --release -- --bind 127.0.0.1:9002\n\
+  motorbridge-gateway -- --bind 127.0.0.1:9002\n\
+\n\
+Router mode (recommended):\n\
+  Start with only --bind. The web UI/WS messages choose vendor, model, IDs, channel, and scan/control target dynamically.\n\
+  This is the safest default for mixed buses and current motorbridge-studio usage.\n\
+\n\
+Examples:\n\
+  cargo run -p ws_gateway --release -- --bind 127.0.0.1:9002\n\
+\n\
+  cargo run -p ws_gateway --release -- \\\n\
+    --bind 127.0.0.1:9002 --vendor robstride --transport socketcan \\\n\
+    --channel can0 --model rs-00 --motor-id 0x01 --feedback-id 0xFD --dt-ms 20\n\
+\n\
+  cargo run -p ws_gateway --release -- \\\n\
+    --bind 127.0.0.1:9002 --vendor damiao --transport dm-serial \\\n\
+    --serial-port /dev/ttyACM0 --serial-baud 921600 --dt-ms 20\n\
 \n\
 Optional defaults (only used when WS message omits target fields):\n\
   --vendor damiao|robstride|hexfellow|myactuator|hightorque\n\
   --transport auto|socketcan|socketcanfd|dm-serial\n\
-  --channel can0 --serial-port /dev/ttyACM0 --serial-baud 921600\n\
-  --model auto --motor-id 0x01 --feedback-id 0x11 --dt-ms 20\n\
+  --channel can0                SocketCAN/CAN-FD interface, for example can0/can1\n\
+  --serial-port /dev/ttyACM0    used only by --transport dm-serial\n\
+  --serial-baud 921600          used only by --transport dm-serial\n\
+  --model auto                  default model hint when WS message omits model\n\
+  --motor-id 0x01               default command/device ID when WS message omits motor_id\n\
+  --feedback-id 0x11            default feedback/host ID; RobStride defaults to 0xFD if omitted\n\
+  --dt-ms 20                    backend control/update period in milliseconds\n\
+\n\
+Transport notes:\n\
+  socketcan:   classic Linux SocketCAN, usually can0/can1 after adapter setup\n\
+  socketcanfd: CAN-FD path, required for Hexfellow\n\
+  dm-serial:   Damiao serial bridge only; does not support RobStride/MyActuator/Hexfellow\n\
+\n\
+Platform hints:\n\
+  Linux SocketCAN: use --channel can0 after bringing the CAN interface UP.\n\
+  Windows PCAN/socketcan-style channel: use forms such as --channel can0@1000000 when supported by the runtime.\n\
+  dm-serial ports: Linux /dev/ttyACM0 or /dev/ttyUSB0, macOS /dev/tty.usbmodem*, Windows COM3.\n\
 \n\
 Security:\n\
   Non-loopback bind requires env MOTORBRIDGE_WS_TOKEN\n\
-  Client headers: x-motorbridge-token or Authorization: Bearer <token>\n"
+  Client headers: x-motorbridge-token or Authorization: Bearer <token>\n\
+\n\
+After startup:\n\
+  When you see \"ws_gateway listening on ws://127.0.0.1:9002\", connect the UI to ws://127.0.0.1:9002.\n"
             );
             std::process::exit(0);
         }

@@ -1,6 +1,6 @@
+use super::super::common::ffi_run;
 use crate::vendor_params::damiao;
 use crate::MotorHandle;
-use super::super::common::ffi_run;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn motor_handle_damiao_write_param_f32(

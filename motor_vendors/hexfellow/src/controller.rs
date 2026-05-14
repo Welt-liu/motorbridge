@@ -1,5 +1,5 @@
 use crate::motor::HexfellowMotor;
-use motor_core::bus::{CanBus, CanFrame, open_socketcanfd};
+use motor_core::bus::{open_socketcanfd, CanBus, CanFrame};
 use motor_core::error::{MotorError, Result};
 use motor_core::vendor_controller::VendorController;
 use std::sync::Arc;

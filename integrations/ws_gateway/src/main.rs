@@ -1,7 +1,7 @@
 use tokio::net::TcpListener;
 
-mod model;
 mod commands;
+mod model;
 mod router;
 mod session;
 mod vendors;
@@ -25,7 +25,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         || cfg.bind.starts_with("[::1]:")
         || cfg.bind.starts_with("localhost:");
     if !bind_is_local && std::env::var("MOTORBRIDGE_WS_TOKEN").is_err() {
-        return Err("MOTORBRIDGE_WS_TOKEN is required when binding ws_gateway to non-loopback addresses".into());
+        return Err(
+            "MOTORBRIDGE_WS_TOKEN is required when binding ws_gateway to non-loopback addresses"
+                .into(),
+        );
     }
     let listener = TcpListener::bind(&cfg.bind).await?;
 

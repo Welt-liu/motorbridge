@@ -207,7 +207,7 @@ with Controller("can0") as ctrl:
 
 ```bash
 $CLI --vendor robstride --channel "$CH" --model "$MODEL" --motor-id "$MID" --feedback-id "$FID" \
-  --mode mit --pos 0 --vel 0 --kp 3 --kd 0.2 --tau 0 --loop 40 --dt-ms 50
+  --mode mit --ensure-strict 1 --pos 0.5 --vel 0 --kp 20.0 --kd 0.5 --tau 0 --loop 100 --dt-ms 20
 ```
 
 ### Python CLI
@@ -215,7 +215,7 @@ $CLI --vendor robstride --channel "$CH" --model "$MODEL" --motor-id "$MID" --fee
 ```bash
 motorbridge-cli run \
   --vendor robstride --channel "$CH" --model "$MODEL" --motor-id "$MID" --feedback-id "$FID" \
-  --mode mit --pos 0 --vel 0 --kp 3 --kd 0.2 --tau 0 --loop 40 --dt-ms 50
+  --mode mit --ensure-strict 1 --pos 0.5 --vel 0 --kp 20.0 --kd 0.5 --tau 0 --loop 100 --dt-ms 20
 ```
 
 ### Python SDK
@@ -228,7 +228,7 @@ with Controller("can0") as ctrl:
     m.enable()
     m.ensure_mode(Mode.MIT, 1000)
     for _ in range(40):
-        m.send_mit(0.0, 0.0, 3.0, 0.2, 0.0)
+        m.send_mit(0.5, 0.0, 20.0, 0.5, 0.0)
     m.close()
 ```
 
@@ -251,7 +251,7 @@ with Controller("can0") as ctrl:
 
 ```bash
 $CLI --vendor robstride --channel "$CH" --model "$MODEL" --motor-id "$MID" --feedback-id "$FID" \
-  --mode pos-vel --pos 1.0 --vlim 0.8 --loop 1 --dt-ms 20
+  --mode pos-vel --pos 1.5 --vlim 1.0 --loc-kp 5.0 --loop 1 --dt-ms 20
 ```
 
 ### Python CLI
@@ -259,8 +259,8 @@ $CLI --vendor robstride --channel "$CH" --model "$MODEL" --motor-id "$MID" --fee
 ```bash
 motorbridge-cli run \
   --vendor robstride --channel "$CH" --model "$MODEL" --motor-id "$MID" --feedback-id "$FID" \
-  --mode pos-vel --pos 1.0 --vlim 0.8 \
-  --ensure-mode 1 --ensure-timeout-ms 1500 --ensure-strict 1 \
+  --mode pos-vel --pos 1.5 --vlim 1.0 --loc-kp 5.0 \
+  --ensure-strict 1 --ensure-timeout-ms 1500 \
   --loop 1 --dt-ms 20
 ```
 
@@ -345,6 +345,10 @@ $CLI --vendor robstride --channel "$CH" --model "$MODEL" --motor-id "$MID" --fee
 ### Python CLI
 
 ```bash
+motorbridge-cli run \
+  --vendor robstride --channel "$CH" --model "$MODEL" --motor-id "$MID" --feedback-id "$FID" \
+  --mode read-param --param-id 0x7019 --param-type f32 --timeout-ms 200
+
 motorbridge-cli robstride-read-param \
   --channel "$CH" --model "$MODEL" --motor-id "$MID" --feedback-id "$FID" \
   --param-id 0x7019 --type f32 --timeout-ms 200
@@ -385,6 +389,10 @@ $CLI --vendor robstride --channel "$CH" --model "$MODEL" --motor-id "$MID" --fee
 ### Python CLI
 
 ```bash
+motorbridge-cli run \
+  --vendor robstride --channel "$CH" --model "$MODEL" --motor-id "$MID" --feedback-id "$FID" \
+  --mode write-param --param-id 0x700A --param-type f32 --param-value 0.3 --timeout-ms 200
+
 motorbridge-cli robstride-write-param \
   --channel "$CH" --model "$MODEL" --motor-id "$MID" --feedback-id "$FID" \
   --param-id 0x700A --type f32 --value 0.3 --verify 1 --timeout-ms 200

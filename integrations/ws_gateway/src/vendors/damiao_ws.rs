@@ -24,7 +24,12 @@ pub(crate) fn cmd_scan_damiao(v: &Value, base: &Target) -> Result<Value, String>
     let mut fallback_hits = 0usize;
     for mid in start_id..=end_id {
         enum ScanHit {
-            Registers { p: f32, v: f32, t: f32, fid: u16 },
+            Registers {
+                p: f32,
+                v: f32,
+                t: f32,
+                fid: u16,
+            },
             Feedback {
                 fid: u16,
                 status: u8,

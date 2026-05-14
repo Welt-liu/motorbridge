@@ -12,7 +12,7 @@ pub mod socketcanfd;
 pub mod test_support;
 pub mod vendor_controller;
 
-pub use bus::{CanBus, CanFrame, open_socketcan, open_socketcanfd};
+pub use bus::{open_socketcan, open_socketcanfd, CanBus, CanFrame};
 pub use controller::CoreController;
 pub use device::MotorDevice;
 pub use error::{MotorError, Result};

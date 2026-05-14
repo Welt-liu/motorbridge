@@ -168,6 +168,11 @@ Damiao:
 motorbridge-cli run \
   --vendor damiao --channel can0 --model 4340P --motor-id 0x01 --feedback-id 0x11 \
   --mode mit --pos 0 --vel 0 --kp 20 --kd 1 --tau 0 --loop 50 --dt-ms 20
+
+# Rust CLI style ID update is also accepted:
+motorbridge-cli run \
+  --vendor damiao --channel can0 --model 4340P --motor-id 0x01 --feedback-id 0x11 \
+  --set-motor-id 0x02 --set-feedback-id 0x12 --store 1 --verify-id 1
 ```
 
 RobStride:
@@ -178,11 +183,58 @@ motorbridge-cli run \
   --mode ping
 ```
 
+RobStride MIT quick check:
+
+```bash
+motorbridge-cli run \
+  --vendor robstride --channel can0 --model rs-00 \
+  --motor-id 2 --feedback-id 0xFD \
+  --mode mit --ensure-strict 1 \
+  --pos 0.5 --vel 0 --kp 20.0 --kd 0.5 --tau 0 \
+  --loop 100 --dt-ms 20
+```
+
+RobStride position target, aligned with the WS gateway native register path
+(`limit_spd` `0x7017`, `loc_kp` `0x701E`, `loc_ref` `0x7016`):
+
+```bash
+motorbridge-cli run \
+  --vendor robstride --channel can0 --model rs-00 \
+  --motor-id 2 --feedback-id 0xFD \
+  --mode pos-vel \
+  --pos 1.5 --vlim 1.0 --loc-kp 5.0 \
+  --loop 1 --dt-ms 20
+
+motorbridge-cli run \
+  --vendor robstride --channel can0 --model rs-00 \
+  --motor-id 2 --feedback-id 0xFD \
+  --mode pos-vel \
+  --pos -1.5 --vlim 1.0 --loc-kp 5.0 \
+  --loop 1 --dt-ms 20
+```
+
 RobStride parameter read:
 
 ```bash
 motorbridge-cli robstride-read-param \
   --channel can0 --model rs-00 --motor-id 127 --param-id 0x7019 --type f32
+
+# Rust CLI style is also accepted by Python CLI:
+motorbridge-cli run \
+  --vendor robstride --channel can0 --model rs-00 --motor-id 127 --feedback-id 0xFD \
+  --mode read-param --param-id 0x7019 --param-type f32
+```
+
+Damiao parameter read/write:
+
+```bash
+motorbridge-cli damiao-read-param \
+  --channel can0 --model 4340P --motor-id 0x01 --feedback-id 0x11 \
+  --param-id 21 --type f32
+
+motorbridge-cli damiao-write-param \
+  --channel can0 --model 4340P --motor-id 0x01 --feedback-id 0x11 \
+  --param-id 8 --type u32 --value 0x01 --verify 1
 ```
 
 Unified scan (all vendors):

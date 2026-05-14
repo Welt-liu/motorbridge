@@ -37,7 +37,11 @@ pub(crate) fn get_param_u32(
     }
 }
 
-pub(crate) fn write_param_f32(motor: &mut MotorHandle, param_id: u16, value: f32) -> Result<(), String> {
+pub(crate) fn write_param_f32(
+    motor: &mut MotorHandle,
+    param_id: u16,
+    value: f32,
+) -> Result<(), String> {
     let rid = damiao_param_rid(param_id)?;
     match &motor.inner {
         MotorHandleInner::Damiao(m) => m.write_register_f32(rid, value).map_err(|e| e.to_string()),
@@ -45,7 +49,11 @@ pub(crate) fn write_param_f32(motor: &mut MotorHandle, param_id: u16, value: f32
     }
 }
 
-pub(crate) fn write_param_u32(motor: &mut MotorHandle, param_id: u16, value: u32) -> Result<(), String> {
+pub(crate) fn write_param_u32(
+    motor: &mut MotorHandle,
+    param_id: u16,
+    value: u32,
+) -> Result<(), String> {
     let rid = damiao_param_rid(param_id)?;
     match &motor.inner {
         MotorHandleInner::Damiao(m) => m.write_register_u32(rid, value).map_err(|e| e.to_string()),

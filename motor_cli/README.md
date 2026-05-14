@@ -253,7 +253,7 @@ Notes:
 - Torque/current is currently parameter-level only (via `write-param`, for example `iq_ref` and limit registers), not a first-class high-level mode.
 - In RobStride `mit`, all five unified inputs are effective: `--pos`, `--vel`, `--kp`, `--kd`, `--tau`.
 - RobStride `mit` units follow unified semantics: `pos` in `rad`, `vel` in `rad/s`, `tau` in `Nm` (`kp/kd` are MIT loop gains).
-- In RobStride `pos-vel`, only `--pos`, `--vlim`, and optional `--kp`/`--loc-kp` are consumed.
+- In RobStride `pos-vel`, only `--pos`, `--vlim`, and optional `--kp`/`--loc-kp` are consumed; use `--loop 1` for a single position-target write.
 - In RobStride `pos-vel`, `--vel`, `--kd`, and `--tau` are ignored (CLI prints a warning if provided).
 
 ### 4.4 Scan Behavior Details
@@ -276,12 +276,12 @@ motor_cli \
 # MIT control
 motor_cli \
   --vendor robstride --channel can0 --model rs-06 --motor-id 20 --feedback-id 0xFD \
-  --mode mit --pos 3.14 --vel 0 --kp 0.5 --kd 0.2 --tau 0 --loop 120 --dt-ms 20
+  --mode mit --ensure-strict 1 --pos 0.5 --vel 0 --kp 20.0 --kd 0.5 --tau 0 --loop 100 --dt-ms 20
 
 # POS_VEL (mapped to native Position)
 motor_cli \
   --vendor robstride --channel can0 --model rs-06 --motor-id 20 --feedback-id 0xFD \
-  --mode pos-vel --pos 1.0 --vlim 1.5 --loop 1 --dt-ms 20
+  --mode pos-vel --pos 1.5 --vlim 1.0 --loc-kp 5.0 --loop 1 --dt-ms 20
 
 # Velocity mode
 motor_cli \

@@ -1,5 +1,5 @@
-use crate::model::{ControllerHandle, MotorHandle, Vendor};
 use crate::commands::{as_bool, as_u16, as_u64, parse_transport_in_msg, parse_vendor_in_msg};
+use crate::model::{ControllerHandle, MotorHandle, Vendor};
 use crate::session::SessionCtx;
 use serde_json::{json, Value};
 
@@ -31,9 +31,15 @@ fn handle_ping(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
             ctx.ensure_connected()?;
             if let Some(MotorHandle::Robstride(m)) = ctx.motor.as_ref() {
                 let p = m
-                    .ping(std::time::Duration::from_millis(as_u64(v, "timeout_ms", 200)))
+                    .ping(std::time::Duration::from_millis(as_u64(
+                        v,
+                        "timeout_ms",
+                        200,
+                    )))
                     .map_err(|e| e.to_string())?;
-                Ok(json!({"pong":true,"vendor":"robstride","device_id":p.device_id,"responder_id":p.responder_id}))
+                Ok(
+                    json!({"pong":true,"vendor":"robstride","device_id":p.device_id,"responder_id":p.responder_id}),
+                )
             } else {
                 Err("motor not connected".to_string())
             }
@@ -163,7 +169,11 @@ fn handle_stop(ctx: &mut SessionCtx) -> Result<Value, String> {
                 .map_err(|e| e.to_string())?,
             MotorHandle::Hightorque(mid) => {
                 if let Some(ControllerHandle::Hightorque(bus)) = ctx.controller.as_ref() {
-                    crate::vendors::hightorque_ws::send_hightorque_ext(bus.as_ref(), *mid, &[0x01, 0x00, 0x00])?;
+                    crate::vendors::hightorque_ws::send_hightorque_ext(
+                        bus.as_ref(),
+                        *mid,
+                        &[0x01, 0x00, 0x00],
+                    )?;
                 }
             }
             MotorHandle::Myactuator(mm) => mm.stop_motor().map_err(|e| e.to_string())?,
@@ -204,8 +214,12 @@ fn handle_poll_feedback_once(ctx: &mut SessionCtx) -> Result<Value, String> {
     ctx.ensure_connected()?;
     if let Some(c) = ctx.controller.as_ref() {
         match c {
-            ControllerHandle::Damiao(ctrl) => ctrl.poll_feedback_once().map_err(|e| e.to_string())?,
-            ControllerHandle::Hexfellow(ctrl) => ctrl.poll_feedback_once().map_err(|e| e.to_string())?,
+            ControllerHandle::Damiao(ctrl) => {
+                ctrl.poll_feedback_once().map_err(|e| e.to_string())?
+            }
+            ControllerHandle::Hexfellow(ctrl) => {
+                ctrl.poll_feedback_once().map_err(|e| e.to_string())?
+            }
             ControllerHandle::Hightorque(_) => {}
             ControllerHandle::Myactuator(ctrl) => {
                 ctrl.poll_feedback_once().map_err(|e| e.to_string())?
