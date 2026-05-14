@@ -293,8 +293,19 @@ jobs:
       - name: Install Python build tools
         run: python -m pip install --upgrade pip build setuptools wheel
 
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build runtime artifacts for sdist
+        run: |
+          cargo build -p motor_abi --release
+          cargo build -p ws_gateway --release
+
       - name: Build source distribution
         shell: bash
+        env:
+          MOTORBRIDGE_LIB: ${{ github.workspace }}/target/release/libmotor_abi.so
+          MOTORBRIDGE_WS_GATEWAY_BIN: ${{ github.workspace }}/target/release/ws_gateway
         run: |
           rm -rf bindings/python/dist
           python -m build --sdist bindings/python -o bindings/python/dist
