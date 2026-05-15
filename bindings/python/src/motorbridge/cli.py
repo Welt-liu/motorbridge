@@ -83,6 +83,62 @@ def _write_robstride_param(motor: Any, param_id: int, param_type: str, raw_value
         motor.robstride_write_param_f32(param_id, float(raw_value))
 
 
+def _robstride_mode_expect(mode: str) -> tuple[Mode, int, str]:
+    if mode == "mit":
+        return Mode.MIT, 0, "mit"
+    if mode == "pos-vel":
+        return Mode.POS_VEL, 1, "pos-vel"
+    if mode == "vel":
+        return Mode.VEL, 2, "vel"
+    raise ValueError(f"RobStride mode guard does not support {mode}")
+
+
+def _ensure_robstride_mode_for_control(
+    ctrl: Controller,
+    motor: Any,
+    mode: str,
+    timeout_ms: int,
+    strict: bool,
+) -> None:
+    target_mode, expect, mode_name = _robstride_mode_expect(mode)
+    try:
+        actual = motor.robstride_get_param_i8(0x7005, 120)
+        if actual == expect:
+            return
+    except Exception:
+        actual = None
+
+    # Match Rust CLI / WS gateway sequencing. Some RobStride firmware variants
+    # ignore run_mode writes while torque is enabled.
+    try:
+        ctrl.disable_all()
+    except Exception as e:
+        if strict:
+            raise
+        print(f"[warn] robstride pre-mode disable_all failed: {e}; continue")
+    time.sleep(0.06)
+
+    last_error: Exception | None = None
+    for _ in range(3):
+        try:
+            motor.ensure_mode(target_mode, timeout_ms)
+            time.sleep(0.03)
+            actual = motor.robstride_get_param_i8(0x7005, 120)
+            if actual == expect:
+                return
+        except Exception as e:
+            last_error = e
+        time.sleep(0.03)
+
+    msg = (
+        f"robstride {mode_name} mode switch failed: expect={expect} "
+        f"actual={actual!r} error={last_error}"
+    )
+    if strict:
+        raise RuntimeError(msg)
+    print(f"[warn] {msg}; continue anyway")
+
+
 def _match_damiao_models_by_limits(pmax: float, vmax: float, tmax: float, tol: float) -> list[str]:
     return [
         model
@@ -490,11 +546,26 @@ def _run_command(args: argparse.Namespace) -> None:
             if args.vendor == "damiao" and args.verify_model and args.mode not in ("enable", "disable"):
                 _verify_damiao_model(motor, args.model, args.verify_timeout_ms, args.verify_tol)
 
-            if args.mode not in ("enable", "disable", "clear-error", "active-report", "ping", "zero", "set-zero"):
+            control_modes = ("mit", "pos-vel", "vel", "force-pos")
+            if args.vendor == "robstride" and args.mode in ("mit", "pos-vel", "vel") and args.ensure_mode:
+                _ensure_robstride_mode_for_control(
+                    ctrl,
+                    motor,
+                    args.mode,
+                    args.ensure_timeout_ms,
+                    bool(args.ensure_strict),
+                )
+                ctrl.enable_all()
+                time.sleep(0.1)
+            elif args.mode not in ("enable", "disable", "clear-error", "active-report", "ping", "zero", "set-zero"):
                 ctrl.enable_all()
                 time.sleep(0.3)
 
-            if args.ensure_mode and args.mode not in ("enable", "disable", "clear-error", "active-report", "ping", "zero", "set-zero"):
+            if (
+                args.ensure_mode
+                and args.mode in control_modes
+                and not (args.vendor == "robstride" and args.mode in ("mit", "pos-vel", "vel"))
+            ):
                 try:
                     if args.vendor == "robstride" and args.mode == "force-pos":
                         raise ValueError("robstride does not support force-pos")

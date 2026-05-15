@@ -15,6 +15,14 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
+## 更新说明（2026-05）：v0.3.1
+
+- `v0.3.1` 是一次很窄的 Python 包 / Python CLI 发布。
+- 本次只修改 RobStride Python CLI 控制前的时序：
+  `mit`、`pos-vel`、`vel` 会先失能，再切 `run_mode`，通过 `0x7005`
+  确认模式，重新使能，最后发送目标。
+- 该时序与 Rust CLI 和 WebSocket gateway 对齐。
+
 ## 传输链路标识
 
 - `[STD-CAN]`：标准 CAN 路径（`socketcan` / `pcan`）

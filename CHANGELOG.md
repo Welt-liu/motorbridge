@@ -7,6 +7,21 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-05-15
+
+### Fixed
+
+- Python CLI RobStride `mit`, `pos-vel`, and `vel` now align their control
+  startup sequence with the Rust CLI and WebSocket gateway: disable torque,
+  set and verify `run_mode` via `0x7005`, re-enable torque, then send targets.
+  This fixes cases where direct Python CLI `pos-vel` could enable the motor but
+  fail to move until a Rust CLI or gateway scan/control path had prepared the mode.
+
+### Changed
+
+- Python package version advanced to `0.3.1`.
+- Rust workspace package version advanced to `0.3.1` for release/tag alignment.
+
 ## [0.3.0] - 2026-05-15
 
 ### Added

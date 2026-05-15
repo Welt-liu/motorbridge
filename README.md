@@ -15,6 +15,14 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
   Standalone web control UI built on top of `ws_gateway`.
 
+## Update (2026-05): v0.3.1
+
+- `v0.3.1` is a narrow release for the Python package and CLI.
+- The only behavior change is RobStride Python CLI control startup sequencing:
+  `mit`, `pos-vel`, and `vel` now disable torque before switching `run_mode`,
+  verify `run_mode` via `0x7005`, re-enable torque, then send targets.
+- This aligns Python CLI behavior with the Rust CLI and WebSocket gateway.
+
 ## Transport Legend
 
 - `[STD-CAN]`: classic CAN path (`socketcan`/`pcan`)

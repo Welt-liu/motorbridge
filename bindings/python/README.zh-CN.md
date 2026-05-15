@@ -41,7 +41,10 @@
 
 ## 范围
 
-- 当前目标包版本：`0.1.9`。
+- 当前目标包版本：`0.3.1`。
+- `0.3.1` 只修改 Python CLI 的 RobStride 控制启动时序。CLI 现在会让
+  `mit` / `pos-vel` / `vel` 对齐 Rust CLI 和 WebSocket gateway：
+  先失能，再切换并确认 `run_mode`，重新使能，最后写入目标。
 - 高层 API: `Controller`、`Motor`、`Mode`
 - CLI: `motorbridge-cli`
 - 网关启动命令（pip 安装后进入 PATH）：
