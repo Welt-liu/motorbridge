@@ -460,56 +460,19 @@ pub fn run_robstride(
     }
 
     if ensure_mode {
-        // Some RobStride firmware variants apply mode/register changes more
-        // reliably while torque is disabled.
-        if matches!(mode.as_str(), "mit" | "pos-vel" | "vel") {
-            let _ = controller.disable_all();
-            std::thread::sleep(Duration::from_millis(60));
-        }
         match mode.as_str() {
-            "mit" => motor.set_mode(RobstrideControlMode::Mit)?,
-            "pos-vel" => motor.set_mode(RobstrideControlMode::Position)?,
-            "vel" => motor.set_mode(RobstrideControlMode::Velocity)?,
+            "mit" => {
+                motor.ensure_control_mode(RobstrideControlMode::Mit, Duration::from_millis(1000))?
+            }
+            "pos-vel" => motor
+                .ensure_control_mode(RobstrideControlMode::Position, Duration::from_millis(1000))?,
+            "vel" => motor
+                .ensure_control_mode(RobstrideControlMode::Velocity, Duration::from_millis(1000))?,
             _ => {}
         }
         // Align with official sequence: mode write first, then allow a brief settle window
         // before sending target parameters/operation frames.
         std::thread::sleep(Duration::from_millis(30));
-        if matches!(mode.as_str(), "mit" | "pos-vel" | "vel") {
-            let expect = match mode.as_str() {
-                "mit" => 0i8,
-                "pos-vel" => 1i8,
-                "vel" => 2i8,
-                _ => -1i8,
-            };
-            if expect >= 0 {
-                let mut actual = None;
-                for _ in 0..3 {
-                    if let Ok(ParameterValue::I8(v)) =
-                        motor.get_parameter(0x7005, Duration::from_millis(120))
-                    {
-                        actual = Some(v);
-                        if v == expect {
-                            break;
-                        }
-                    }
-                    match mode.as_str() {
-                        "mit" => motor.set_mode(RobstrideControlMode::Mit)?,
-                        "pos-vel" => motor.set_mode(RobstrideControlMode::Position)?,
-                        "vel" => motor.set_mode(RobstrideControlMode::Velocity)?,
-                        _ => {}
-                    }
-                    std::thread::sleep(Duration::from_millis(30));
-                }
-                if actual != Some(expect) {
-                    return Err(format!(
-                        "run_mode set failed: expect={} actual={:?}. motor likely ignored control mode switch",
-                        expect, actual
-                    )
-                    .into());
-                }
-            }
-        }
     }
 
     if mode != "disable"

@@ -78,7 +78,8 @@ fn handle_ensure_mode(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> 
         }
         Some(MotorHandle::Robstride(m)) => {
             let mode = parse_robstride_mode(v)?;
-            m.set_mode(mode).map_err(|e| e.to_string())?;
+            m.ensure_control_mode(mode, Duration::from_millis(timeout_ms))
+                .map_err(|e| e.to_string())?;
         }
         Some(MotorHandle::Hexfellow(m)) => {
             let mode = v

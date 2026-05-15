@@ -209,6 +209,10 @@ impl RobstrideMotor {
         })
     }
 
+    fn control_mode_value(mode: ControlMode) -> i8 {
+        mode as i8
+    }
+
     fn send_with_status_ack(
         &self,
         comm_type: u32,
@@ -277,6 +281,49 @@ impl RobstrideMotor {
 
     pub fn set_mode(&self, mode: ControlMode) -> Result<()> {
         self.write_parameter(ParameterId::Mode as u16, ParameterValue::I8(mode as i8))
+    }
+
+    pub fn ensure_control_mode(&self, mode: ControlMode, timeout: Duration) -> Result<()> {
+        let desired = Self::control_mode_value(mode);
+        let read_timeout = timeout.max(Duration::from_millis(150));
+
+        if let Ok(current) = self.get_parameter_i8(ParameterId::Mode as u16, read_timeout) {
+            if current == desired {
+                return Ok(());
+            }
+        }
+
+        // Some RobStride firmware variants ignore run_mode writes while torque is
+        // enabled. Disable first, but still rely on the final run_mode readback
+        // as the source of truth.
+        let mut last_error = self.disable().err().map(|e| e.to_string());
+        std::thread::sleep(Duration::from_millis(60));
+
+        let mut actual = None;
+        for _ in 0..3 {
+            if let Err(err) = self.set_mode(mode) {
+                last_error = Some(err.to_string());
+                std::thread::sleep(Duration::from_millis(30));
+                continue;
+            }
+
+            std::thread::sleep(Duration::from_millis(30));
+            match self.get_parameter_i8(ParameterId::Mode as u16, read_timeout) {
+                Ok(value) if value == desired => return Ok(()),
+                Ok(value) => {
+                    actual = Some(value);
+                    last_error = None;
+                }
+                Err(err) => {
+                    last_error = Some(err.to_string());
+                }
+            }
+            std::thread::sleep(Duration::from_millis(30));
+        }
+
+        Err(MotorError::Protocol(format!(
+            "control mode verify failed: expected {desired}, got {actual:?}, last_error={last_error:?}"
+        )))
     }
 
     pub fn set_zero_position(&self) -> Result<()> {

@@ -27,7 +27,8 @@ pub extern "C" fn motor_handle_ensure_mode(
             }
             MotorHandleInner::Robstride(m) => {
                 let rs_mode = to_robstride_mode(mode).map_err(|e| e.to_string())?;
-                m.set_mode(rs_mode).map_err(|e| e.to_string())
+                m.ensure_control_mode(rs_mode, Duration::from_millis(timeout_ms as u64))
+                    .map_err(|e| e.to_string())
             }
             MotorHandleInner::Hightorque(m) => m
                 .ensure_control_mode(mode, Duration::from_millis(timeout_ms as u64))

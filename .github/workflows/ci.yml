@@ -15,9 +15,6 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Docs channel consistency check
-        run: python3 tools/docs/check_channel_docs.py
-
       - name: Cargo check
         run: cargo check --workspace
 

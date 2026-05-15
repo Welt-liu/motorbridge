@@ -53,7 +53,7 @@ fn handle_mit(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
             }
         }
         Some(MotorHandle::Robstride(m)) => {
-            ensure_robstride_mode(ctx, m, RobstrideControlMode::Mit, 0, "mit")?;
+            ensure_robstride_mode(ctx, m, RobstrideControlMode::Mit, "mit")?;
             if let ActiveCommand::Mit {
                 pos,
                 vel,
@@ -158,7 +158,7 @@ fn handle_pos_vel(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
             Ok(json!({"op":"pos_vel","continuous": as_bool(v, "continuous", false)}))
         }
         Some(MotorHandle::Robstride(m)) => {
-            ensure_robstride_mode(ctx, m, RobstrideControlMode::Position, 1, "pos_vel")?;
+            ensure_robstride_mode(ctx, m, RobstrideControlMode::Position, "pos_vel")?;
             if let ActiveCommand::PosVel { pos, vlim } = cmd {
                 let speed = vlim.abs();
                 if speed.is_finite() && speed > 0.0 {
@@ -200,40 +200,11 @@ fn ensure_robstride_mode(
     ctx: &SessionCtx,
     motor: &std::sync::Arc<motor_vendor_robstride::RobstrideMotor>,
     mode: RobstrideControlMode,
-    expect: i8,
     mode_name: &str,
 ) -> Result<(), String> {
-    if let Ok(RobstrideParameterValue::I8(v)) =
-        motor.get_parameter(0x7005, Duration::from_millis(120))
-    {
-        if v == expect {
-            return Ok(());
-        }
-    }
-
-    if let Some(ControllerHandle::Robstride(ctrl)) = ctx.controller.as_ref() {
-        let _ = ctrl.disable_all();
-        std::thread::sleep(Duration::from_millis(60));
-    }
-
-    let mut actual = None;
-    for _ in 0..3 {
-        motor.set_mode(mode).map_err(|e| e.to_string())?;
-        std::thread::sleep(Duration::from_millis(30));
-        if let Ok(RobstrideParameterValue::I8(v)) =
-            motor.get_parameter(0x7005, Duration::from_millis(120))
-        {
-            actual = Some(v);
-            if v == expect {
-                break;
-            }
-        }
-    }
-    if actual != Some(expect) {
-        return Err(format!(
-            "robstride {mode_name} mode switch failed: expect={expect} actual={actual:?}"
-        ));
-    }
+    motor
+        .ensure_control_mode(mode, Duration::from_millis(1000))
+        .map_err(|e| format!("robstride {mode_name} mode switch failed: {e}"))?;
 
     if let Some(ControllerHandle::Robstride(ctrl)) = ctx.controller.as_ref() {
         ctrl.enable_all().map_err(|e| e.to_string())?;
@@ -259,7 +230,7 @@ fn handle_vel(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
             }
         }
         Some(MotorHandle::Robstride(m)) => {
-            ensure_robstride_mode(ctx, m, RobstrideControlMode::Velocity, 2, "vel")?;
+            ensure_robstride_mode(ctx, m, RobstrideControlMode::Velocity, "vel")?;
             if let ActiveCommand::Vel { vel } = cmd {
                 m.set_velocity_target(vel).map_err(|e| e.to_string())?;
             }
