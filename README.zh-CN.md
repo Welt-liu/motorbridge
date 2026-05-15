@@ -399,23 +399,33 @@ DYLD_LIBRARY_PATH=$HOME/.local/lib ./target/release/motor_cli \
   - 检查接线、电源、终端电阻和 CAN 波特率。
 
 
-## Linux USB-CAN（`slcan`）速查
+## Linux USB-CAN（PCAN / CANable）速查
 
-Linux 下直接使用 SocketCAN 网卡名（例如 `can0`、`slcan0`）。
+Linux 下直接使用 SocketCAN 网卡名（例如 `can0`、`can1`）。
 不要在 Linux 的通道名里加波特率后缀（例如 `can0@1000000` 在 Linux SocketCAN 下无效）。
 
-把 `slcan` 适配器挂成 `slcan0`：
+推荐路径：
+
+- PCAN：使用 PEAK 驱动，接口通常显示为 `peak_usb`。
+- CANable：必须刷 candleLight/gs_usb 固件，接口通常显示为 `gs_usb`。
+
+初始化：
 
 ```bash
-sudo slcand -o -c -s8 /dev/ttyUSB0 slcan0
-sudo ip link set slcan0 up
-ip -details link show slcan0
+# PCAN
+scripts/can_restart.sh can0
+
+# CANable candleLight / gs_usb
+scripts/canable_restart.sh can0
+
+ip -details link show can0
+lsmod | grep -E 'peak_usb|gs_usb|can_raw|can_dev'
 ```
 
-之后在 CLI 里直接使用 `slcan0`：
+之后在 CLI 里直接使用 `can0`：
 
 ```bash
-cargo run -p motor_cli --release -- --vendor damiao --channel slcan0 --mode scan --start-id 1 --end-id 255
+cargo run -p motor_cli --release -- --vendor damiao --channel can0 --mode scan --start-id 1 --end-id 255
 ```
 
 ## Damiao 独立 CAN-FD 传输（`socketcanfd`）
@@ -456,7 +466,7 @@ cargo run -p motor_cli --release -- --vendor damiao \
 
 ## CAN 专业调试手册
 
-如需系统化排查 Linux `slcan` 与 Windows `pcan`，请直接使用：
+如需系统化排查 PCAN 与 CANable candleLight/gs_usb，请直接使用：
 
 - [`docs/zh/can_debugging.md`](docs/zh/can_debugging.md)
 - [`docs/en/can_debugging.md`](docs/en/can_debugging.md)

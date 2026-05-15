@@ -44,7 +44,7 @@ motor_cli -h
 
 ## CAN Debugging Entry
 
-- Professional Linux `slcan` + Windows `pcan` troubleshooting: `../docs/en/can_debugging.md`
+- Professional PCAN + CANable candleLight/gs_usb troubleshooting: `../docs/en/can_debugging.md`
 - Chinese troubleshooting guide: `../docs/zh/can_debugging.md`
 
 ## Transport Legend
@@ -93,7 +93,7 @@ Notes:
 | `--help` | flag | off | Prints CLI help and exits |
 | `--vendor` | string | `damiao` | `damiao`, `robstride`, `hightorque`, `myactuator`, `hexfellow`, `all` |
 | `--transport` | string | `auto` | `auto`, `socketcan`, `socketcanfd`, `dm-serial` (`socketcanfd` is Hexfellow-required path; `dm-serial` is Damiao-only) |
-| `--channel` | string | `can0` | Linux: SocketCAN interface name (`can0`/`slcan0`); Windows (PCAN backend): `can0`/`can1` with optional `@bitrate` suffix (for example `can0@1000000`); macOS (PCBUSB backend): `can0`/`can1` |
+| `--channel` | string | `can0` | Linux: SocketCAN interface name (`can0`); Windows (PCAN backend): `can0`/`can1` with optional `@bitrate` suffix (for example `can0@1000000`); macOS (PCBUSB backend): `can0`/`can1` |
 | `--serial-port` | string | `/dev/ttyACM0` | Used when `--transport dm-serial` |
 | `--serial-baud` | u64 | `921600` | Used when `--transport dm-serial` |
 | `--model` | string | vendor dependent | `4340` for Damiao, `rs-00` for RobStride, `hightorque` for HighTorque, `X8` for MyActuator |
@@ -107,8 +107,8 @@ Notes:
 ### 2.1 Channel Quick Reference (`--channel`)
 
 - Linux SocketCAN:
-  - Use interface names directly: `can0`, `can1`, `slcan0`.
-  - Configure bitrate at interface setup time (`ip link` / `slcand`), not in `--channel`.
+  - Use interface names directly: `can0`, `can1`.
+  - Configure bitrate at interface setup time (`ip link` or the adapter helper script), not in `--channel`.
   - `can0@1000000` is invalid on Linux SocketCAN.
 - Windows PCAN:
   - `can0` maps to `PCAN_USBBUS1`, `can1` maps to `PCAN_USBBUS2`.

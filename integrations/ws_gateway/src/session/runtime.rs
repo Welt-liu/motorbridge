@@ -230,6 +230,28 @@ impl SessionCtx {
             (Some(ControllerHandle::Robstride(ctrl)), Some(MotorHandle::Robstride(motor))) => {
                 ctrl.poll_feedback_once().map_err(|e| e.to_string())?;
                 if let Some(s) = motor.latest_state() {
+                    let fault_report = motor.latest_fault_report().map(|f| {
+                        json!({
+                            "fault_raw": f.fault_raw,
+                            "warning_raw": f.warning_raw,
+                            "faults": {
+                                "phase_a_overcurrent": f.faults.phase_a_overcurrent,
+                                "stall_overload": f.faults.stall_overload,
+                                "position_init_fault": f.faults.position_init_fault,
+                                "hardware_id_fault": f.faults.hardware_id_fault,
+                                "encoder_uncalibrated": f.faults.encoder_uncalibrated,
+                                "phase_c_overcurrent": f.faults.phase_c_overcurrent,
+                                "phase_b_overcurrent": f.faults.phase_b_overcurrent,
+                                "overvoltage": f.faults.overvoltage,
+                                "undervoltage": f.faults.undervoltage,
+                                "driver_fault": f.faults.driver_fault,
+                                "overtemperature": f.faults.overtemperature
+                            },
+                            "warnings": {
+                                "overtemperature_warning": f.warnings.overtemperature_warning
+                            }
+                        })
+                    });
                     Ok(json!({
                         "vendor": "robstride",
                         "has_value": true,
@@ -247,7 +269,8 @@ impl SessionCtx {
                             "overtemperature": s.overtemperature,
                             "overcurrent": s.overcurrent,
                             "undervoltage": s.undervoltage
-                        }
+                        },
+                        "fault_report": fault_report
                     }))
                 } else {
                     Ok(json!({"vendor":"robstride","has_value": false}))

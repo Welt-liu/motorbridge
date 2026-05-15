@@ -168,6 +168,8 @@ def _add_run_args(p: argparse.ArgumentParser) -> None:
         choices=[
             "enable",
             "disable",
+            "clear-error",
+            "active-report",
             "mit",
             "pos-vel",
             "vel",
@@ -213,6 +215,7 @@ def _add_run_args(p: argparse.ArgumentParser) -> None:
         help="parameter type; inferred for common RobStride params when omitted",
     )
     p.add_argument("--timeout-ms", type=int, default=500, help="operation timeout in ms")
+    p.add_argument("--active-report", type=int, default=1, help="RobStride active report on/off for active-report mode, 1/0")
     p.add_argument("--set-motor-id", default="", help="change motor/device ID from run command")
     p.add_argument("--set-feedback-id", default="", help="Damiao feedback ID change from run command")
     p.add_argument("--verify-id", type=int, default=1, help="verify ID change, 1/0")
@@ -284,6 +287,8 @@ def _build_parser() -> argparse.ArgumentParser:
             "  motorbridge-cli run --vendor robstride --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD --mode enable --loop 1\n"
             "  motorbridge-cli run --vendor robstride --channel can0 --model rs-00 --motor-id 127 --feedback-id 0xFD --mode read-param --param-id 0x7019\n"
             "  motorbridge-cli run --vendor robstride --channel can0 --model rs-00 --motor-id 127 --feedback-id 0xFD --mode pos-vel --pos 0 --vlim 1 --loc-kp 1\n"
+            "  motorbridge-cli run --vendor robstride --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD --mode clear-error --loop 1\n"
+            "  motorbridge-cli run --vendor robstride --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD --mode active-report --active-report 1 --loop 1\n"
             "  motorbridge-cli damiao-read-param --channel can0 --model 4340P --motor-id 1 --feedback-id 0x11 --param-id 10 --type f32\n"
         ),
     )
@@ -466,6 +471,13 @@ def _run_command(args: argparse.Namespace) -> None:
                 motor.store_parameters()
                 print("[ok] save-parameters requested")
                 return
+            if args.mode == "active-report":
+                if args.vendor != "robstride":
+                    raise ValueError("run --mode active-report is currently supported for --vendor robstride only")
+                enabled = bool(args.active_report)
+                motor.robstride_set_active_report(enabled)
+                print(f"[ok] active report {'enabled' if enabled else 'disabled'}")
+                return
             if args.mode == "zero-by-offset":
                 if args.vendor != "robstride":
                     raise ValueError("run --mode zero-by-offset is currently supported for --vendor robstride only")
@@ -478,11 +490,11 @@ def _run_command(args: argparse.Namespace) -> None:
             if args.vendor == "damiao" and args.verify_model and args.mode not in ("enable", "disable"):
                 _verify_damiao_model(motor, args.model, args.verify_timeout_ms, args.verify_tol)
 
-            if args.mode not in ("enable", "disable", "ping", "zero", "set-zero"):
+            if args.mode not in ("enable", "disable", "clear-error", "active-report", "ping", "zero", "set-zero"):
                 ctrl.enable_all()
                 time.sleep(0.3)
 
-            if args.ensure_mode and args.mode not in ("enable", "disable", "ping", "zero", "set-zero"):
+            if args.ensure_mode and args.mode not in ("enable", "disable", "clear-error", "active-report", "ping", "zero", "set-zero"):
                 try:
                     if args.vendor == "robstride" and args.mode == "force-pos":
                         raise ValueError("robstride does not support force-pos")
@@ -501,6 +513,10 @@ def _run_command(args: argparse.Namespace) -> None:
                     motor.disable()
                     if args.vendor == "damiao":
                         motor.request_feedback()
+                elif args.mode == "clear-error":
+                    motor.clear_error()
+                    print("[ok] clear-error requested")
+                    break
                 elif args.mode == "ping":
                     if args.vendor != "robstride":
                         raise ValueError("ping mode is only valid for RobStride")

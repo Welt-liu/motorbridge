@@ -1,10 +1,10 @@
 # Reliability Validation (Minimum Loop)
 
 <!-- channel-compat-note -->
-## Channel Compatibility (PCAN + slcan + Damiao Serial Bridge)
+## Channel Compatibility (PCAN + CANable candleLight/gs_usb + Damiao Serial Bridge)
 
-- Linux SocketCAN uses interface names directly: `can0`, `can1`, `slcan0`.
-- For USB-serial CAN adapters, bring up `slcan0` first: `sudo slcand -o -c -s8 /dev/ttyUSB0 slcan0 && sudo ip link set slcan0 up`.
+- Linux SocketCAN uses prepared interfaces directly: `can0`, `can1`. For CANable, use candleLight/gs_usb firmware so it appears as a SocketCAN interface such as `can0`.
+- Use PCAN or CANable candleLight/gs_usb for standard CAN.
 - Damiao-only serial bridge transport is also available in CLI (`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`).
 - Full Damiao serial-bridge interface list and command patterns are documented in `motor_cli/README.md` (section `3.6` in `motor_cli/README.zh-CN.md`).
 - On Linux SocketCAN, do not append bitrate in `--channel` (for example `can0@1000000` is invalid).
@@ -32,27 +32,27 @@ python tools/reliability/reliability_runner.py endurance \
   --report tools/reliability/reports/windows_endurance_4340p.json
 ```
 
-Linux (SocketCAN) example (`can0` or `slcan0`):
+Linux (SocketCAN) example (`can0` or `can1`):
 
 ```bash
 python tools/reliability/reliability_runner.py endurance \
-  --command "cargo run -p motor_cli --release -- --vendor damiao --channel slcan0 --model 4340P --motor-id 0x01 --feedback-id 0x11 --mode pos-vel --pos 3.1416 --vlim 2.0 --loop 1 --dt-ms 20" \
+  --command "cargo run -p motor_cli --release -- --vendor damiao --channel can0 --model 4340P --motor-id 0x01 --feedback-id 0x11 --mode pos-vel --pos 3.1416 --vlim 2.0 --loop 1 --dt-ms 20" \
   --duration-sec 1800 \
   --interval-sec 0.5 \
   --report tools/reliability/reports/linux_endurance_4340p.json
 ```
 
-Template-driven `slcan0` regression (recommended):
+Template-driven CANable/PCAN regression:
 
 ```bash
 python tools/reliability/reliability_runner.py endurance \
-  --template tools/reliability/templates/linux_slcan_endurance_4340p.json
+  --template tools/reliability/templates/linux_socketcan_endurance_4340p.json
 ```
 
 Available templates:
 
-- `tools/reliability/templates/linux_slcan_endurance_4340p.json`
-- `tools/reliability/templates/linux_slcan_endurance_rs00_vel.json`
+- `tools/reliability/templates/linux_socketcan_endurance_4340p.json`
+- `tools/reliability/templates/linux_socketcan_endurance_rs00_vel.json`
 
 Pass criteria:
 

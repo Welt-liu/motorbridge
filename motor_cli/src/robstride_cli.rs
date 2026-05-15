@@ -437,6 +437,16 @@ pub fn run_robstride(
             controller.close_bus()?;
             return Ok(());
         }
+        "active-report" => {
+            let enabled = get_u64(args, "active-report", 1)? != 0;
+            motor.set_active_report(enabled)?;
+            println!(
+                "[ok] active report {}",
+                if enabled { "enabled" } else { "disabled" }
+            );
+            controller.close_bus()?;
+            return Ok(());
+        }
         "zero-by-offset" => {
             let _ = get_u64(args, "offset-negate", 0)?;
             let _ = get_u64(args, "store", 1)?;
@@ -506,6 +516,8 @@ pub fn run_robstride(
         && mode != "zero"
         && mode != "set-zero"
         && mode != "save"
+        && mode != "clear-error"
+        && mode != "active-report"
         && mode != "zero-by-offset"
     {
         controller.enable_all()?;
@@ -536,6 +548,20 @@ pub fn run_robstride(
                     } else {
                         return Err(e.into());
                     }
+                }
+            }
+            "clear-error" => {
+                if let Err(e) = motor.clear_error() {
+                    let msg = e.to_string();
+                    if msg.contains("control ack timeout") {
+                        println!(
+                            "[warn] clear-error ack timeout; command may still have been applied"
+                        );
+                    } else {
+                        return Err(e.into());
+                    }
+                } else {
+                    println!("[ok] clear-error requested");
                 }
             }
             "zero" | "set-zero" => {
@@ -672,6 +698,25 @@ pub fn run_robstride(
                 s.overcurrent,
                 s.undervoltage
             );
+            if let Some(f) = motor.latest_fault_report() {
+                println!(
+                    "    fault_raw=0x{:08X} warning_raw=0x{:08X} fault[a_oc={} b_oc={} c_oc={} stall={} pos_init={} hw_id={} enc_uncal={} ov={} uv={} drv={} ot={}] warn[ot={}]",
+                    f.fault_raw,
+                    f.warning_raw,
+                    f.faults.phase_a_overcurrent,
+                    f.faults.phase_b_overcurrent,
+                    f.faults.phase_c_overcurrent,
+                    f.faults.stall_overload,
+                    f.faults.position_init_fault,
+                    f.faults.hardware_id_fault,
+                    f.faults.encoder_uncalibrated,
+                    f.faults.overvoltage,
+                    f.faults.undervoltage,
+                    f.faults.driver_fault,
+                    f.faults.overtemperature,
+                    f.warnings.overtemperature_warning
+                );
+            }
         }
         std::thread::sleep(Duration::from_millis(dt_ms));
     }
@@ -681,6 +726,8 @@ pub fn run_robstride(
         || mode == "zero"
         || mode == "set-zero"
         || mode == "save"
+        || mode == "clear-error"
+        || mode == "active-report"
         || mode == "zero-by-offset"
     {
         controller.close_bus()?;

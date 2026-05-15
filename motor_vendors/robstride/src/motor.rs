@@ -1,7 +1,7 @@
 use crate::protocol::{
-    build_ext_id, decode_ping_reply, decode_read_parameter_value, decode_status_frame,
-    encode_mit_command, encode_parameter_read, encode_parameter_value, encode_parameter_write,
-    ext_id_parts, CommunicationType, PingReply,
+    build_ext_id, decode_fault_report, decode_ping_reply, decode_read_parameter_value,
+    decode_status_frame, encode_mit_command, encode_parameter_read, encode_parameter_value,
+    encode_parameter_write, ext_id_parts, CommunicationType, FaultReport, PingReply,
 };
 use crate::registers::{parameter_info, ParameterDataType, ParameterId};
 use motor_core::bus::{CanBus, CanFrame};
@@ -117,6 +117,7 @@ pub struct RobstrideMotor {
     kp_max: f32,
     kd_max: f32,
     state: Mutex<Option<MotorFeedbackState>>,
+    fault_report: Mutex<Option<FaultReport>>,
     status_seq: AtomicU64,
     param_state: Mutex<ParameterState>,
     ping_reply: Mutex<Option<PingReply>>,
@@ -149,6 +150,7 @@ impl RobstrideMotor {
             kp_max,
             kd_max,
             state: Mutex::new(None),
+            fault_report: Mutex::new(None),
             status_seq: AtomicU64::new(0),
             param_state: Mutex::new(ParameterState::default()),
             ping_reply: Mutex::new(None),
@@ -327,6 +329,26 @@ impl RobstrideMotor {
         )
     }
 
+    pub fn clear_error(&self) -> Result<()> {
+        self.send_with_status_ack(
+            CommunicationType::DISABLE,
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            8,
+            Duration::from_millis(240),
+        )
+    }
+
+    pub fn set_active_report(&self, enabled: bool) -> Result<()> {
+        let cmd = if enabled { 1 } else { 0 };
+        let data = [1, 2, 3, 4, 5, 6, cmd, 0];
+        self.send_ext(
+            CommunicationType::ACTIVE_REPORT,
+            self.host_id_u16(),
+            data,
+            8,
+        )
+    }
+
     pub fn send_cmd_mit(
         &self,
         target_position: f32,
@@ -462,6 +484,10 @@ impl RobstrideMotor {
         self.state.lock().ok().and_then(|s| *s)
     }
 
+    pub fn latest_fault_report(&self) -> Option<FaultReport> {
+        self.fault_report.lock().ok().and_then(|s| *s)
+    }
+
     fn process_feedback_frame_impl(&self, frame: CanFrame) -> Result<()> {
         let (comm_type, extra_data, _) = ext_id_parts(frame.arbitration_id);
         match comm_type {
@@ -526,6 +552,12 @@ impl RobstrideMotor {
                         overcurrent: status.flags.overcurrent,
                         undervoltage: status.flags.undervoltage,
                     });
+                if comm_type == CommunicationType::FAULT_REPORT {
+                    self.fault_report
+                        .lock()
+                        .map_err(|_| MotorError::Io("fault report lock poisoned".to_string()))?
+                        .replace(decode_fault_report(frame.data));
+                }
                 self.status_seq.fetch_add(1, Ordering::Release);
                 Ok(())
             }

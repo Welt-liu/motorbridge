@@ -1,10 +1,10 @@
 ﻿# RobStride API and Parameter Reference (Complete)
 
 <!-- channel-compat-note -->
-## Channel Compatibility (PCAN + slcan + Damiao Serial Bridge)
+## Channel Compatibility (PCAN + CANable candleLight/gs_usb + Damiao Serial Bridge)
 
-- Linux SocketCAN uses interface names directly: `can0`, `can1`, `slcan0`.
-- For USB-serial CAN adapters, bring up `slcan0` first: `sudo slcand -o -c -s8 /dev/ttyUSB0 slcan0 && sudo ip link set slcan0 up`.
+- Linux SocketCAN uses prepared interfaces directly: `can0`, `can1`. For CANable, use candleLight/gs_usb firmware so it appears as a SocketCAN interface such as `can0`.
+- Use PCAN or CANable candleLight/gs_usb for standard CAN.
 - Damiao-only serial bridge transport is also available in CLI (`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`).
 - On Linux SocketCAN, do not append bitrate in `--channel` (for example `can0@1000000` is invalid).
 - On Windows (PCAN backend), `can0/can1` map to `PCAN_USBBUS1/2`; optional `@bitrate` suffix is supported.
@@ -205,9 +205,9 @@ with Controller("can0") as ctrl:
 
 `motorbridge` currently exposes or uses these RobStride protocol communication types:
 
-- In use directly: `0(GET_DEVICE_ID)`, `1(OPERATION_CONTROL)`, `3(ENABLE)`, `4(DISABLE)`, `6(SET_ZERO_POSITION)`, `7(SET_DEVICE_ID)`, `17(READ_PARAMETER)`, `18(WRITE_PARAMETER)`, `22(SAVE_PARAMETERS)`
-- Receive/parse path: `2(OPERATION_STATUS)`, `21(FAULT_REPORT)`
-- Present in protocol constants but not yet first-class high-level APIs: `23(SET_BAUDRATE)`, `24(ACTIVE_REPORT)`, `25(SET_PROTOCOL)`
+- In use directly: `0(GET_DEVICE_ID)`, `1(OPERATION_CONTROL)`, `3(ENABLE)`, `4(DISABLE/CLEAR_ERROR)`, `6(SET_ZERO_POSITION)`, `7(SET_DEVICE_ID)`, `17(READ_PARAMETER)`, `18(WRITE_PARAMETER)`, `22(SAVE_PARAMETERS)`, `24(ACTIVE_REPORT)`
+- Receive/parse path: `2(OPERATION_STATUS)`, `21(FAULT_REPORT)`; fault/warning raw values and documented fault bits are exposed in state diagnostics.
+- Present in protocol constants but intentionally not first-class high-level APIs yet: `23(SET_BAUDRATE)`, `25(SET_PROTOCOL)` because both can make the device unreachable if used incorrectly.
 
 ## 7) Gap Summary and Next Improvements
 
@@ -226,8 +226,7 @@ Main improvement opportunities:
 
 1. Add semantic CLI mode for current/torque control (today still done via write-param, less ergonomic).
 2. Add multi feedback-host candidate support in scan CLI.
-3. Expose high-level APIs for `SET_BAUDRATE / ACTIVE_REPORT / SET_PROTOCOL`.
-4. Decode and present `FAULT_REPORT` in dedicated structured output.
+3. Decide whether `SET_BAUDRATE / SET_PROTOCOL` should be exposed behind an explicit danger gate.
 
 ## 8) WS Gateway JSON Examples
 

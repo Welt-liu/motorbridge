@@ -18,7 +18,7 @@ python3 -m pip install -i https://test.pypi.org/simple/ motorbridge==<版本号>
 
 ## 2）硬件通道说明
 
-- Linux SocketCAN 常用通道：`can0`、`can1`、`slcan0`
+- Linux SocketCAN 常用通道：`can0`、`can1`
 - Windows PCAN 常用通道：`can0@1000000`、`can1@1000000`
 - 测试时尽量保证总线上只有一个发送端。
 
@@ -30,7 +30,7 @@ python3 -m pip install -i https://test.pypi.org/simple/ motorbridge==<版本号>
   走 Damiao 串口桥（`SERIAL_PORT` / `SERIAL_BAUD` 生效），只支持 Damiao。
 
 快速判断：
-- 你用 CAN 设备（PCAN/USB-CAN/slcan）就用 `auto/socketcan`。
+- 你用 CAN 设备（PCAN/CANable candleLight/gs_usb）就用 `auto/socketcan`。
 - 你用 Damiao 串口桥（如 `/dev/ttyACM0`）就用 `dm-serial`。
 
 ## 3）快速命令（无需源码）
@@ -52,7 +52,7 @@ motorbridge-cli run --vendor damiao --channel can0 --model 4340P --motor-id 0x01
 ### 顶部常量参数含义（小白版）
 
 - `TRANSPORT`：链路类型（`auto/socketcan/dm-serial`）
-- `CHANNEL`：CAN 接口名（Linux: `can0/slcan0`；Windows: `can0@1000000`）
+- `CHANNEL`：CAN 接口名（Linux: `can0/can1`；Windows: `can0@1000000`）
 - `VENDOR`：扫描厂商（`all` 最常用）
 - `MOTOR_ID`：电机控制 ID
 - `FEEDBACK_ID`：反馈帧 ID
@@ -98,7 +98,7 @@ python3 bindings/python/get_started/courses/09-multi-motor.py
 
 - `os error 105`：发送过快或有其它程序同时发包；把 `--dt-ms` 提高到 30/50。
 - 电机无响应：先检查布线、波特率、motor/feedback ID。
-- `slcan` 设备：先把 `slcan0` 拉起来再运行示例。
+- CANable 设备：先初始化 candleLight/gs_usb 对应的 SocketCAN 接口再运行示例。
 
 ## 8）`poll_feedback_once()` 版本说明
 

@@ -413,23 +413,24 @@ Replace `motor-id` and `feedback-id` with your scan hits.
   - Check wiring, power, termination resistor, and CAN bitrate.
 
 
-## Linux USB-CAN (`slcan`) Quick Guide
+## Linux CANable candleLight / gs_usb Quick Guide
 
-Linux uses SocketCAN interface names directly (for example `can0`, `slcan0`).
+Linux uses SocketCAN interface names directly (for example `can0`, `can1`).
 Do not pass bitrate suffix in Linux channel names (for example `can0@1000000` is invalid on Linux SocketCAN).
 
-Bring up an `slcan` adapter as `slcan0`:
+For CANable, use candleLight/gs_usb firmware so the adapter appears as a SocketCAN interface:
 
 ```bash
-sudo slcand -o -c -s8 /dev/ttyUSB0 slcan0
-sudo ip link set slcan0 up
-ip -details link show slcan0
+lsusb
+lsmod | grep -E 'gs_usb|can_raw|can_dev'
+scripts/canable_restart.sh can0
+ip -details link show can0
 ```
 
-Then use `slcan0` as CLI channel:
+Then use `can0` as CLI channel:
 
 ```bash
-cargo run -p motor_cli --release -- --vendor damiao --channel slcan0 --mode scan --start-id 1 --end-id 255
+cargo run -p motor_cli --release -- --vendor robstride --channel can0 --mode scan --start-id 1 --end-id 127
 ```
 
 ## Damiao Dedicated CAN-FD Transport (`socketcanfd`)
@@ -470,7 +471,7 @@ cargo run -p motor_cli --release -- --vendor damiao \
 
 ## CAN Debugging (Professional Playbook)
 
-For deterministic troubleshooting of Linux `slcan` and Windows `pcan`, use:
+For deterministic troubleshooting of PCAN and CANable candleLight/gs_usb, use:
 
 - [`docs/en/can_debugging.md`](docs/en/can_debugging.md)
 - [`docs/zh/can_debugging.md`](docs/zh/can_debugging.md)

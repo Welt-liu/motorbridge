@@ -1,10 +1,10 @@
 # motorbridge C++ 绑定
 
 <!-- channel-compat-note -->
-## 通道兼容说明（PCAN + slcan + CAN-FD + Damiao 串口桥）
+## 通道兼容说明（PCAN + CANable candleLight/gs_usb + CAN-FD + Damiao 串口桥）
 
-- Linux SocketCAN 直接使用网卡名：`can0`、`can1`、`slcan0`。
-- 串口类 USB-CAN 需先创建并拉起 `slcan0`：`sudo slcand -o -c -s8 /dev/ttyUSB0 slcan0 && sudo ip link set slcan0 up`。
+- Linux SocketCAN 直接使用已初始化的接口名：`can0`、`can1`。CANable 请刷 candleLight/gs_usb 固件，让系统识别为 `can0` 这类 SocketCAN 接口。
+- 标准 CAN 推荐 PCAN 或 CANable candleLight/gs_usb。
 - CAN-FD 链路可通过 CLI（`--transport socketcanfd`）和 C++ SDK（`Controller::from_socketcanfd(...)`）使用，Hexfellow 必须走该链路。
 - 仅 Damiao 可选串口桥链路：`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`。
 - Damiao 串口桥完整接口与命令模板见 `motor_cli/README.zh-CN.md` 第 `3.6` 节（英文见 `motor_cli/README.md`）。

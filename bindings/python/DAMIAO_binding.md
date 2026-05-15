@@ -6,7 +6,7 @@
 
 ## 1) 通道与运行前提
 
-1. Linux SocketCAN 直接用 `can0/can1/slcan0`。  
+1. Linux SocketCAN 直接用 `can0/can1`。  
 2. Linux 下 `--channel` 不要写 `@bitrate`（例如 `can0@1000000` 无效）。  
 3. Windows PCAN 后端中，`can0/can1` 映射 `PCAN_USBBUS1/2`（可带 `@bitrate`）。  
 4. 运行示例前建议设置：

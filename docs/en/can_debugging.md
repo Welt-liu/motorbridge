@@ -1,10 +1,10 @@
-# CAN Debugging Guide (Linux `slcan` + Windows `pcan`)
+# CAN Debugging Guide (PCAN + CANable candleLight/gs_usb)
 
 This guide is the canonical troubleshooting playbook for channel setup and link-level diagnostics.
 
 ## 1. Scope and Backend Mapping
 
-- Linux backend: SocketCAN (`can0`, `can1`, `slcan0`, ...)
+- Linux backend: SocketCAN (`can0`, `can1`, ...)
 - Windows backend: PEAK PCAN via `PCANBasic.dll` (`can0/can1` mapping to `PCAN_USBBUS1/2`)
 
 Rules:
@@ -12,46 +12,53 @@ Rules:
 - Linux: configure bitrate at interface bring-up time; do not put `@bitrate` in `--channel`.
 - Windows PCAN: `@bitrate` suffix is allowed in `--channel` (for example `can0@1000000`).
 
-## 2. Linux `slcan` Bring-up and Verification
+## 2. Linux PCAN and CANable candleLight/gs_usb Bring-up
 
-### 2.1 Bring up `slcan0`
-
-```bash
-sudo pkill slcand 2>/dev/null || true
-sudo slcand -o -c -s8 /dev/ttyUSB0 slcan0
-sudo ip link set slcan0 up
-ip -details link show slcan0
-```
-
-Expected:
-
-- Interface exists as `slcan0`
-- State is `UP` (or `UNKNOWN`)
-
-### 2.2 Quick traffic sanity checks
-
-Terminal A:
+### 2.1 Identify the adapter
 
 ```bash
-candump slcan0
+lsusb
+lsmod | grep -E 'peak_usb|gs_usb|can_raw|can_dev'
+ip -details link show type can
 ```
 
-Terminal B (send a test frame):
+Expected adapter mapping:
+
+- PCAN-USB: kernel driver `peak_usb`; use `scripts/can_restart.sh can0`.
+- CANable candleLight: kernel driver `gs_usb`; use `scripts/canable_restart.sh can0`.
+
+### 2.2 Initialize the SocketCAN interface
+
+PCAN:
 
 ```bash
-cansend slcan0 001#1122334455667788
+scripts/can_restart.sh can0
 ```
 
-If no frame appears in `candump`, check adapter wiring, termination, and bitrate consistency with motor firmware.
+CANable candleLight/gs_usb:
 
-### 2.3 Run `motor_cli` on `slcan0`
+```bash
+scripts/canable_restart.sh can0
+```
+
+Then confirm `can0` is `UP`, bitrate is `1000000`, and the driver line matches the adapter.
+
+### 2.3 Quick traffic sanity checks
+
+```bash
+candump can0
+```
+
+If no frame appears during scan/control, check wiring, termination, ground reference, power, and bitrate consistency with motor firmware.
+
+### 2.4 Run `motor_cli` on `can0`
 
 ```bash
 cargo run -p motor_cli --release -- \
-  --vendor damiao --channel slcan0 --mode scan --start-id 1 --end-id 16
+  --vendor robstride --channel can0 --mode scan --start-id 1 --end-id 16
 ```
 
-## 3. Linux Native SocketCAN (`can0`) Quick Checks
+## 3. Linux SocketCAN (`can0`) Quick Checks
 
 ```bash
 sudo ip link set can0 down 2>/dev/null || true
@@ -94,7 +101,7 @@ If startup fails with `load PCANBasic.dll failed`, fix PATH/runtime installation
 
 - `if_nametoindex failed ...`:
   - Interface name is wrong or interface not created/up
-  - Action: `ip link show`, recreate `slcan0` or bring up `can0`
+  - Action: `ip link show`, bring up `can0` or select the correct SocketCAN interface
 - `socketcan write failed` / `socketcan read failed` with hint `interface is down`:
   - Action: `ip -details link show <ifname>`, then bring link up
 - `... unavailable` / `interface not found`:
@@ -112,9 +119,8 @@ If startup fails with `load PCANBasic.dll failed`, fix PATH/runtime installation
 ## 6. Minimal Cross-Platform Acceptance Checklist
 
 - Linux `can0`: scan command returns expected device IDs
-- Linux `slcan0`: same scan command works after `slcand` setup
 - Windows `can0@1000000`: scan succeeds with PEAK adapter
 - One control command (`mit` or `pos-vel`) succeeds in each environment
 
-If all four pass, channel support for `pcan + slcan` is considered aligned.
+If Linux SocketCAN and Windows PCAN scans plus one control command pass, channel support is considered aligned.
 

@@ -1,10 +1,10 @@
 # 支持设备
 
 <!-- channel-compat-note -->
-## 通道兼容说明（PCAN + slcan + Damiao 串口桥）
+## 通道兼容说明（PCAN + CANable candleLight/gs_usb + Damiao 串口桥）
 
-- Linux SocketCAN 直接使用网卡名：`can0`、`can1`、`slcan0`。
-- 串口类 USB-CAN 需先创建并拉起 `slcan0`：`sudo slcand -o -c -s8 /dev/ttyUSB0 slcan0 && sudo ip link set slcan0 up`。
+- Linux SocketCAN 直接使用已初始化的接口名：`can0`、`can1`。CANable 请刷 candleLight/gs_usb 固件，让系统识别为 `can0` 这类 SocketCAN 接口。
+- 标准 CAN 推荐 PCAN 或 CANable candleLight/gs_usb。
 - 仅 Damiao 提供串口桥链路（CLI）：`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`。
 - Linux SocketCAN 下 `--channel` 不要带 `@bitrate`（例如 `can0@1000000` 无效）。
 - Windows（PCAN 后端）中，`can0/can1` 映射到 `PCAN_USBBUS1/2`，可选 `@bitrate` 后缀。

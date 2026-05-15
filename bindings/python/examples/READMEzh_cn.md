@@ -1,10 +1,10 @@
 # Python 实用示例（中文）
 
 <!-- channel-compat-note -->
-## 通道兼容说明（PCAN + slcan + CAN-FD + Damiao 串口桥）
+## 通道兼容说明（PCAN + CANable candleLight/gs_usb + CAN-FD + Damiao 串口桥）
 
-- Linux SocketCAN 直接使用接口名：`can0`、`can1`、`slcan0`。
-- USB-串口类 CAN 适配器需先创建并拉起 `slcan0`：`sudo slcand -o -c -s8 /dev/ttyUSB0 slcan0 && sudo ip link set slcan0 up`。
+- Linux SocketCAN 直接使用已初始化的接口名：`can0`、`can1`。CANable 请刷 candleLight/gs_usb 固件，让系统识别为 `can0` 这类 SocketCAN 接口。
+- 标准 CAN 推荐 PCAN 或 CANable candleLight/gs_usb。
 - Hexfellow 示例必须使用 CAN-FD 链路（`Controller.from_socketcanfd(...)` / CLI `--transport socketcanfd`）。
 - Damiao 可选串口桥链路（CLI）：`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`。
 - Damiao 串口桥完整命令模板见 `motor_cli/README.md`（中文见 `motor_cli/README.zh-CN.md` 第 `3.6` 节）。
@@ -49,7 +49,7 @@ python3 bindings/python/examples/simple_02_quad_motor_control.py \
 ### 参数速查（以上两个最简单脚本）
 
 `simple_01_motor_control.py`
-- `--channel`：CAN 接口名，如 `can0`、`can1`、`slcan0`。
+- `--channel`：CAN 接口名，如 `can0`、`can1`。
 - `--loop`：控制循环次数。
 - `--dt-ms`：控制周期（毫秒）。建议先用 `20`；总线繁忙可调到 `30/50`。
 - `--pos`：目标角度（弧度）。
@@ -138,7 +138,7 @@ python3 bindings/python/examples/quad_vendor_binding_ws_demo.py \
 - `dm_serial_07_enable_setzero_enable_rotate_demo.py`：SOP-07 串口桥稳健顺序（`disable -> set_zero -> enable -> control`）
 - `dm_serial_08_negative_enable_setzero_guard_demo.py`：SOP-08 串口桥负向测试（`enable` 态 `set_zero` 应被核心拒绝）
 - `dm_serial_leader_monitor_demo.py`：Damiao 串口桥 leader 监视（enable-all + 指定 ID 全状态流）
-- `robstride_wrapper_demo.py`：RobStride ping / 读参 / mit / vel 示例
+- `robstride_wrapper_demo.py`：RobStride ping / 清故障 / 读参 / 写参 / 主动上报 / pos-vel / mit / vel 示例
 - `quad_vendor_pos_binding_demo.py`：Python binding 四电机同步位置示例（不经过 ws_gateway）
 - `quad_vendor_binding_ws_demo.py`：Python binding WS 桥后端（用于网页控制）
 - `quad_vendor_binding_ws_demo.html`：`quad_vendor_binding_ws_demo.py` 的网页 UI
@@ -269,14 +269,27 @@ RobStride：
 
 ```bash
 PYTHONPATH=bindings/python/src python3 bindings/python/examples/robstride_wrapper_demo.py \
-  --channel can0 --model rs-00 --motor-id 127 --mode ping
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD --mode ping
 ```
 
-RobStride 读参数：
+RobStride 主动上报初始化：
 
 ```bash
 PYTHONPATH=bindings/python/src python3 bindings/python/examples/robstride_wrapper_demo.py \
-  --channel can0 --model rs-00 --motor-id 127 --mode read-param --param-id 0x7019
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode write-param --param-id 0x7026 --param-type u16 --param-value 3
+
+PYTHONPATH=bindings/python/src python3 bindings/python/examples/robstride_wrapper_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode active-report --active-report 1
+```
+
+RobStride 位置命令：
+
+```bash
+PYTHONPATH=bindings/python/src python3 bindings/python/examples/robstride_wrapper_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode pos-vel --pos 1.5 --vlim 1.0 --loc-kp 5.0 --loop 1 --dt-ms 20
 ```
 
 Hexfellow（仅 CAN-FD）：

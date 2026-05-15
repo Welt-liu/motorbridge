@@ -27,7 +27,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--channel",
         default="can0",
-        help="SocketCAN interface name (e.g. can0, can1, slcan0). Default: can0",
+        help="SocketCAN interface name (e.g. can0, can1). Default: can0",
     )
     p.add_argument(
         "--loop",

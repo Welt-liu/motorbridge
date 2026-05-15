@@ -2,7 +2,7 @@
 """Check channel documentation consistency.
 
 Rule: any Markdown file mentioning `can0` must also mention either:
-- `slcan0`, or
+- `PCAN`, `CANable`, `gs_usb`, `candleLight`, or
 - `can_debugging.md` (central troubleshooting guide link)
 """
 
@@ -22,7 +22,7 @@ SKIP_DIRS = {
 }
 
 CAN0_RE = re.compile(r"\bcan0\b")
-SLCAN_RE = re.compile(r"\bslcan0\b")
+SUPPORTED_ADAPTER_RE = re.compile(r"\b(PCAN|CANable|gs_usb|candleLight)\b")
 DEBUG_GUIDE_RE = re.compile(r"can_debugging\.md")
 
 
@@ -43,13 +43,13 @@ def main() -> int:
         if not CAN0_RE.search(text):
             continue
         checked += 1
-        if SLCAN_RE.search(text) or DEBUG_GUIDE_RE.search(text):
+        if SUPPORTED_ADAPTER_RE.search(text) or DEBUG_GUIDE_RE.search(text):
             continue
         violations.append(str(md.relative_to(ROOT)))
 
     if violations:
         print("[channel-doc-check] FAILED")
-        print("Files mention `can0` but neither `slcan0` nor `can_debugging.md` is present:")
+        print("Files mention `can0` but no supported adapter wording or `can_debugging.md` is present:")
         for item in sorted(violations):
             print(f"  - {item}")
         return 1

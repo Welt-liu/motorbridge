@@ -183,7 +183,7 @@ Vendors:\n\
 Damiao modes:\n\
   --mode scan | enable | disable | mit | pos-vel | vel | force-pos\n\n\
 RobStride modes:\n\
-  --mode ping | scan | enable | disable | zero | set-zero | save | zero-by-offset | mit | pos-vel | vel | read-param | write-param\n\n\
+  --mode ping | scan | enable | disable | clear-error | active-report | zero | set-zero | save | zero-by-offset | mit | pos-vel | vel | read-param | write-param\n\n\
 HighTorque modes:\n\
   --mode ping | scan | read | mit | pos | vel | tqe | volt | cur | pos-vel-tqe | stop | brake | rezero | conf-write | timed-read\n\n\
 MyActuator modes:\n\
@@ -219,6 +219,7 @@ RobStride extras:\n\
   --feedback-ids <list>     for scan host_id candidates, default 0xFD,0xFF,0xFE,0x00,0xAA\n\
   --timeout-ms <ms>         for scan ping timeout, default 80\n\
   --param-timeout-ms <ms>   for scan parameter fallback timeout, default 120\n\
+  --active-report 1/0       for active-report mode, default 1 (RobStride comm_type=24)\n\
   --zero-exp 1/0            for zero/set-zero, default 0 (run experimental sequence: disable -> set-zero -> optional save)\n\
   --offset-negate 1/0       accepted for zero-by-offset, but zero-by-offset is temporarily disabled\n\
   --store 1/0               for zero-exp, default 1 (send save-parameters); zero-by-offset sends no frames while disabled\n\

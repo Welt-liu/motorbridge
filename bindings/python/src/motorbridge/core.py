@@ -246,6 +246,14 @@ class Motor:
             raise ValueError(f"RobStride new_device_id must be in 1..255, got {new_device_id}")
         _ok(self._abi.lib.motor_handle_robstride_set_device_id(self._ptr, new_device_id), "robstride_set_device_id")
 
+    def robstride_set_active_report(self, enabled: bool) -> None:
+        _ok(
+            self._abi.lib.motor_handle_robstride_set_active_report(
+                self._ptr, 1 if enabled else 0
+            ),
+            "robstride_set_active_report",
+        )
+
     def robstride_write_param_i8(self, param_id: int, value: int) -> None:
         _ok(self._abi.lib.motor_handle_robstride_write_param_i8(self._ptr, param_id, value), "robstride_write_param_i8")
 

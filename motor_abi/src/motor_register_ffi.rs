@@ -242,3 +242,27 @@ pub extern "C" fn motor_handle_robstride_set_device_id(
     };
     ffi_rc(rc)
 }
+
+#[unsafe(no_mangle)]
+pub extern "C" fn motor_handle_robstride_set_active_report(
+    motor: *mut MotorHandle,
+    enabled: u8,
+) -> i32 {
+    if motor.is_null() {
+        set_last_error("motor is null");
+        return -1;
+    }
+    let motor = unsafe { &mut *motor };
+    let rc = match &motor.inner {
+        MotorHandleInner::Robstride(m) => {
+            m.set_active_report(enabled != 0).map_err(|e| e.to_string())
+        }
+        MotorHandleInner::Damiao(_)
+        | MotorHandleInner::Hexfellow(_)
+        | MotorHandleInner::MyActuator(_)
+        | MotorHandleInner::Hightorque(_) => {
+            Err("robstride_set_active_report requires a RobStride motor".to_string())
+        }
+    };
+    ffi_rc(rc)
+}

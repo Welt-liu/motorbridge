@@ -12,7 +12,7 @@ CAN 联调与排障文档： [../../docs/zh/can_debugging.md](../../docs/zh/can_
 - 该问题排查中；如需优先稳定运行，建议先使用 Python binding 直连控制（不走 WS）：
 
 ```bash
-cd /home/w0x7ce/Downloads/dm_candrive/rust_dm
+cd /home/w0x7ce/Downloads/MOTOR_LIB/motorbridge
 cargo build -p motor_abi --release
 export PYTHONPATH=bindings/python/src
 export LD_LIBRARY_PATH=$PWD/target/release:${LD_LIBRARY_PATH}
@@ -39,14 +39,14 @@ python3 bindings/python/examples/quad_vendor_pos_binding_demo.py --channel can0 
 ## 1) 启动 ws_gateway
 
 ```bash
-cd /home/w0x7ce/Downloads/dm_candrive/rust_dm
+cd /home/w0x7ce/Downloads/MOTOR_LIB/motorbridge
 cargo run -p ws_gateway --release -- --bind 127.0.0.1:9002 --vendor damiao --channel can0 --model 4340P --motor-id 0x01 --feedback-id 0x11 --dt-ms 50
 ```
 
 ## 2) 启动本目录静态服务
 
 ```bash
-cd /home/w0x7ce/Downloads/dm_candrive/rust_dm
+cd /home/w0x7ce/Downloads/MOTOR_LIB/motorbridge
 python3 examples/http_quad_control_demo/server.py --bind 127.0.0.1 --port 18081
 ```
 

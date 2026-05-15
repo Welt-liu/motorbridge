@@ -47,9 +47,7 @@ pub extern "C" fn motor_handle_clear_error(motor: *mut MotorHandle) -> i32 {
                 Err("clear_error is not supported for Hexfellow".to_string())
             }
             MotorHandleInner::MyActuator(m) => m.stop_motor().map_err(|e| e.to_string()),
-            MotorHandleInner::Robstride(_) => {
-                Err("clear_error is not supported for RobStride ABI yet".to_string())
-            }
+            MotorHandleInner::Robstride(m) => m.clear_error().map_err(|e| e.to_string()),
             MotorHandleInner::Hightorque(m) => m.clear_error().map_err(|e| e.to_string()),
         }
     })

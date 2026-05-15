@@ -12,7 +12,7 @@ CAN 联调与排障文档： [../../docs/zh/can_debugging.md](../../docs/zh/can_
 - 若你当前项目优先稳定性，建议暂时改用 Python binding 直连控制（不经过 WS）：
 
 ```bash
-cd /home/w0x7ce/Downloads/dm_candrive/rust_dm
+cd /home/w0x7ce/Downloads/MOTOR_LIB/motorbridge
 cargo build -p motor_abi --release
 export PYTHONPATH=bindings/python/src
 export LD_LIBRARY_PATH=$PWD/target/release:${LD_LIBRARY_PATH}
@@ -30,13 +30,13 @@ python3 bindings/python/examples/quad_vendor_pos_binding_demo.py --channel can0 
 若仍希望使用 WS 上位机交互，但绕开 `ws_gateway`，可试 Python binding WS bridge：
 
 ```bash
-cd /home/w0x7ce/Downloads/dm_candrive/rust_dm
+cd /home/w0x7ce/Downloads/MOTOR_LIB/motorbridge
 cargo build -p motor_abi --release
 export PYTHONPATH=bindings/python/src
 export LD_LIBRARY_PATH=$PWD/target/release:${LD_LIBRARY_PATH}
 python3 bindings/python/examples/quad_vendor_binding_ws_demo.py --bind 127.0.0.1 --port 9010 --channel can0 --dt-ms 20
 # 浏览器打开：
-# file:///home/w0x7ce/Downloads/dm_candrive/rust_dm/bindings/python/examples/quad_vendor_binding_ws_demo.html
+# file:///home/w0x7ce/Downloads/MOTOR_LIB/motorbridge/bindings/python/examples/quad_vendor_binding_ws_demo.html
 ```
 
 ## ws_quad_sync_hmi.html

@@ -215,4 +215,4 @@ npx mintlify dev
 ```
 
 
-通道排障参考：请查看 docs/zh/can_debugging.md（包含 can0 与 slcan0 的配置说明）。
+通道排障参考：请查看 docs/zh/can_debugging.md（包含 can0 的配置说明）。

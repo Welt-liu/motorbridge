@@ -286,9 +286,9 @@ mod tests {
 
     #[test]
     fn socketcan_hint_covers_enetdown_with_interface_name() {
-        let hint = socketcan_hint(Some(100), "slcan0");
+        let hint = socketcan_hint(Some(100), "can0");
         assert!(hint.contains("interface is down"));
-        assert!(hint.contains("slcan0"));
+        assert!(hint.contains("can0"));
     }
 
     #[test]

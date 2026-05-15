@@ -12,8 +12,7 @@ Current tested conclusion:
 ```text
 PCAN-USB                         -> supported, stable control
 CANable candleLight / gs_usb     -> supported as SocketCAN, test before control
-gscan / generic gs_usb           -> not recommended; scan may work, control is unstable
-SLCAN via DaMiao DM-USB2FDCAN    -> not supported by slcand in our test
+Other USB-CAN adapters           -> unsupported unless they expose PCAN or candleLight/gs_usb
 ```
 
 ## Platform Support
@@ -144,7 +143,7 @@ Check interfaces and drivers:
 ```bash
 ip -details link show type can
 lsusb
-lsmod | grep -E 'can_raw|can_dev|gs_usb|slcan'
+lsmod | grep -E 'can_raw|can_dev|gs_usb'
 ```
 
 Expected `lsusb` example for the tested CANable/candleLight path:
@@ -177,16 +176,14 @@ motorbridge-cli scan --vendor robstride --channel can0 --start-id 1 --end-id 127
 motorbridge-gateway -- --bind 127.0.0.1:9002 --vendor robstride --transport socketcan --channel can0
 ```
 
-Do not assume `/dev/ttyACM*` means SLCAN. It must speak the standard
-Lawicel/SLCAN protocol before `slcand` can create a CAN interface.
+Do not use `/dev/ttyACM*` serial CAN paths as the standard CAN path here.
+For MotorBridge standard CAN, use PCAN or CANable candleLight/gs_usb.
 
 Windows note for CANable:
 
 - CANable firmware matters.
 - candleLight/gs_usb is a Linux SocketCAN path; Windows may need WinUSB,
   candleLight-compatible tools, or a vendor-specific application.
-- SLCAN firmware appears as a serial COM port, but it must speak Lawicel/SLCAN
-  before SLCAN tools can use it.
 - These Linux scripts do not run directly on Windows.
 
 macOS note for CANable:
@@ -195,27 +192,12 @@ macOS note for CANable:
 - Use firmware-specific tooling. Linux `ip link`, `gs_usb`, and SocketCAN are
   not macOS interfaces.
 
-## Not Recommended / Removed
+## Unsupported Adapters
 
-`gscan` / generic `gs_usb` was tested with RobStride:
-
-- scan can work
-- low-rate replies can appear
-- Studio / continuous control is unstable
-
-So there is no generic `gsusb_restart.sh` helper in this directory now. For the
-known CANable candleLight device, use `canable_restart.sh`. For stable onsite
-RobStride control, prefer PCAN.
-
-`SLCAN` through DaMiao `DM-USB2FDCAN` was tested:
-
-- device appeared as `/dev/ttyACM1`
-- `slcand` did not create `slcan0`
-- SLCAN version query did not return a Lawicel/SLCAN response
-
-So there is no `slcan_restart.sh` helper in this directory now. That adapter may
-need a vendor-specific protocol or firmware, but it is not a supported
-MotorBridge SocketCAN startup path here.
+Adapters outside PCAN and CANable candleLight/gs_usb are not documented as
+supported startup paths here. If an adapter only exposes a vendor-specific serial
+protocol, use the vendor toolchain or the dedicated Damiao `dm-serial` transport
+when it is a Damiao serial bridge.
 
 ## CAN-FD
 

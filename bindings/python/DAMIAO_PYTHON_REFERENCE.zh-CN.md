@@ -19,7 +19,7 @@
 ## 2. 基础准备
 
 ```bash
-cd /home/w0x7ce/Downloads/dm_candrive/rust_dm
+cd /home/w0x7ce/Downloads/MOTOR_LIB/motorbridge
 export PYTHONPATH=bindings/python/src
 export LD_LIBRARY_PATH=$PWD/target/release:${LD_LIBRARY_PATH}
 ```
@@ -30,7 +30,9 @@ export LD_LIBRARY_PATH=$PWD/target/release:${LD_LIBRARY_PATH}
 
 | 参数 | 中文含义 | 常见值/说明 |
 |---|---|---|
-| `channel` | 标准 CAN 通道名 | `can0` / `can1` / `slcan0` |
+| `channel` | 标准 CAN 通道名 | `can0` / `can1` |
+
+> 标准 CAN 推荐 PCAN 或 CANable candleLight/gs_usb；Damiao 串口桥请使用 `dm-serial`。
 | `serial_port` / `--serial-port` | 串口设备路径 | `/dev/ttyACM0` |
 | `serial_baud` / `--serial-baud` | 串口波特率 | 常用 `921600` |
 | `model` / `--model` | 电机型号提示字符串 | `4310` / `4340P` |

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/home/w0x7ce/Downloads/dm_candrive/rust_dm"
+ROOT="${MOTORBRIDGE_ROOT:-/home/w0x7ce/Downloads/MOTOR_LIB/motorbridge}"
 WS_URL="${1:-ws://127.0.0.1:9002}"
 CHANNEL="${2:-can0}"
 START_ID="${3:-1}"

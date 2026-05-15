@@ -1,10 +1,10 @@
 # Python Practical Demos
 
 <!-- channel-compat-note -->
-## Channel Compatibility (PCAN + slcan + CAN-FD + Damiao Serial Bridge)
+## Channel Compatibility (PCAN + CANable candleLight/gs_usb + CAN-FD + Damiao Serial Bridge)
 
-- Linux SocketCAN uses interface names directly: `can0`, `can1`, `slcan0`.
-- For USB-serial CAN adapters, bring up `slcan0` first: `sudo slcand -o -c -s8 /dev/ttyUSB0 slcan0 && sudo ip link set slcan0 up`.
+- Linux SocketCAN uses prepared interfaces directly: `can0`, `can1`. For CANable, use candleLight/gs_usb firmware so it appears as a SocketCAN interface such as `can0`.
+- Use PCAN or CANable candleLight/gs_usb for standard CAN.
 - Hexfellow examples require CAN-FD path (`Controller.from_socketcanfd(...)` / CLI `--transport socketcanfd`).
 - Damiao-only serial bridge transport is also available in CLI (`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`).
 - Full Damiao serial-bridge interface list and command patterns are documented in `motor_cli/README.md` (section `3.6` in `motor_cli/README.zh-CN.md`).
@@ -51,7 +51,7 @@ python3 bindings/python/examples/simple_02_quad_motor_control.py \
 ### Parameter Cheat Sheet (for the two simplest scripts)
 
 `simple_01_motor_control.py`
-- `--channel`: CAN interface name, e.g. `can0`, `can1`, `slcan0`.
+- `--channel`: CAN interface name, e.g. `can0`, `can1`.
 - `--loop`: number of control iterations.
 - `--dt-ms`: control period (ms). Start with `20`; if bus is busy, use `30`/`50`.
 - `--pos`: target position (radians).
@@ -140,7 +140,7 @@ python3 bindings/python/examples/quad_vendor_binding_ws_demo.py \
 - `dm_serial_07_enable_setzero_enable_rotate_demo.py`: SOP-07 dm-serial robust sequence (`disable -> set_zero -> enable -> control`)
 - `dm_serial_08_negative_enable_setzero_guard_demo.py`: SOP-08 dm-serial negative test (`enable` state `set_zero` should be rejected by core guard)
 - `dm_serial_leader_monitor_demo.py`: Damiao dm-serial leader monitor (enable-all + selected-ID full state stream)
-- `robstride_wrapper_demo.py`: RobStride ping / read-param / mit / vel demo
+- `robstride_wrapper_demo.py`: RobStride ping / clear-error / read-param / write-param / active-report / pos-vel / mit / vel demo
 - `quad_vendor_pos_binding_demo.py`: 4-motor sync position demo via Python binding (no ws_gateway)
 - `quad_vendor_binding_ws_demo.py`: Python binding WS bridge backend (for web UI control)
 - `quad_vendor_binding_ws_demo.html`: simple web UI for `quad_vendor_binding_ws_demo.py`
@@ -271,14 +271,27 @@ RobStride:
 
 ```bash
 PYTHONPATH=bindings/python/src python3 bindings/python/examples/robstride_wrapper_demo.py \
-  --channel can0 --model rs-00 --motor-id 127 --mode ping
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD --mode ping
 ```
 
-RobStride read parameter:
+RobStride active-report bring-up:
 
 ```bash
 PYTHONPATH=bindings/python/src python3 bindings/python/examples/robstride_wrapper_demo.py \
-  --channel can0 --model rs-00 --motor-id 127 --mode read-param --param-id 0x7019
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode write-param --param-id 0x7026 --param-type u16 --param-value 3
+
+PYTHONPATH=bindings/python/src python3 bindings/python/examples/robstride_wrapper_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode active-report --active-report 1
+```
+
+RobStride position command:
+
+```bash
+PYTHONPATH=bindings/python/src python3 bindings/python/examples/robstride_wrapper_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode pos-vel --pos 1.5 --vlim 1.0 --loc-kp 5.0 --loop 1 --dt-ms 20
 ```
 
 Hexfellow (CAN-FD only):

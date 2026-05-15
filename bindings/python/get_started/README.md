@@ -18,7 +18,7 @@ python3 -m pip install -i https://test.pypi.org/simple/ motorbridge==<version>
 
 ## 2) Hardware and Channel
 
-- Linux SocketCAN channel examples: `can0`, `can1`, `slcan0`
+- Linux SocketCAN channel examples: `can0`, `can1`
 - Windows PCAN channel examples: `can0@1000000`, `can1@1000000`
 - Ensure only one sender is writing to the bus while testing.
 
@@ -48,7 +48,7 @@ For beginners, this is easier to follow and avoids duplicate entry points.
 ### Config constants (simple meaning)
 
 - `TRANSPORT`: `auto/socketcan/dm-serial`
-- `CHANNEL`: CAN interface name (`can0`, `slcan0`, `can0@1000000`, ...)
+- `CHANNEL`: CAN interface name (`can0`, `can1`, `can0@1000000`, ...)
 - `VENDOR`: scan target vendor (`all` is most common)
 - `MOTOR_ID` / `FEEDBACK_ID`: motor command/feedback IDs
 - `MODEL`: motor model string
@@ -93,7 +93,7 @@ python3 bindings/python/get_started/courses/09-multi-motor.py
 
 - `os error 105`: bus TX is too fast or another process is sending; increase `--dt-ms` to 30/50.
 - no motor response: verify CAN wiring, bitrate, motor/feedback IDs.
-- `slcan` users: bring up `slcan0` before running examples.
+- CANable users: initialize the candleLight/gs_usb interface before running examples.
 
 ## 8) `poll_feedback_once()` version note
 

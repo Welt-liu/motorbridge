@@ -1,6 +1,6 @@
 use crate::commands::{
-    as_u16, as_u64, handle_robstride_read_param, handle_robstride_write_param, parse_damiao_mode,
-    parse_robstride_mode,
+    as_bool, as_u16, as_u64, handle_robstride_read_param, handle_robstride_write_param,
+    parse_damiao_mode, parse_robstride_mode,
 };
 use crate::model::{ControllerHandle, MotorHandle};
 use crate::session::SessionCtx;
@@ -15,6 +15,7 @@ pub(crate) fn handle(op: &str, v: &Value, ctx: &mut SessionCtx) -> Option<Result
         "set_zero_position" => Some(handle_set_zero_position(ctx)),
         "ensure_mode" => Some(handle_ensure_mode(v, ctx)),
         "request_feedback" => Some(handle_request_feedback(ctx)),
+        "set_active_report" => Some(handle_set_active_report(v, ctx)),
         "store_parameters" => Some(handle_store_parameters(ctx)),
         "set_can_timeout_ms" => Some(handle_set_can_timeout_ms(v, ctx)),
         "write_register_u32" => Some(handle_write_register_u32(v, ctx)),
@@ -32,9 +33,7 @@ fn handle_clear_error(ctx: &mut SessionCtx) -> Result<Value, String> {
     ctx.ensure_connected()?;
     match ctx.motor.as_ref() {
         Some(MotorHandle::Damiao(m)) => m.clear_error().map_err(|e| e.to_string())?,
-        Some(MotorHandle::Robstride(_)) => {
-            return Err("clear_error is not supported for robstride".to_string())
-        }
+        Some(MotorHandle::Robstride(m)) => m.clear_error().map_err(|e| e.to_string())?,
         Some(MotorHandle::Hexfellow(_)) => {
             return Err("clear_error is not supported for hexfellow".to_string())
         }
@@ -130,6 +129,30 @@ fn handle_request_feedback(ctx: &mut SessionCtx) -> Result<Value, String> {
         _ => return Err("motor not connected".to_string()),
     }
     Ok(json!({"requested": true}))
+}
+
+fn handle_set_active_report(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
+    ctx.ensure_connected()?;
+    let enabled = as_bool(v, "enabled", true);
+    match ctx.motor.as_ref() {
+        Some(MotorHandle::Robstride(m)) => {
+            m.set_active_report(enabled).map_err(|e| e.to_string())?;
+        }
+        Some(MotorHandle::Damiao(_)) => {
+            return Err("set_active_report is not supported for damiao".to_string())
+        }
+        Some(MotorHandle::Hexfellow(_)) => {
+            return Err("set_active_report is not supported for hexfellow".to_string())
+        }
+        Some(MotorHandle::Hightorque(_)) => {
+            return Err("set_active_report is not supported for hightorque".to_string())
+        }
+        Some(MotorHandle::Myactuator(_)) => {
+            return Err("set_active_report is not supported for myactuator".to_string())
+        }
+        None => return Err("motor not connected".to_string()),
+    }
+    Ok(json!({"active_report": enabled}))
 }
 
 fn handle_store_parameters(ctx: &mut SessionCtx) -> Result<Value, String> {

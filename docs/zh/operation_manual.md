@@ -5,7 +5,7 @@
 ## 1. 总体原则
 
 - 默认使用标准 CAN 链路：
-  - Linux: `can0` / `can1`（SocketCAN，包含 `slcan` 挂载后的网卡）
+  - Linux: `can0` / `can1`（SocketCAN；PCAN 或 CANable candleLight/gs_usb 初始化后得到的接口）
   - Windows: `can0@1000000`（映射到 PCAN 通道）
 - 仅当你使用 Damiao 私有转接板串口桥时，才使用：
   - `--transport dm-serial --serial-port <tty> --serial-baud <baud>`
@@ -20,27 +20,25 @@
 
 ## 3. Linux 主链路（SocketCAN）
 
-### 3.1 原生 CAN 网卡（如 PCIe/USB-CAN）
+### 3.1 PCAN（默认推荐）
 
 ```bash
-sudo ip link set can0 down 2>/dev/null || true
-sudo ip link set can0 type can bitrate 1000000 restart-ms 100
-sudo ip link set can0 up
+scripts/can_restart.sh can0
 ip -details link show can0
+lsmod | grep -E 'peak_usb|can_raw|can_dev'
 ```
 
-### 3.2 SLCAN 适配器（USB 串口转 CAN）
+### 3.2 CANable candleLight / gs_usb
 
 ```bash
-sudo ip link set can0 down 2>/dev/null || true
-sudo slcand -o -c -f -s8 /dev/ttyACM0 can0
-sudo ip link set can0 up
+scripts/canable_restart.sh can0
 ip -details link show can0
+lsmod | grep -E 'gs_usb|can_raw|can_dev'
 ```
 
 说明：
-- `-s8` 对应 1Mbps。
-- 某些 `slcan` 驱动会显示 `bitrate 0`，不等于没生效；以是否能稳定收发为准。
+- CANable 必须是 candleLight/gs_usb 固件；普通 USB 串口转 CAN 路径不作为当前推荐/验证链路。
+- PCAN 和 CANable 初始化完成后，上层都使用 `--channel can0`。
 
 ## 4. Linux 备用链路（Damiao 串口桥）
 
@@ -107,7 +105,7 @@ cargo run -p motor_cli --release -- --vendor damiao \
 优先排查：
 - USB 供电/线材/Hub 稳定性
 - 串口设备号漂移（`/dev/ttyACM*` 变化）
-- 多适配器竞争（重复启动 `slcand`、接口名冲突）
+- 多适配器竞争（接口名冲突、多个 CAN 设备同时在线）
 
 建议：
 - 使用固定规则（udev）绑定设备名
@@ -117,7 +115,7 @@ cargo run -p motor_cli --release -- --vendor damiao \
 ## 8. 推荐运行基线
 
 - 生产默认：
-  - Linux：SocketCAN（可含 `slcan`）
+  - Linux：SocketCAN（PCAN 或 CANable candleLight/gs_usb）
   - Windows：PCAN
 - Damiao 串口桥：
   - 作为备用链路启用

@@ -1,10 +1,10 @@
 # 可靠性验证（最小闭环）
 
 <!-- channel-compat-note -->
-## 通道兼容说明（PCAN + slcan + Damiao 串口桥）
+## 通道兼容说明（PCAN + CANable candleLight/gs_usb + Damiao 串口桥）
 
-- Linux SocketCAN 直接使用网卡名：`can0`、`can1`、`slcan0`。
-- 串口类 USB-CAN 需先创建并拉起 `slcan0`：`sudo slcand -o -c -s8 /dev/ttyUSB0 slcan0 && sudo ip link set slcan0 up`。
+- Linux SocketCAN 直接使用已初始化的接口名：`can0`、`can1`。CANable 请刷 candleLight/gs_usb 固件，让系统识别为 `can0` 这类 SocketCAN 接口。
+- 标准 CAN 推荐 PCAN 或 CANable candleLight/gs_usb。
 - 仅 Damiao 可选串口桥链路：`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`。
 - Damiao 串口桥完整接口与命令模板见 `motor_cli/README.zh-CN.md` 第 `3.6` 节（英文见 `motor_cli/README.md`）。
 - Linux SocketCAN 下 `--channel` 不要带 `@bitrate`（例如 `can0@1000000` 无效）。
@@ -32,27 +32,27 @@ python tools/reliability/reliability_runner.py endurance \
   --report tools/reliability/reports/windows_endurance_4340p.json
 ```
 
-Linux（SocketCAN）示例（`can0` 或 `slcan0`）：
+Linux（SocketCAN）示例（`can0` 或 `can1`）：
 
 ```bash
 python tools/reliability/reliability_runner.py endurance \
-  --command "cargo run -p motor_cli --release -- --vendor damiao --channel slcan0 --model 4340P --motor-id 0x01 --feedback-id 0x11 --mode pos-vel --pos 3.1416 --vlim 2.0 --loop 1 --dt-ms 20" \
+  --command "cargo run -p motor_cli --release -- --vendor damiao --channel can0 --model 4340P --motor-id 0x01 --feedback-id 0x11 --mode pos-vel --pos 3.1416 --vlim 2.0 --loop 1 --dt-ms 20" \
   --duration-sec 1800 \
   --interval-sec 0.5 \
   --report tools/reliability/reports/linux_endurance_4340p.json
 ```
 
-推荐使用模板执行 `slcan0` 专项回归：
+推荐使用模板执行 CANable/PCAN 回归：
 
 ```bash
 python tools/reliability/reliability_runner.py endurance \
-  --template tools/reliability/templates/linux_slcan_endurance_4340p.json
+  --template tools/reliability/templates/linux_socketcan_endurance_4340p.json
 ```
 
 可用模板：
 
-- `tools/reliability/templates/linux_slcan_endurance_4340p.json`
-- `tools/reliability/templates/linux_slcan_endurance_rs00_vel.json`
+- `tools/reliability/templates/linux_socketcan_endurance_4340p.json`
+- `tools/reliability/templates/linux_socketcan_endurance_rs00_vel.json`
 
 通过标准：
 

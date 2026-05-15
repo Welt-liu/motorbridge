@@ -31,7 +31,7 @@ flowchart TD
 - 扩展开发：[extending.md](extending.md)
 - Windows 分发：[windows_distribution.md](windows_distribution.md)
 - 测试指南：[testing.md](testing.md)
-- CAN 调试（Linux `slcan` + Windows `pcan`）：[can_debugging.md](can_debugging.md)
+- CAN 调试（PCAN + CANable candleLight/gs_usb）：[can_debugging.md](can_debugging.md)
 - 分发渠道（APT/Homebrew/Winget/Scoop/Choco）：[distribution_channels.md](distribution_channels.md)
 - 最终用户操作手册（PCAN 主链路 + Damiao 串口桥备用链路）：[operation_manual.md](operation_manual.md)
 - MotorBridge Studio：独立仓库 `motorbridge-studio`（由 `tools/factory_calib_ui_ws` 拆分）

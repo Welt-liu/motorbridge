@@ -30,7 +30,7 @@ flowchart TD
 - Vendor Extension Guide: [extending.md](extending.md)
 - Windows Distribution: [windows_distribution.md](windows_distribution.md)
 - Testing Guide: [testing.md](testing.md)
-- CAN Debugging (Linux `slcan` + Windows `pcan`): [can_debugging.md](can_debugging.md)
+- CAN Debugging (PCAN + CANable candleLight/gs_usb): [can_debugging.md](can_debugging.md)
 - Distribution Channels (APT/Homebrew/Winget/Scoop/Choco): [distribution_channels.md](distribution_channels.md)
 - MotorBridge Studio: separate repository `motorbridge-studio` (split from `tools/factory_calib_ui_ws`)
 - Integrations: [`integrations/README.md`](../../integrations/README.md)

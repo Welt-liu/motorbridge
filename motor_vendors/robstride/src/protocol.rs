@@ -40,6 +40,34 @@ pub struct StatusFrame {
     pub temperature_c: f32,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct FaultFlags {
+    pub phase_a_overcurrent: bool,
+    pub stall_overload: bool,
+    pub position_init_fault: bool,
+    pub hardware_id_fault: bool,
+    pub encoder_uncalibrated: bool,
+    pub phase_c_overcurrent: bool,
+    pub phase_b_overcurrent: bool,
+    pub overvoltage: bool,
+    pub undervoltage: bool,
+    pub driver_fault: bool,
+    pub overtemperature: bool,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct WarningFlags {
+    pub overtemperature_warning: bool,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct FaultReport {
+    pub fault_raw: u32,
+    pub warning_raw: u32,
+    pub faults: FaultFlags,
+    pub warnings: WarningFlags,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct PingReply {
     pub device_id: u8,
@@ -150,6 +178,31 @@ pub fn decode_status_frame(
     }
 }
 
+pub fn decode_fault_report(payload: [u8; 8]) -> FaultReport {
+    let fault_raw = u32::from_le_bytes([payload[0], payload[1], payload[2], payload[3]]);
+    let warning_raw = u32::from_le_bytes([payload[4], payload[5], payload[6], payload[7]]);
+    FaultReport {
+        fault_raw,
+        warning_raw,
+        faults: FaultFlags {
+            phase_a_overcurrent: (fault_raw & (1 << 16)) != 0,
+            stall_overload: (fault_raw & (1 << 14)) != 0,
+            position_init_fault: (fault_raw & (1 << 9)) != 0,
+            hardware_id_fault: (fault_raw & (1 << 8)) != 0,
+            encoder_uncalibrated: (fault_raw & (1 << 7)) != 0,
+            phase_c_overcurrent: (fault_raw & (1 << 5)) != 0,
+            phase_b_overcurrent: (fault_raw & (1 << 4)) != 0,
+            overvoltage: (fault_raw & (1 << 3)) != 0,
+            undervoltage: (fault_raw & (1 << 2)) != 0,
+            driver_fault: (fault_raw & (1 << 1)) != 0,
+            overtemperature: (fault_raw & 1) != 0,
+        },
+        warnings: WarningFlags {
+            overtemperature_warning: (warning_raw & 1) != 0,
+        },
+    }
+}
+
 pub fn encode_parameter_value(
     param_id: u16,
     value: crate::motor::ParameterValue,
@@ -174,6 +227,46 @@ pub fn encode_parameter_value(
         }
     };
     Ok(raw)
+}
+
+#[cfg(test)]
+mod fault_tests {
+    use super::*;
+
+    #[test]
+    fn decode_fault_report_maps_documented_bits() {
+        let fault_raw = (1_u32 << 16)
+            | (1 << 14)
+            | (1 << 9)
+            | (1 << 8)
+            | (1 << 7)
+            | (1 << 5)
+            | (1 << 4)
+            | (1 << 3)
+            | (1 << 2)
+            | (1 << 1)
+            | 1;
+        let warning_raw = 1_u32;
+        let mut payload = [0_u8; 8];
+        payload[0..4].copy_from_slice(&fault_raw.to_le_bytes());
+        payload[4..8].copy_from_slice(&warning_raw.to_le_bytes());
+
+        let report = decode_fault_report(payload);
+        assert_eq!(report.fault_raw, fault_raw);
+        assert_eq!(report.warning_raw, warning_raw);
+        assert!(report.faults.phase_a_overcurrent);
+        assert!(report.faults.stall_overload);
+        assert!(report.faults.position_init_fault);
+        assert!(report.faults.hardware_id_fault);
+        assert!(report.faults.encoder_uncalibrated);
+        assert!(report.faults.phase_c_overcurrent);
+        assert!(report.faults.phase_b_overcurrent);
+        assert!(report.faults.overvoltage);
+        assert!(report.faults.undervoltage);
+        assert!(report.faults.driver_fault);
+        assert!(report.faults.overtemperature);
+        assert!(report.warnings.overtemperature_warning);
+    }
 }
 
 #[cfg(test)]

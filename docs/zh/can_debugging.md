@@ -1,10 +1,10 @@
-# CAN 调试指南（Linux `slcan` + Windows `pcan`）
+# CAN 调试指南（PCAN + CANable candleLight/gs_usb）
 
 本文档是本项目通道配置与链路排障的统一手册。
 
 ## 1. 范围与后端映射
 
-- Linux 后端：SocketCAN（`can0`、`can1`、`slcan0` 等）
+- Linux 后端：SocketCAN（`can0`、`can1` 等）
 - Windows 后端：PEAK PCAN（依赖 `PCANBasic.dll`，`can0/can1` 映射到 `PCAN_USBBUS1/2`）
 
 规则：
@@ -12,46 +12,53 @@
 - Linux：波特率在网卡初始化时设置，不要写进 `--channel`。
 - Windows PCAN：`--channel` 支持可选 `@bitrate` 后缀（如 `can0@1000000`）。
 
-## 2. Linux `slcan` 初始化与验收
+## 2. Linux PCAN 与 CANable candleLight/gs_usb 初始化
 
-### 2.1 拉起 `slcan0`
-
-```bash
-sudo pkill slcand 2>/dev/null || true
-sudo slcand -o -c -s8 /dev/ttyUSB0 slcan0
-sudo ip link set slcan0 up
-ip -details link show slcan0
-```
-
-期望结果：
-
-- 能看到 `slcan0` 网卡
-- 状态为 `UP`（或 `UNKNOWN`）
-
-### 2.2 链路最小自检
-
-终端 A：
+### 2.1 识别适配器
 
 ```bash
-candump slcan0
+lsusb
+lsmod | grep -E 'peak_usb|gs_usb|can_raw|can_dev'
+ip -details link show type can
 ```
 
-终端 B（发测试帧）：
+期望适配器映射：
+
+- PCAN-USB：内核驱动为 `peak_usb`；使用 `scripts/can_restart.sh can0`。
+- CANable candleLight：内核驱动为 `gs_usb`；使用 `scripts/canable_restart.sh can0`。
+
+### 2.2 初始化 SocketCAN 接口
+
+PCAN：
 
 ```bash
-cansend slcan0 001#1122334455667788
+scripts/can_restart.sh can0
 ```
 
-如果 `candump` 无帧，优先检查接线、终端电阻、以及电机端波特率是否一致。
+CANable candleLight/gs_usb：
 
-### 2.3 在 `slcan0` 上跑 `motor_cli`
+```bash
+scripts/canable_restart.sh can0
+```
+
+然后确认 `can0` 为 `UP`，波特率为 `1000000`，并且 driver 行与当前适配器匹配。
+
+### 2.3 链路最小自检
+
+```bash
+candump can0
+```
+
+如果扫描或控制时没有帧，优先检查接线、终端电阻、地线参考、供电和电机端波特率一致性。
+
+### 2.4 在 `can0` 上跑 `motor_cli`
 
 ```bash
 cargo run -p motor_cli --release -- \
-  --vendor damiao --channel slcan0 --mode scan --start-id 1 --end-id 16
+  --vendor robstride --channel can0 --mode scan --start-id 1 --end-id 16
 ```
 
-## 3. Linux 原生 SocketCAN（`can0`）快检
+## 3. Linux SocketCAN（`can0`）快检
 
 ```bash
 sudo ip link set can0 down 2>/dev/null || true
@@ -94,7 +101,7 @@ cargo run -p motor_cli --release -- --vendor damiao --channel can0@1000000 --mod
 
 - `if_nametoindex failed ...`：
   - 通道名错误，或网卡未创建/未拉起
-  - 动作：`ip link show`，重新创建 `slcan0` 或拉起 `can0`
+  - 动作：`ip link show`，拉起 `can0` 或选择正确的 SocketCAN 接口
 - `socketcan write failed` / `socketcan read failed` 且提示 `interface is down`：
   - 动作：`ip -details link show <ifname>`，再执行 `ip link set <ifname> up`
 - `... unavailable` / `interface not found`：
@@ -112,9 +119,8 @@ cargo run -p motor_cli --release -- --vendor damiao --channel can0@1000000 --mod
 ## 6. 跨平台最小验收清单
 
 - Linux `can0`：扫描能返回预期电机 ID
-- Linux `slcan0`：按 `slcand` 初始化后扫描同样可通
 - Windows `can0@1000000`：扫描能成功
 - 各环境至少执行 1 条控制命令（`mit` 或 `pos-vel`）成功
 
-四项都通过，即可判定 `pcan + slcan` 支持已对齐。
+Linux SocketCAN 与 Windows PCAN 扫描通过，并且至少一条控制命令成功，即可判定通道支持已对齐。
 

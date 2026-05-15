@@ -44,7 +44,7 @@ motor_cli -h
 
 ## CAN 调试入口
 
-- Linux `slcan` + Windows `pcan` 专业排障：`../docs/zh/can_debugging.md`
+- PCAN + CANable candleLight/gs_usb 专业排障：`../docs/zh/can_debugging.md`
 - English guide: `../docs/en/can_debugging.md`
 
 ## 传输标识
@@ -74,7 +74,7 @@ motor_cli -h
 motor_cli \
   --vendor <damiao|robstride|hightorque|myactuator|all> \
   --transport <auto|socketcan|socketcanfd|dm-serial> \
-  --channel <can0|slcan0|can0@1000000...> \
+  --channel <can0|can1|can0@1000000...> \
   --model <model-name> \
   --motor-id <id> --feedback-id <id> \
   --mode <mode-name> \
@@ -117,7 +117,7 @@ motor_cli \
 | `--help` | flag | 关闭 | 输出帮助并退出 |
 | `--vendor` | string | `damiao` | `damiao` / `robstride` / `hightorque` / `myactuator` / `hexfellow` / `all` |
 | `--transport` | string | `auto` | `auto` / `socketcan` / `socketcanfd` / `dm-serial`（`socketcanfd` 为 Hexfellow 必需；`dm-serial` 仅 Damiao） |
-| `--channel` | string | `can0` | Linux：SocketCAN 网卡名（`can0`/`slcan0`）；Windows（PCAN 后端）：`can0`/`can1`，可加 `@bitrate`（如 `can0@1000000`）；macOS（PCBUSB 后端）：`can0`/`can1` |
+| `--channel` | string | `can0` | Linux：SocketCAN 网卡名（`can0`）；Windows（PCAN 后端）：`can0`/`can1`，可加 `@bitrate`（如 `can0@1000000`）；macOS（PCBUSB 后端）：`can0`/`can1` |
 | `--serial-port` | string | `/dev/ttyACM0` | `--transport dm-serial` 时使用 |
 | `--serial-baud` | u64 | `921600` | `--transport dm-serial` 时使用 |
 | `--model` | string | 按 vendor 决定 | Damiao 默认 `4340`；RobStride 默认 `rs-00`；HighTorque 默认 `hightorque`；MyActuator 默认 `X8` |
@@ -131,8 +131,8 @@ motor_cli \
 ### 2.1 通道速查（`--channel`）
 
 - Linux SocketCAN：
-  - 直接使用网卡名：`can0`、`can1`、`slcan0`。
-  - 波特率在网卡初始化阶段设置（`ip link` / `slcand`），不要写到 `--channel`。
+  - 直接使用网卡名：`can0`、`can1`。
+  - 波特率在网卡初始化阶段设置（`ip link` or the adapter helper script），不要写到 `--channel`。
   - `can0@1000000` 在 Linux SocketCAN 下无效。
 - Windows PCAN：
   - `can0` 映射 `PCAN_USBBUS1`，`can1` 映射 `PCAN_USBBUS2`。

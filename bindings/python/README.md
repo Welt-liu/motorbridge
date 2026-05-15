@@ -1,10 +1,10 @@
 # motorbridge Python SDK
 
 <!-- channel-compat-note -->
-## Channel Compatibility (PCAN + slcan + CAN-FD + Damiao Serial Bridge)
+## Channel Compatibility (PCAN + CANable candleLight/gs_usb + CAN-FD + Damiao Serial Bridge)
 
-- Linux SocketCAN uses interface names directly: `can0`, `can1`, `slcan0`.
-- For USB-serial CAN adapters, bring up `slcan0` first: `sudo slcand -o -c -s8 /dev/ttyUSB0 slcan0 && sudo ip link set slcan0 up`.
+- Linux SocketCAN uses prepared interfaces directly: `can0`, `can1`. For CANable, use candleLight/gs_usb firmware so it appears as a SocketCAN interface such as `can0`.
+- Use PCAN or CANable candleLight/gs_usb for standard CAN.
 - CAN-FD transport is available both in CLI (`--transport socketcanfd`) and Python SDK (`Controller.from_socketcanfd(...)`), and is required for Hexfellow.
 - Damiao-only serial bridge transport is also available in CLI (`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`).
 - Full Damiao serial-bridge interface list and command patterns are documented in `motor_cli/README.md` (section `3.6` in `motor_cli/README.zh-CN.md`).
@@ -329,6 +329,12 @@ Damiao usage in Python examples is now covered end-to-end:
   - no user-facing `ms` parameter for set-zero; core applies fixed `20ms` settle
 - register APIs: `get/write f32`, `get/write u32`, `store_parameters`
 
+## RobStride Maintenance Notes
+
+- `clear_error()` is supported through the same unified motor method as Damiao.
+- `robstride_set_active_report(True/False)` toggles RobStride comm_type `24` active status reporting.
+- With active reporting enabled, background polling can update `get_state()` from incoming status frames without a fresh query command; `request_feedback()` remains available as a compatibility/manual-refresh helper.
+
 ## End-to-End Demo Commands
 
 ```bash
@@ -344,11 +350,29 @@ python3 bindings/python/examples/python_wrapper_demo.py \
 
 # RobStride wrapper demo: ping
 python3 bindings/python/examples/robstride_wrapper_demo.py \
---channel can0 --model rs-06 --motor-id 127 --feedback-id 0xFD --mode ping
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD --mode ping
+
+# RobStride wrapper demo: clear fault
+python3 bindings/python/examples/robstride_wrapper_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD --mode clear-error
+
+# RobStride wrapper demo: active-report bring-up
+python3 bindings/python/examples/robstride_wrapper_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode write-param --param-id 0x7026 --param-type u16 --param-value 3
+
+python3 bindings/python/examples/robstride_wrapper_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode active-report --active-report 1
+
+# RobStride wrapper demo: position command
+python3 bindings/python/examples/robstride_wrapper_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode pos-vel --pos 1.5 --vlim 1.0 --loc-kp 5.0 --loop 1 --dt-ms 20
 
 # RobStride wrapper demo: velocity
 python3 bindings/python/examples/robstride_wrapper_demo.py \
---channel can0 --model rs-06 --motor-id 127 --feedback-id 0xFD \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
   --mode vel --vel 0.3 --loop 40 --dt-ms 50
 ```
 
@@ -358,6 +382,7 @@ python3 bindings/python/examples/robstride_wrapper_demo.py \
 - For RobStride `id-set`, `--new-motor-id` changes `device_id`; `--feedback-id` remains the host-side ID.
 - RobStride `motor_id` / `device_id` is validated as `1..255`; `feedback_id` / `host_id` is validated as `0..255` to prevent silent `ctypes` truncation.
 - RobStride scan probes each `--feedback-ids` host_id exactly through host-id-specific ABI helpers; invalid host IDs are rejected instead of silently falling back.
+- Python CLI and Rust CLI are aligned for the production Damiao and RobStride workflows: scan, enable/disable, control, ID update, parameter read/write, RobStride clear-error, and RobStride active-report. Rust CLI still exposes deeper vendor-specific surfaces for HighTorque/MyActuator/Hexfellow debugging.
 - `Mode.MIT` and `send_force_pos` are not available for MyActuator in ABI wrapper.
 - Hexfellow supports `MIT` and `POS_VEL` through ABI wrapper; `VEL` and `FORCE_POS` return unsupported.
 - Full Damiao tuning reference stays in:

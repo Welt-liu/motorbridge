@@ -7,6 +7,26 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-15
+
+### Added
+
+- RobStride clear-fault support is now exposed through the unified clear-error path.
+  `motor_handle_clear_error` sends RobStride communication type `4` with `data[0]=1`.
+- RobStride active-report support is now exposed across Rust CLI, Python CLI/SDK,
+  ABI, and WebSocket gateway.
+- New ABI symbol: `motor_handle_robstride_set_active_report`.
+- New Python SDK method: `Motor.robstride_set_active_report(enabled)`.
+- New WS gateway operation: `{"op":"set_active_report","enabled":true}`.
+- RobStride communication type `21` fault reports are decoded into raw fault/warning
+  words plus documented fault and warning bits for diagnostics.
+
+### Documentation
+
+- Added RobStride bring-up notes for `EPScan_time(0x7026)`, including
+  `EPScan_time=3` as the recommended initial 20 ms report interval for arm calibration.
+- Added CLI, Python, ABI, and WS examples for RobStride clear-error and active-report.
+
 ## [0.2.9] - 2026-05-14
 
 ### Added
@@ -154,10 +174,10 @@ Versioning.
 
 ### Added
 
-- Linux USB-CAN (`slcan`) quick guide in root README (EN/ZH), including `slcand` setup and
-  `--channel slcan0` usage examples.
+- Linux CANable candleLight/gs_usb quick guide in root README (EN/ZH), including candleLight/gs_usb setup and
+  `--channel can0` usage examples.
 - Channel quick reference in `motor_cli/README.md` and `motor_cli/README.zh-CN.md` covering:
-  - Linux SocketCAN channels (`can0`, `slcan0`) and Linux rule "no `@bitrate` in channel name"
+  - Linux SocketCAN channels (`can0`, `can1`) and Linux rule "no `@bitrate` in channel name"
   - Windows PCAN channel mapping (`can0/can1`) with optional `@bitrate`
 
 ### Changed
@@ -175,7 +195,7 @@ Versioning.
 
 ### Usage
 
-- Linux `slcan` setup and examples:
-  - `README.md` / `README.zh-CN.md` section: "Linux USB-CAN (`slcan`) Quick Guide"
+- Linux CANable candleLight/gs_usb setup and examples:
+  - `README.md` / `README.zh-CN.md` section: "Linux CANable candleLight/gs_usb Quick Guide"
 - Channel compatibility and parameter rules:
   - `motor_cli/README.md` / `motor_cli/README.zh-CN.md` section: "Channel Quick Reference"

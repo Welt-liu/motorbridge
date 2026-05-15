@@ -1,10 +1,10 @@
 # motorbridge Python SDK
 
 <!-- channel-compat-note -->
-## 通道兼容说明（PCAN + slcan + CAN-FD + Damiao 串口桥）
+## 通道兼容说明（PCAN + CANable candleLight/gs_usb + CAN-FD + Damiao 串口桥）
 
-- Linux SocketCAN 直接使用网卡名：`can0`、`can1`、`slcan0`。
-- 串口类 USB-CAN 需先创建并拉起 `slcan0`：`sudo slcand -o -c -s8 /dev/ttyUSB0 slcan0 && sudo ip link set slcan0 up`。
+- Linux SocketCAN 直接使用已初始化的接口名：`can0`、`can1`。CANable 请刷 candleLight/gs_usb 固件，让系统识别为 `can0` 这类 SocketCAN 接口。
+- 标准 CAN 推荐 PCAN 或 CANable candleLight/gs_usb。
 - CAN-FD 链路可通过 CLI（`--transport socketcanfd`）和 Python SDK（`Controller.from_socketcanfd(...)`）使用，Hexfellow 必须走该链路。
 - 仅 Damiao 可选串口桥链路：`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`。
 - Damiao 串口桥完整接口与命令模板见 `motor_cli/README.zh-CN.md` 第 `3.6` 节（英文见 `motor_cli/README.md`）。
@@ -369,6 +369,12 @@ Python 示例中 Damiao 用法已覆盖到位：
   - Python 不暴露置零等待参数；核心层内置固定 `20ms` 稳定等待
 - 寄存器接口：`get/write f32`、`get/write u32`、`store_parameters`
 
+## RobStride 维护说明
+
+- `clear_error()` 已通过和 Damiao 一致的统一电机方法支持。
+- `robstride_set_active_report(True/False)` 可开启/关闭 RobStride 通信类型 `24` 主动状态上报。
+- 开启主动上报后，后台 polling 可以直接消费状态帧并更新 `get_state()` 缓存，不必每次额外发送查询命令；`request_feedback()` 仍保留为兼容/手动刷新接口。
+
 ## 端到端示例命令
 
 ```bash
@@ -384,11 +390,29 @@ python3 bindings/python/examples/python_wrapper_demo.py \
 
 # RobStride wrapper 示例：ping
 python3 bindings/python/examples/robstride_wrapper_demo.py \
---channel can0 --model rs-06 --motor-id 127 --feedback-id 0xFD --mode ping
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD --mode ping
+
+# RobStride wrapper 示例：清故障
+python3 bindings/python/examples/robstride_wrapper_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD --mode clear-error
+
+# RobStride wrapper 示例：主动上报初始化
+python3 bindings/python/examples/robstride_wrapper_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode write-param --param-id 0x7026 --param-type u16 --param-value 3
+
+python3 bindings/python/examples/robstride_wrapper_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode active-report --active-report 1
+
+# RobStride wrapper 示例：位置命令
+python3 bindings/python/examples/robstride_wrapper_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode pos-vel --pos 1.5 --vlim 1.0 --loc-kp 5.0 --loop 1 --dt-ms 20
 
 # RobStride wrapper 示例：速度
 python3 bindings/python/examples/robstride_wrapper_demo.py \
---channel can0 --model rs-06 --motor-id 127 --feedback-id 0xFD \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
   --mode vel --vel 0.3 --loop 40 --dt-ms 50
 ```
 
@@ -397,6 +421,7 @@ python3 bindings/python/examples/robstride_wrapper_demo.py \
 - `id-dump` 仍是 Damiao 工作流；`id-set` 支持 Damiao 和 RobStride；`scan` 支持 `damiao|hexfellow|myactuator|robstride|hightorque|all`。
 - RobStride `id-set` 中，`--new-motor-id` 修改 `device_id`；`--feedback-id` 仍是上位机侧 host_id。
 - RobStride `motor_id` / `device_id` 会校验为 `1..255`；`feedback_id` / `host_id` 会校验为 `0..255`，避免 `ctypes` 静默截断。
+- Python CLI 与 Rust CLI 在生产常用的 Damiao / RobStride 工作流上已经对齐：扫描、使能/失能、控制、改 ID、参数读写、RobStride 清故障和主动上报。Rust CLI 仍保留更多 HighTorque/MyActuator/Hexfellow 的底层调试入口。
 - RobStride 扫描会通过指定 host_id 的 ABI helper 精确探测每个 `--feedback-ids`；非法 host_id 会直接报错，不会静默回退。
 - MyActuator 在 ABI wrapper 中不支持 `Mode.MIT` 与 `send_force_pos`。
 - Hexfellow 在 ABI wrapper 中支持 `MIT` 与 `POS_VEL`，`VEL` / `FORCE_POS` 会返回不支持。

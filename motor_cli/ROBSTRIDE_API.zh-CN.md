@@ -1,10 +1,10 @@
 # RobStride API 与参数参考（完整版）
 
 <!-- channel-compat-note -->
-## 通道兼容说明（PCAN + slcan + Damiao 串口桥）
+## 通道兼容说明（PCAN + CANable candleLight/gs_usb + Damiao 串口桥）
 
-- Linux SocketCAN 直接使用网卡名：`can0`、`can1`、`slcan0`。
-- 串口类 USB-CAN 需先创建并拉起 `slcan0`：`sudo slcand -o -c -s8 /dev/ttyUSB0 slcan0 && sudo ip link set slcan0 up`。
+- Linux SocketCAN 直接使用已初始化的接口名：`can0`、`can1`。CANable 请刷 candleLight/gs_usb 固件，让系统识别为 `can0` 这类 SocketCAN 接口。
+- 标准 CAN 推荐 PCAN 或 CANable candleLight/gs_usb。
 - 仅 Damiao 可选串口桥链路：`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`。
 - Linux SocketCAN 下 `--channel` 不要带 `@bitrate`（例如 `can0@1000000` 无效）。
 - Windows（PCAN 后端）中，`can0/can1` 映射 `PCAN_USBBUS1/2`，可选 `@bitrate` 后缀。
@@ -240,9 +240,9 @@ with Controller("can0") as ctrl:
 
 当前 `motorbridge` 对 RobStride 协议通信类型的覆盖：
 
-- 已直接使用：`0(GET_DEVICE_ID)`、`1(OPERATION_CONTROL)`、`3(ENABLE)`、`4(DISABLE)`、`6(SET_ZERO_POSITION)`、`7(SET_DEVICE_ID)`、`17(READ_PARAMETER)`、`18(WRITE_PARAMETER)`、`22(SAVE_PARAMETERS)`
-- 已接收解析：`2(OPERATION_STATUS)`、`21(FAULT_REPORT)`
-- 协议常量存在但尚未形成高层 API：`23(SET_BAUDRATE)`、`24(ACTIVE_REPORT)`、`25(SET_PROTOCOL)`
+- 已直接使用：`0(GET_DEVICE_ID)`、`1(OPERATION_CONTROL)`、`3(ENABLE)`、`4(DISABLE/CLEAR_ERROR)`、`6(SET_ZERO_POSITION)`、`7(SET_DEVICE_ID)`、`17(READ_PARAMETER)`、`18(WRITE_PARAMETER)`、`22(SAVE_PARAMETERS)`、`24(ACTIVE_REPORT)`
+- 已接收解析：`2(OPERATION_STATUS)`、`21(FAULT_REPORT)`；状态诊断里会暴露 fault/warning 原始值和手册中的细分故障位。
+- 协议常量存在但暂不作为普通高层 API 暴露：`23(SET_BAUDRATE)`、`25(SET_PROTOCOL)`，因为误操作后可能导致设备失联。
 
 ## 7）完善空间（差距总结）
 
@@ -261,8 +261,7 @@ with Controller("can0") as ctrl:
 
 1. CLI 增加更语义化的 `current/torque` 快捷命令（当前可用写参数实现，但不直观）。
 2. CLI 扫描支持多 feedback-host 候选。
-3. 暴露 `SET_BAUDRATE / ACTIVE_REPORT / SET_PROTOCOL` 的高层 API。
-4. `FAULT_REPORT` 独立结构化解码输出。
+3. 评估是否把 `SET_BAUDRATE / SET_PROTOCOL` 放到显式危险确认入口后再暴露。
 
 ## 8）WS 网关 JSON 示例
 
@@ -282,4 +281,3 @@ with Controller("can0") as ctrl:
 - 压测前先确认 CAN 接线、终端电阻和接口状态。
 - 长时间控制前先做 ping/读参验证。
 - 始终保留急停路径。
-

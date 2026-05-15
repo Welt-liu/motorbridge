@@ -138,13 +138,12 @@ def linux_socketcan_hint(tool_name: str, channel: str) -> str:
 
     return (
         f"[{tool_name}] Linux CAN interface not ready: {raw}\n"
-        "For CAN transport, bring up SocketCAN/slcan first, then retry.\n"
+        "For CAN transport, bring up the SocketCAN interface first, then retry.\n"
         "Quick checks:\n"
         f"  ip link show {iface}\n"
         f"  sudo ip link set {iface} up\n"
-        "If using USB serial CAN adapter (slcan), create interface first:\n"
-        "  sudo slcand -o -c -s8 /dev/ttyUSB0 slcan0\n"
-        "  sudo ip link set slcan0 up"
+        "For CANable, use candleLight/gs_usb firmware and initialize the resulting SocketCAN interface:\n"
+        f"  scripts/canable_restart.sh {iface}"
         f"{suffix_tip}"
     )
 

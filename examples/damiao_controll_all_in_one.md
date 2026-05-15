@@ -201,7 +201,9 @@ python3 bindings/python/examples/dm_serial_status_like_cli_demo.py \
 
 | 参数 | 含义 | 单位 | 常用范围（4340P/4310 调试） | 备注 |
 |---|---|---|---|---|
-| `--channel` | CAN 接口名 | - | `can0` / `can1` / `slcan0` | Linux 下不要写 `@bitrate` |
+| `--channel` | CAN 接口名 | - | `can0` / `can1` | Linux 下不要写 `@bitrate` |
+
+标准 CAN 推荐 PCAN 或 CANable candleLight/gs_usb；Damiao 串口桥请使用 `dm-serial`。
 | `--model` | 电机型号提示 | - | `4340P` / `4310` | 建议和真实型号一致 |
 | `--motor-id` | 控制帧目标 ID | - | `0x01` 起 | 与电机 ID 一致 |
 | `--feedback-id` | 反馈帧 ID | - | 常见 `motor_id + 0x10` | 例如 `0x01 -> 0x11` |
