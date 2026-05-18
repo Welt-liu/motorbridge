@@ -7,6 +7,30 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-05-18
+
+### Added
+
+- Added RobStride fault-report diagnostics to the C ABI and Python SDK via
+  `motor_handle_robstride_get_fault_report` / `Motor.robstride_get_fault_report()`.
+- Python CLI state printing now includes non-zero RobStride `fault_raw` and
+  `warning_raw` values.
+
+### Fixed
+
+- RobStride `FAULT_REPORT` frames no longer overwrite the latest motion state.
+  Fault reports now update only the fault cache, so fault payloads are not
+  exposed as bogus `-720 deg` / `-50 rad/s` / `0 C` feedback.
+- RobStride `FAULT_REPORT` frames no longer advance the control status ACK
+  sequence, avoiding false command acknowledgements.
+- RobStride `clear_error()` clears the local cached fault report only after the
+  device acknowledges the clear request.
+
+### Changed
+
+- Python package version advanced to `0.3.2`.
+- Rust workspace package version advanced to `0.3.2` for release/tag alignment.
+
 ## [0.3.1] - 2026-05-15
 
 ### Fixed

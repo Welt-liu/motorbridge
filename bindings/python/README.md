@@ -42,14 +42,13 @@ Notes:
 ## Scope
 Packaging note:
 
-- Current package target version: `0.3.1`.
+- Current package target version: `0.3.2`.
 - Published wheel includes `motor_abi` shared library and `ws_gateway` binary for that platform.
 - After `pip install motorbridge`, gateway binary path is typically:
   `.../site-packages/motorbridge/bin/ws_gateway` (or `ws_gateway.exe` on Windows).
-- `0.3.1` only changes Python CLI RobStride control startup timing. The CLI now
-  aligns `mit` / `pos-vel` / `vel` with the Rust CLI and WebSocket gateway by
-  disabling torque before mode switch, verifying `run_mode`, re-enabling torque,
-  and then writing the target.
+- `0.3.2` fixes RobStride fault-report handling. Fault frames no longer pollute
+  motion feedback, and `Motor.robstride_get_fault_report()` exposes cached raw
+  fault/warning diagnostics.
 
 - Gateway launch command (added to PATH by pip):
   - `motorbridge-gateway -- --bind 127.0.0.1:9002 ...`

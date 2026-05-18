@@ -15,13 +15,11 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
-## 更新说明（2026-05）：v0.3.1
+## 更新说明（2026-05）：v0.3.2
 
-- `v0.3.1` 是一次很窄的 Python 包 / Python CLI 发布。
-- 本次只修改 RobStride Python CLI 控制前的时序：
-  `mit`、`pos-vel`、`vel` 会先失能，再切 `run_mode`，通过 `0x7005`
-  确认模式，重新使能，最后发送目标。
-- 该时序与 Rust CLI 和 WebSocket gateway 对齐。
+- `v0.3.2` 修复 RobStride 故障帧处理。
+- RobStride `FAULT_REPORT` 不再覆盖最近一次真实运动状态，也不会再被当成控制 ACK。
+- C ABI 和 Python SDK 现在可以通过 `robstride_get_fault_report()` 查询缓存的故障诊断值。
 
 ## 传输链路标识
 
