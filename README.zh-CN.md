@@ -15,11 +15,12 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
-## 更新说明（2026-05）：v0.3.2
+## 更新说明（2026-05）：v0.3.3
 
-- `v0.3.2` 修复 RobStride 故障帧处理。
-- RobStride `FAULT_REPORT` 不再覆盖最近一次真实运动状态，也不会再被当成控制 ACK。
-- C ABI 和 Python SDK 现在可以通过 `robstride_get_fault_report()` 查询缓存的故障诊断值。
+- `v0.3.3` 对齐 CLI 版本输出和参数保存流程。
+- Rust CLI 和 Python CLI 现在支持 `-v` / `--version`。
+- Python binding 暴露 `motorbridge.__version__` 和 `motorbridge.get_version()`。
+- RobStride 与 Damiao 写参数 CLI 支持 `--store 1`，用于显式执行“写入 -> 验证 -> 保存”。
 
 ## 传输链路标识
 

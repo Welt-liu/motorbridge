@@ -8,6 +8,10 @@ pub fn parse_args() -> HashMap<String, String> {
             out.insert("help".to_string(), "1".to_string());
             continue;
         }
+        if k == "-v" || k == "--version" {
+            out.insert("version".to_string(), "1".to_string());
+            continue;
+        }
         // Ignore common cargo-only flag if user accidentally passes it to binary.
         if k == "--release" {
             continue;
@@ -163,6 +167,7 @@ pub fn print_help() {
         "motor_cli\n\
 Usage:\n\
   motor_cli -h | --help\n\
+  motor_cli -v | --version\n\
   motor_cli scan --vendor robstride --start-id 1 --end-id 127\n\
   motor_cli --vendor damiao --mode scan --start-id 1 --end-id 16\n\
   motor_cli --vendor robstride --mode ping --motor-id 127 --feedback-id 0xFF\n\n\
@@ -181,7 +186,7 @@ Vendors:\n\
   --vendor myactuator\n\
   --vendor all       scan all vendors\n\n\
 Damiao modes:\n\
-  --mode scan | enable | disable | mit | pos-vel | vel | force-pos\n\n\
+  --mode scan | enable | disable | mit | pos-vel | vel | force-pos | read-param | write-param\n\n\
 RobStride modes:\n\
   --mode ping | scan | enable | disable | clear-error | active-report | zero | set-zero | save | zero-by-offset | mit | pos-vel | vel | read-param | write-param\n\n\
 HighTorque modes:\n\
@@ -215,6 +220,7 @@ Damiao extras:\n\
 RobStride extras:\n\
   --param-id <hex|dec>      for read-param / write-param\n\
   --param-value <number>    for write-param\n\
+  --type u32|f32            for Damiao read-param / write-param (default f32)\n\
   --loc-kp <float>          for pos-vel native position-loop gain; --kp is accepted as fallback\n\
   --feedback-ids <list>     for scan host_id candidates, default 0xFD,0xFF,0xFE,0x00,0xAA\n\
   --timeout-ms <ms>         for scan ping timeout, default 80\n\
@@ -222,7 +228,7 @@ RobStride extras:\n\
   --active-report 1/0       for active-report mode, default 1 (RobStride comm_type=24)\n\
   --zero-exp 1/0            for zero/set-zero, default 0 (run experimental sequence: disable -> set-zero -> optional save)\n\
   --offset-negate 1/0       accepted for zero-by-offset, but zero-by-offset is temporarily disabled\n\
-  --store 1/0               for zero-exp, default 1 (send save-parameters); zero-by-offset sends no frames while disabled\n\
+  --store 1/0               for write-param store/save, default 0; for zero-exp, default 1\n\
   --start-id <hex|dec>      for scan, default 1\n\
   --end-id <hex|dec>        for scan, default 255\n\
   Note: RobStride feedback_id/host_id (for example 0xFD/0xFE) is not motor_id/device_id.\n\

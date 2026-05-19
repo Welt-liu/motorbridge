@@ -4,6 +4,7 @@ use motor_vendor_damiao::{
     ControlMode as DamiaoControlMode, DamiaoController, DamiaoMotor,
 };
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::time::Duration;
 
 const DAMIAO_SCAN_MODEL_HINTS: &[&str] = &[
@@ -90,6 +91,10 @@ fn open_damiao_controller(
         )
         .into()),
     }
+}
+
+fn damiao_param_type(args: &HashMap<String, String>) -> String {
+    get_str(args, "type", &get_str(args, "param-type", "f32")).to_ascii_lowercase()
 }
 
 pub fn run_damiao(
@@ -299,6 +304,76 @@ pub fn run_damiao(
             }
             verify_ctrl.close_bus()?;
         }
+        return Ok(());
+    }
+
+    if mode == "read-param" || mode == "write-param" {
+        let param_id = get_u16_hex_or_dec(args, "param-id", 0)?;
+        let rid = u8::try_from(param_id)
+            .map_err(|_| format!("Damiao --param-id must fit in u8, got 0x{param_id:X}"))?;
+        let param_type = damiao_param_type(args);
+        let timeout = Duration::from_millis(get_u64(args, "timeout-ms", 500)?);
+        match mode.as_str() {
+            "read-param" => match param_type.as_str() {
+                "u32" => {
+                    let value = motor.get_register_u32(rid, timeout)?;
+                    println!("param 0x{param_id:04X} (u32) = {value}");
+                }
+                "f32" => {
+                    let value = motor.get_register_f32(rid, timeout)?;
+                    println!("param 0x{param_id:04X} (f32) = {value:.6}");
+                }
+                _ => {
+                    return Err(
+                        format!("Damiao --type must be u32 or f32, got {param_type}").into(),
+                    )
+                }
+            },
+            "write-param" => {
+                let raw = args
+                    .get("param-value")
+                    .ok_or_else(|| "missing --param-value".to_string())?;
+                let verify = get_u64(args, "verify", 1)? != 0;
+                let store_after_write = get_u64(args, "store", 0)? != 0;
+                match param_type.as_str() {
+                    "u32" => {
+                        let value = if let Some(hex) = raw.strip_prefix("0x") {
+                            u32::from_str_radix(hex, 16)
+                                .map_err(|e| format!("invalid --param-value: {e}"))?
+                        } else {
+                            raw.parse::<u32>()
+                                .map_err(|e| format!("invalid --param-value: {e}"))?
+                        };
+                        motor.write_register_u32(rid, value)?;
+                        if verify {
+                            let readback = motor.get_register_u32(rid, timeout)?;
+                            println!("param 0x{param_id:04X} (u32) = {readback}");
+                        }
+                    }
+                    "f32" => {
+                        let value = raw
+                            .parse::<f32>()
+                            .map_err(|e| format!("invalid --param-value: {e}"))?;
+                        motor.write_register_f32(rid, value)?;
+                        if verify {
+                            let readback = motor.get_register_f32(rid, timeout)?;
+                            println!("param 0x{param_id:04X} (f32) = {readback:.6}");
+                        }
+                    }
+                    _ => {
+                        return Err(
+                            format!("Damiao --type must be u32 or f32, got {param_type}").into(),
+                        )
+                    }
+                }
+                if store_after_write {
+                    motor.store_parameters()?;
+                    println!("[ok] store-parameters requested (store=1)");
+                }
+            }
+            _ => unreachable!(),
+        }
+        controller.close_bus()?;
         return Ok(());
     }
 

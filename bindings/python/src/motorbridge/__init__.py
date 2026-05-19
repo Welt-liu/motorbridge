@@ -23,8 +23,18 @@ from .damiao_registers import (
 )
 from .errors import AbiLoadError, CallError, MotorBridgeError
 from .models import Mode, MotorState
+from ._version import VERSION
+
+
+def get_version() -> str:
+    return VERSION
+
+
+__version__ = get_version()
 
 __all__ = [
+    "__version__",
+    "get_version",
     "Controller",
     "Motor",
     "Mode",

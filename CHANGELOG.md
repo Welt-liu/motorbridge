@@ -7,6 +7,31 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-05-19
+
+### Added
+
+- Added `-v` / `--version` output to the Rust CLI and Python CLI.
+- Added Python binding version helpers: `motorbridge.__version__` and
+  `motorbridge.get_version()`.
+- Added `--store 1` to Python `robstride-write-param` and `damiao-write-param`
+  subcommands for unified write, verify, and persist workflows.
+- Added Rust CLI Damiao `read-param` / `write-param` support with matching
+  `--type`, `--verify`, and `--store` semantics.
+
+### Fixed
+
+- Python CLI now disables argparse long-option abbreviation for the root parser,
+  subcommands, and legacy run parser. Invalid options such as `--mode save` on
+  `robstride-write-param` are rejected instead of being misparsed as `--model save`.
+- RobStride `save_parameters()` now waits for the protocol status ACK after
+  sending communication type `22`.
+
+### Changed
+
+- Python package version advanced to `0.3.3`.
+- Rust workspace package version advanced to `0.3.3` for release/tag alignment.
+
 ## [0.3.2] - 2026-05-18
 
 ### Added

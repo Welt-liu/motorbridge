@@ -41,9 +41,10 @@
 
 ## 范围
 
-- 当前目标包版本：`0.3.2`。
-- `0.3.2` 修复 RobStride 故障帧处理。故障帧不再污染运动反馈，
-  并且 `Motor.robstride_get_fault_report()` 可以返回缓存的 raw fault/warning 诊断值。
+- 当前目标包版本：`0.3.3`。
+- `0.3.3` 增加 CLI 版本输出（`motorbridge-cli -v`），暴露
+  `motorbridge.__version__` / `motorbridge.get_version()`，并统一 RobStride
+  与 Damiao 写参数命令的 `--store 1` 保存流程。
 - 高层 API: `Controller`、`Motor`、`Mode`
 - CLI: `motorbridge-cli`
 - 网关启动命令（pip 安装后进入 PATH）：

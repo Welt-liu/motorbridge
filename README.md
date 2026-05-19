@@ -15,13 +15,13 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
   Standalone web control UI built on top of `ws_gateway`.
 
-## Update (2026-05): v0.3.2
+## Update (2026-05): v0.3.3
 
-- `v0.3.2` fixes RobStride fault-report handling.
-- RobStride `FAULT_REPORT` frames no longer overwrite the latest motion state
-  or masquerade as command acknowledgements.
-- C ABI and Python SDK now expose cached RobStride fault diagnostics through
-  `robstride_get_fault_report()`.
+- `v0.3.3` aligns CLI version reporting and parameter persistence workflows.
+- Rust CLI and Python CLI now support `-v` / `--version`.
+- Python bindings expose `motorbridge.__version__` and `motorbridge.get_version()`.
+- RobStride and Damiao parameter-write CLIs support `--store 1` for explicit
+  persist-after-verify workflows.
 
 ## Transport Legend
 

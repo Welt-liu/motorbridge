@@ -5,6 +5,7 @@ import sys
 import time
 from typing import Any
 
+from . import get_version
 from .core import Controller
 from .models import Mode
 from .platform_hints import preflight_can_runtime
@@ -337,6 +338,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="motorbridge Python SDK CLI",
         formatter_class=argparse.RawTextHelpFormatter,
+        allow_abbrev=False,
         epilog=(
             "Examples:\n"
             "  motorbridge-cli scan --vendor robstride --channel can0 --start-id 1 --end-id 127\n"
@@ -348,7 +350,13 @@ def _build_parser() -> argparse.ArgumentParser:
             "  motorbridge-cli damiao-read-param --channel can0 --model 4340P --motor-id 1 --feedback-id 0x11 --param-id 10 --type f32\n"
         ),
     )
-    sub = p.add_subparsers(dest="command")
+    p.add_argument("-v", "--version", action="version", version=f"motorbridge {get_version()}")
+    sub = p.add_subparsers(
+        dest="command",
+        parser_class=lambda *a, **kw: argparse.ArgumentParser(
+            *a, allow_abbrev=False, **kw
+        ),
+    )
 
     run = sub.add_parser("run", help="send control commands (default command)")
     _add_common_args(run)
@@ -428,6 +436,7 @@ def _build_parser() -> argparse.ArgumentParser:
     rs_write.add_argument("--type", required=True, choices=["i8", "u8", "u16", "u32", "f32"], help="parameter value type")
     rs_write.add_argument("--value", required=True, help="value to write")
     rs_write.add_argument("--verify", type=int, default=1, help="read back after write, 1/0")
+    rs_write.add_argument("--store", type=int, default=0, help="save/store after verified write, 1/0")
     rs_write.add_argument("--timeout-ms", type=int, default=500, help="write/readback timeout in ms")
 
     dm_read = sub.add_parser("damiao-read-param", help="read a Damiao parameter/register")
@@ -444,6 +453,7 @@ def _build_parser() -> argparse.ArgumentParser:
     dm_write.add_argument("--type", required=True, choices=["u32", "f32"], help="parameter value type")
     dm_write.add_argument("--value", required=True, help="value to write")
     dm_write.add_argument("--verify", type=int, default=1, help="read back after write, 1/0")
+    dm_write.add_argument("--store", type=int, default=0, help="save/store after verified write, 1/0")
     dm_write.add_argument("--timeout-ms", type=int, default=500, help="write/readback timeout in ms")
 
     return p
@@ -452,7 +462,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def _parse_with_legacy_support() -> argparse.Namespace:
     parser = _build_parser()
     if len(sys.argv) > 1 and sys.argv[1].startswith("--") and sys.argv[1] not in ("-h", "--help"):
-        legacy = argparse.ArgumentParser(description="motorbridge Python SDK CLI (legacy run mode)")
+        legacy = argparse.ArgumentParser(description="motorbridge Python SDK CLI (legacy run mode)", allow_abbrev=False)
         _add_common_args(legacy)
         _add_run_args(legacy)
         legacy_args = legacy.parse_args()
@@ -465,7 +475,7 @@ def _parse_with_legacy_support() -> argparse.Namespace:
             parser.error(f"unrecognized arguments: {' '.join(extras)}")
         return args
 
-    legacy = argparse.ArgumentParser(description="motorbridge Python SDK CLI (legacy run mode)")
+    legacy = argparse.ArgumentParser(description="motorbridge Python SDK CLI (legacy run mode)", allow_abbrev=False)
     _add_common_args(legacy)
     _add_run_args(legacy)
     legacy_args = legacy.parse_args()
@@ -516,9 +526,12 @@ def _run_command(args: argparse.Namespace) -> None:
                     _write_robstride_param(motor, param_id, param_type, args.param_value)
                     time.sleep(0.05)
                     value = _read_robstride_param(motor, param_id, param_type, args.timeout_ms)
+                    if args.store:
+                        motor.store_parameters()
                     print(
                         f"command=run mode=write-param vendor=robstride param_id=0x{param_id:X} "
-                        f"type={param_type} value={args.param_value} verify={value}"
+                        f"type={param_type} value={args.param_value} verify={value} "
+                        f"store={int(bool(args.store))}"
                     )
                 return
             if args.mode == "save":
@@ -1018,10 +1031,12 @@ def _robstride_write_param_command(args: argparse.Namespace) -> None:
         try:
             _write_robstride_param(motor, param_id, args.type, args.value)
             verify = _read_robstride_param(motor, param_id, args.type, args.timeout_ms) if args.verify else None
+            if args.store:
+                motor.store_parameters()
             print(
                 f"command=robstride-write-param channel={args.channel} model={args.model} "
                 f"motor_id=0x{motor_id:X} param_id=0x{param_id:X} type={args.type} "
-                f"value={args.value} verify={verify}"
+                f"value={args.value} verify={verify} store={int(bool(args.store))}"
             )
         finally:
             motor.close()
@@ -1066,10 +1081,13 @@ def _damiao_write_param_command(args: argparse.Namespace) -> None:
             else:
                 motor.damiao_write_param_f32(param_id, float(args.value))
                 verify = motor.damiao_get_param_f32(param_id, args.timeout_ms) if args.verify else None
+            if args.store:
+                motor.store_parameters()
             print(
                 f"command=damiao-write-param transport={args.transport} channel={args.channel} model={args.model} "
                 f"motor_id=0x{motor_id:X} feedback_id=0x{feedback_id:X} "
-                f"param_id=0x{param_id:X} type={args.type} value={args.value} verify={verify}"
+                f"param_id=0x{param_id:X} type={args.type} value={args.value} "
+                f"verify={verify} store={int(bool(args.store))}"
             )
         finally:
             motor.close()

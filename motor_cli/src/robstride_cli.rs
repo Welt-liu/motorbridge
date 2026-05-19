@@ -424,10 +424,15 @@ pub fn run_robstride(
                 .get("param-value")
                 .ok_or_else(|| "missing --param-value".to_string())?;
             let value = parse_robstride_param_value(param_id, raw)?;
+            let store_after_write = get_u64(args, "store", 0)? != 0;
             motor.write_parameter(param_id, value)?;
             std::thread::sleep(Duration::from_millis(50));
             let verify = motor.get_parameter(param_id, Duration::from_millis(500))?;
             print_robstride_param_value(param_id, verify);
+            if store_after_write {
+                motor.save_parameters()?;
+                println!("[ok] save-parameters requested (store=1)");
+            }
             controller.close_bus()?;
             return Ok(());
         }

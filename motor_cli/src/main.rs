@@ -18,6 +18,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         print_help();
         return Ok(());
     }
+    if args.contains_key("version") {
+        println!("motor_cli {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
 
     let vendor = get_str(&args, "vendor", "damiao");
     let channel = get_str(&args, "channel", "can0");

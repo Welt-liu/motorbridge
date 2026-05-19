@@ -343,11 +343,11 @@ impl RobstrideMotor {
     }
 
     pub fn save_parameters(&self) -> Result<()> {
-        self.send_ext(
+        self.send_with_status_ack(
             CommunicationType::SAVE_PARAMETERS,
-            self.host_id_u16(),
             [1, 2, 3, 4, 5, 6, 7, 8],
             8,
+            Duration::from_millis(500),
         )
     }
 
