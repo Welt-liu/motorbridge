@@ -94,7 +94,6 @@ pub enum ParameterValue {
 
 #[derive(Debug, Clone, Copy)]
 pub struct MotorFeedbackState {
-    pub sequence: u64,
     pub arbitration_id: u32,
     pub device_id: u8,
     pub position: f32,
@@ -565,7 +564,7 @@ impl RobstrideMotor {
     }
 
     fn process_feedback_frame_impl(&self, frame: CanFrame) -> Result<()> {
-        let sequence = self.response_seq.fetch_add(1, Ordering::Release) + 1;
+        self.response_seq.fetch_add(1, Ordering::Release);
         let (comm_type, extra_data, _) = ext_id_parts(frame.arbitration_id);
         match comm_type {
             CommunicationType::GET_DEVICE_ID => {
@@ -616,7 +615,6 @@ impl RobstrideMotor {
                     .lock()
                     .map_err(|_| MotorError::Io("state lock poisoned".to_string()))?
                     .replace(MotorFeedbackState {
-                        sequence,
                         arbitration_id: frame.arbitration_id,
                         device_id: status.flags.device_id,
                         position: status.position,

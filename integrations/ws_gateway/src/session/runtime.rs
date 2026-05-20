@@ -255,7 +255,6 @@ impl SessionCtx {
                     Ok(json!({
                         "vendor": "robstride",
                         "has_value": true,
-                        "state_seq": s.sequence,
                         "arbitration_id": s.arbitration_id,
                         "device_id": s.device_id,
                         "status_code": 0,
