@@ -50,11 +50,12 @@ def _scan_robstride(args: argparse.Namespace, start_id: int, end_id: int) -> lis
         "[scan:robstride] note: probe/device_id is the motor ID; "
         "feedback_id/host_id is the host-side ID"
     )
-    for mid in range(start_id, end_id + 1):
-        hit_meta = None
-        for fid in feedback_ids:
-            ctrl = Controller(args.channel)
-            try:
+    controllers: list[tuple[int, Controller]] = []
+    try:
+        controllers = [(fid, Controller(args.channel)) for fid in feedback_ids]
+        for mid in range(start_id, end_id + 1):
+            hit_meta = None
+            for fid, ctrl in controllers:
                 motor = ctrl.add_robstride_motor(mid, fid, args.model)
                 try:
                     try:
@@ -79,14 +80,15 @@ def _scan_robstride(args: argparse.Namespace, start_id: int, end_id: int) -> lis
                             pass
                 finally:
                     motor.close()
-            finally:
-                ctrl.close_bus()
-                ctrl.close()
-        if hit_meta is None:
-            print(f"[.. ] vendor=robstride probe=0x{mid:02X} no reply")
-        else:
-            found.append((mid, hit_meta))
-            print(f"[hit] probe=0x{mid:02X} {hit_meta}")
+            if hit_meta is None:
+                print(f"[.. ] vendor=robstride probe=0x{mid:02X} no reply")
+            else:
+                found.append((mid, hit_meta))
+                print(f"[hit] probe=0x{mid:02X} {hit_meta}")
+    finally:
+        for _, ctrl in controllers:
+            ctrl.close_bus()
+            ctrl.close()
     return found
 
 def _scan_myactuator(args: argparse.Namespace, start_id: int, end_id: int) -> list[tuple[int, str]]:

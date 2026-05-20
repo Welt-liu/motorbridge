@@ -259,7 +259,7 @@ impl CoreController {
         self.close_inner(false)
     }
 
-    fn close_inner(&self, disable_devices: bool) -> Result<()> {
+    fn stop_polling_thread(&self) -> Result<()> {
         self.polling_active.store(false, Ordering::Release);
         if let Some(handle) = self
             .polling_thread
@@ -269,10 +269,21 @@ impl CoreController {
         {
             let _ = handle.join();
         }
+        Ok(())
+    }
+
+    fn close_inner(&self, disable_devices: bool) -> Result<()> {
+        self.stop_polling_thread()?;
         if disable_devices {
             let _ = self.disable_all();
         }
         self.bus.shutdown()
+    }
+}
+
+impl Drop for CoreController {
+    fn drop(&mut self) {
+        let _ = self.stop_polling_thread();
     }
 }
 
@@ -484,5 +495,18 @@ mod tests {
             .expect("manual poll should still work");
         assert!(d1.processed_count.load(Ordering::SeqCst) >= 1);
         ctrl.close_bus().expect("close");
+    }
+
+    #[test]
+    fn drop_stops_background_polling_thread() {
+        let bus = Arc::new(MockBus::new());
+        {
+            let ctrl = CoreController::new(bus.clone());
+            let d1 = Arc::new(FakeDevice::new(1, 0x11));
+            ctrl.add_device(d1).expect("add d1");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+
+        assert_eq!(Arc::strong_count(&bus), 1);
     }
 }
