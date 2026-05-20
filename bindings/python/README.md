@@ -339,6 +339,29 @@ Damiao usage in Python examples is now covered end-to-end:
 - `robstride_set_active_report(True/False)` toggles RobStride comm_type `24` active status reporting.
 - With active reporting enabled, background polling can update `get_state()` from incoming status frames without a fresh query command; `request_feedback()` remains available as a compatibility/manual-refresh helper.
 
+## CLI Run-Mode Argument Map
+
+`motorbridge-cli run` keeps one unified command surface, but each vendor/mode
+uses only the arguments that its native protocol understands.
+
+| Vendor | Mode | Effective arguments | Notes |
+| --- | --- | --- | --- |
+| Damiao | `mit` | `--pos --vel --kp --kd --tau` | native MIT frame |
+| Damiao | `pos-vel` | `--pos --vlim` | native position-speed frame |
+| Damiao | `vel` | `--vel` | native velocity frame |
+| Damiao | `force-pos` | `--pos --vlim --ratio` | native force-position frame |
+| RobStride | `mit` | `--pos --vel --kp --kd --tau` | native MIT frame |
+| RobStride | `pos-vel` | `--pos --vlim --loc-kp` | maps to native Position mode; `--kp` is accepted as a `--loc-kp` fallback |
+| RobStride | `vel` | `--vel` | native speed mode |
+| HighTorque | `mit` | `--pos --vel --tau` | `--kp/--kd` are accepted for unified signature but ignored by `ht_can v1.5.5` |
+| Hexfellow | `mit` | `--pos --vel --kp --kd --tau` | CAN-FD path |
+| Hexfellow | `pos-vel` | `--pos --vlim` | CAN-FD path |
+
+For RobStride `pos-vel`, `--vel`, `--kd`, and `--tau` are intentionally
+ignored because the firmware path is parameter-based (`limit_spd`, `loc_kp`,
+`loc_ref`). The Rust CLI and Python CLI warn when those ignored arguments are
+explicitly provided.
+
 ## End-to-End Demo Commands
 
 ```bash

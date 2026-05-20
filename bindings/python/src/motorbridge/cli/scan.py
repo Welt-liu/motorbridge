@@ -1,0 +1,195 @@
+from __future__ import annotations
+
+import argparse
+import time
+
+from ..core import Controller
+from .common import _open_controller, _parse_id, _parse_rids, _vendor_defaults
+from .robstride import _robstride_host_id
+
+def _scan_damiao(args: argparse.Namespace, start_id: int, end_id: int) -> list[tuple[int, str]]:
+    feedback_base = _parse_id(args.feedback_base)
+    found: list[tuple[int, str]] = []
+    print(
+        f"[scan:damiao] channel={args.channel} model={args.model} "
+        f"id_range=[0x{start_id:X},0x{end_id:X}] timeout_ms={args.timeout_ms}"
+    )
+    ctrl = _open_controller(args, "damiao")
+    try:
+        for mid in range(start_id, end_id + 1):
+            fid = feedback_base + (mid & 0x0F)
+            motor = ctrl.add_damiao_motor(mid, fid, args.model)
+            try:
+                esc_id = motor.get_register_u32(8, args.timeout_ms)
+                mst_id = motor.get_register_u32(7, args.timeout_ms)
+                found.append((mid, f"vendor=damiao esc_id=0x{esc_id:X} mst_id=0x{mst_id:X}"))
+                print(f"[hit] vendor=damiao probe=0x{mid:02X} esc_id=0x{esc_id:X} mst_id=0x{mst_id:X}")
+            except Exception:
+                print(f"[.. ] vendor=damiao probe=0x{mid:02X} no reply")
+            finally:
+                motor.close()
+    finally:
+        ctrl.close_bus()
+        ctrl.close()
+    return found
+
+def _scan_robstride(args: argparse.Namespace, start_id: int, end_id: int) -> list[tuple[int, str]]:
+    feedback_ids = _parse_rids(args.feedback_ids)
+    if not 1 <= start_id <= 255 or not 1 <= end_id <= 255:
+        raise ValueError("RobStride scan range must be within 1..255")
+    for fid in feedback_ids:
+        _robstride_host_id(fid, "feedback-ids")
+    param_id = _parse_id(args.param_id)
+    found: list[tuple[int, str]] = []
+    print(
+        f"[scan:robstride] channel={args.channel} model={args.model} "
+        f"id_range=[0x{start_id:X},0x{end_id:X}] timeout_ms={args.timeout_ms} "
+        f"feedback_ids={','.join(f'0x{x:X}' for x in feedback_ids)} param_id=0x{param_id:X}"
+    )
+    print(
+        "[scan:robstride] note: probe/device_id is the motor ID; "
+        "feedback_id/host_id is the host-side ID"
+    )
+    for mid in range(start_id, end_id + 1):
+        hit_meta = None
+        for fid in feedback_ids:
+            ctrl = Controller(args.channel)
+            try:
+                motor = ctrl.add_robstride_motor(mid, fid, args.model)
+                try:
+                    try:
+                        device_id, responder_id = motor.robstride_ping_host_id(fid, args.timeout_ms)
+                        hit_meta = (
+                            f"vendor=robstride via=ping feedback_id=0x{fid:X} "
+                            f"device_id={device_id} responder_id={responder_id}"
+                        )
+                        break
+                    except Exception:
+                        try:
+                            value = motor.robstride_get_param_f32_host_id(
+                                param_id, fid, args.param_timeout_ms
+                            )
+                            hit_meta = (
+                                f"vendor=robstride via=read-param feedback_id=0x{fid:X} "
+                                f"param_id=0x{param_id:X} value={value}"
+                            )
+                            break
+                        except Exception:
+                            # Keep probing next feedback candidate / next ID on timeout/no-response.
+                            pass
+                finally:
+                    motor.close()
+            finally:
+                ctrl.close_bus()
+                ctrl.close()
+        if hit_meta is None:
+            print(f"[.. ] vendor=robstride probe=0x{mid:02X} no reply")
+        else:
+            found.append((mid, hit_meta))
+            print(f"[hit] probe=0x{mid:02X} {hit_meta}")
+    return found
+
+def _scan_myactuator(args: argparse.Namespace, start_id: int, end_id: int) -> list[tuple[int, str]]:
+    found: list[tuple[int, str]] = []
+    lo = max(1, start_id)
+    hi = min(32, end_id)
+    print(
+        f"[scan:myactuator] channel={args.channel} model={args.model} "
+        f"id_range=[0x{lo:X},0x{hi:X}] timeout_ms={args.timeout_ms}"
+    )
+    ctrl = Controller(args.channel)
+    try:
+        for mid in range(lo, hi + 1):
+            fid = 0x240 + mid
+            motor = ctrl.add_myactuator_motor(mid, fid, args.model)
+            try:
+                try:
+                    motor.request_feedback()
+                    time.sleep(min(max(args.timeout_ms, 10), 300) / 1000.0)
+                    ctrl.poll_feedback_once()
+                    st = motor.get_state()
+                    if st is None:
+                        raise RuntimeError("no feedback")
+                    meta = (
+                        f"vendor=myactuator feedback_id=0x{fid:X} "
+                        f"temp={st.t_mos:.1f}C vel={st.vel:+.3f}rad/s angle={st.pos:+.3f}rad"
+                    )
+                    found.append((mid, meta))
+                    print(f"[hit] probe=0x{mid:02X} {meta}")
+                except Exception:
+                    print(f"[.. ] vendor=myactuator probe=0x{mid:02X} no reply")
+            finally:
+                motor.close()
+    finally:
+        ctrl.close_bus()
+        ctrl.close()
+    return found
+
+def _scan_hightorque(args: argparse.Namespace, start_id: int, end_id: int) -> list[tuple[int, str]]:
+    found: list[tuple[int, str]] = []
+    lo = max(1, start_id)
+    hi = min(127, end_id)
+    print(
+        f"[scan:hightorque] channel={args.channel} model={args.model} "
+        f"id_range=[0x{lo:X},0x{hi:X}] timeout_ms={args.timeout_ms}"
+    )
+    ctrl = Controller(args.channel)
+    try:
+        for mid in range(lo, hi + 1):
+            motor = ctrl.add_hightorque_motor(mid, 0x01, args.model)
+            try:
+                try:
+                    motor.request_feedback()
+                    st = motor.get_state()
+                    if st is None:
+                        raise RuntimeError("no feedback")
+                    meta = (
+                        f"vendor=hightorque pos={st.pos:+.4f}rad "
+                        f"vel={st.vel:+.4f}rad/s torq={st.torq:+.3f}Nm"
+                    )
+                    found.append((mid, meta))
+                    print(f"[hit] probe=0x{mid:02X} {meta}")
+                except Exception:
+                    print(f"[.. ] vendor=hightorque probe=0x{mid:02X} no reply")
+            finally:
+                motor.close()
+    finally:
+        ctrl.close_bus()
+        ctrl.close()
+    return found
+
+def _scan_command(args: argparse.Namespace) -> None:
+    start_id = _parse_id(args.start_id)
+    end_id = _parse_id(args.end_id)
+    if end_id < start_id:
+        raise ValueError("end-id must be >= start-id")
+    if args.transport == "dm-serial" and args.vendor != "damiao":
+        raise ValueError("scan with transport=dm-serial currently supports --vendor damiao only")
+    resolved_model, _ = _vendor_defaults(args.vendor if args.vendor != "all" else "damiao", args.model, "0x11")
+    args.model = resolved_model
+    print(
+        f"command=scan vendor={args.vendor} transport={args.transport} channel={args.channel} model={args.model} "
+        f"id_range=[0x{start_id:X},0x{end_id:X}] timeout_ms={args.timeout_ms}"
+    )
+
+    found: list[tuple[int, str]] = []
+    damiao_model = args.model
+    myactuator_model = "X8" if args.model == "4340" else args.model
+    robstride_model = "rs-00" if args.model == "4340" else args.model
+    hightorque_model = "hightorque" if args.model == "4340" else args.model
+    if args.vendor in ("damiao", "all"):
+        args.model = damiao_model
+        found.extend(_scan_damiao(args, start_id, end_id))
+    if args.vendor in ("myactuator", "all"):
+        args.model = myactuator_model
+        found.extend(_scan_myactuator(args, start_id, end_id))
+    if args.vendor in ("robstride", "all"):
+        args.model = robstride_model
+        found.extend(_scan_robstride(args, start_id, end_id))
+    if args.vendor in ("hightorque", "all"):
+        args.model = hightorque_model
+        found.extend(_scan_hightorque(args, start_id, end_id))
+
+    print(f"scan done: {len(found)} motor(s) found")
+    for probe, meta in found:
+        print(f"  probe=0x{probe:02X} {meta}")

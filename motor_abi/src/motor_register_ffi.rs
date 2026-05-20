@@ -7,8 +7,8 @@ pub extern "C" fn motor_handle_set_can_timeout_ms(motor: *mut MotorHandle, timeo
         return -1;
     }
     let reg_value = timeout_ms.saturating_mul(20);
-    let motor = unsafe { &mut *motor };
-    let rc = match &motor.inner {
+    let motor = lock_motor_inner!(motor, "motor is null");
+    let rc = match &*motor {
         MotorHandleInner::Damiao(m) => m
             .write_register_u32(9, reg_value)
             .map_err(|e| e.to_string()),
@@ -38,8 +38,8 @@ pub extern "C" fn motor_handle_write_register_f32(
         set_last_error("motor is null");
         return -1;
     }
-    let motor = unsafe { &mut *motor };
-    let rc = match &motor.inner {
+    let motor = lock_motor_inner!(motor, "motor is null");
+    let rc = match &*motor {
         MotorHandleInner::Damiao(m) => m.write_register_f32(rid, value).map_err(|e| e.to_string()),
         _ => Err("Damiao register write is only available for Damiao motors".to_string()),
     };
@@ -56,8 +56,8 @@ pub extern "C" fn motor_handle_write_register_u32(
         set_last_error("motor is null");
         return -1;
     }
-    let motor = unsafe { &mut *motor };
-    let rc = match &motor.inner {
+    let motor = lock_motor_inner!(motor, "motor is null");
+    let rc = match &*motor {
         MotorHandleInner::Damiao(m) => m.write_register_u32(rid, value).map_err(|e| e.to_string()),
         _ => Err("Damiao register write is only available for Damiao motors".to_string()),
     };
@@ -75,9 +75,9 @@ pub extern "C" fn motor_handle_get_register_f32(
         set_last_error("motor or out_value is null");
         return -1;
     }
-    let motor = unsafe { &mut *motor };
+    let motor = lock_motor_inner!(motor, "motor is null");
     let out = unsafe { &mut *out_value };
-    let rc = match &motor.inner {
+    let rc = match &*motor {
         MotorHandleInner::Damiao(m) => m
             .get_register_f32(rid, Duration::from_millis(timeout_ms as u64))
             .map_err(|e| e.to_string())
@@ -98,9 +98,9 @@ pub extern "C" fn motor_handle_get_register_u32(
         set_last_error("motor or out_value is null");
         return -1;
     }
-    let motor = unsafe { &mut *motor };
+    let motor = lock_motor_inner!(motor, "motor is null");
     let out = unsafe { &mut *out_value };
-    let rc = match &motor.inner {
+    let rc = match &*motor {
         MotorHandleInner::Damiao(m) => m
             .get_register_u32(rid, Duration::from_millis(timeout_ms as u64))
             .map_err(|e| e.to_string())
@@ -120,8 +120,8 @@ pub extern "C" fn motor_handle_robstride_ping(
         set_last_error("motor or output pointer is null");
         return -1;
     }
-    let motor = unsafe { &mut *motor };
-    let rc = match &motor.inner {
+    let motor = lock_motor_inner!(motor, "motor is null");
+    let rc = match &*motor {
         MotorHandleInner::Robstride(m) => m
             .ping(Duration::from_millis(500))
             .map_err(|e| e.to_string()),
@@ -159,8 +159,8 @@ pub extern "C" fn motor_handle_robstride_ping_host_id(
         set_last_error("motor or output pointer is null");
         return -1;
     }
-    let motor = unsafe { &mut *motor };
-    let rc = match &motor.inner {
+    let motor = lock_motor_inner!(motor, "motor is null");
+    let rc = match &*motor {
         MotorHandleInner::Robstride(m) => m
             .ping_with_host_id(host_id, Duration::from_millis(timeout_ms as u64))
             .map_err(|e| e.to_string()),
@@ -198,9 +198,9 @@ pub extern "C" fn motor_handle_robstride_get_param_f32_host_id(
         set_last_error("motor or output pointer is null");
         return -1;
     }
-    let motor = unsafe { &mut *motor };
+    let motor = lock_motor_inner!(motor, "motor is null");
     let out = unsafe { &mut *out_value };
-    let rc = match &motor.inner {
+    let rc = match &*motor {
         MotorHandleInner::Robstride(m) => m
             .get_parameter_with_host_id(param_id, host_id, Duration::from_millis(timeout_ms as u64))
             .and_then(|value| match value {
@@ -231,8 +231,8 @@ pub extern "C" fn motor_handle_robstride_get_fault_report(
         set_last_error("motor or output pointer is null");
         return -1;
     }
-    let motor = unsafe { &mut *motor };
-    match &motor.inner {
+    let motor = lock_motor_inner!(motor, "motor is null");
+    match &*motor {
         MotorHandleInner::Robstride(m) => {
             let report = m.latest_fault_report();
             unsafe {
@@ -260,8 +260,8 @@ pub extern "C" fn motor_handle_robstride_set_device_id(
         set_last_error("motor is null");
         return -1;
     }
-    let motor = unsafe { &mut *motor };
-    let rc = match &motor.inner {
+    let motor = lock_motor_inner!(motor, "motor is null");
+    let rc = match &*motor {
         MotorHandleInner::Robstride(m) => m.set_device_id(new_device_id).map_err(|e| e.to_string()),
         MotorHandleInner::Damiao(_)
         | MotorHandleInner::Hexfellow(_)
@@ -282,8 +282,8 @@ pub extern "C" fn motor_handle_robstride_set_active_report(
         set_last_error("motor is null");
         return -1;
     }
-    let motor = unsafe { &mut *motor };
-    let rc = match &motor.inner {
+    let motor = lock_motor_inner!(motor, "motor is null");
+    let rc = match &*motor {
         MotorHandleInner::Robstride(m) => {
             m.set_active_report(enabled != 0).map_err(|e| e.to_string())
         }

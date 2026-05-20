@@ -1,16 +1,23 @@
-use crate::{set_last_error, MotorHandle};
+use crate::{set_last_error, MotorHandle, MotorHandleInner};
 
 pub(crate) fn ffi_get<T, F>(motor: *mut MotorHandle, out_value: *mut T, f: F) -> i32
 where
-    F: FnOnce(&mut MotorHandle) -> Result<T, String>,
+    F: FnOnce(&MotorHandleInner) -> Result<T, String>,
 {
     if motor.is_null() || out_value.is_null() {
         set_last_error("motor or out_value is null");
         return -1;
     }
-    let motor = unsafe { &mut *motor };
+    let motor = unsafe { &*motor };
+    let inner = match motor.inner.lock() {
+        Ok(inner) => inner,
+        Err(_) => {
+            set_last_error("motor handle lock poisoned");
+            return -1;
+        }
+    };
     let out = unsafe { &mut *out_value };
-    match f(motor) {
+    match f(&inner) {
         Ok(v) => {
             *out = v;
             0
@@ -24,14 +31,21 @@ where
 
 pub(crate) fn ffi_run<F>(motor: *mut MotorHandle, f: F) -> i32
 where
-    F: FnOnce(&mut MotorHandle) -> Result<(), String>,
+    F: FnOnce(&MotorHandleInner) -> Result<(), String>,
 {
     if motor.is_null() {
         set_last_error("motor is null");
         return -1;
     }
-    let motor = unsafe { &mut *motor };
-    match f(motor) {
+    let motor = unsafe { &*motor };
+    let inner = match motor.inner.lock() {
+        Ok(inner) => inner,
+        Err(_) => {
+            set_last_error("motor handle lock poisoned");
+            return -1;
+        }
+    };
+    match f(&inner) {
         Ok(()) => 0,
         Err(e) => {
             set_last_error(e);

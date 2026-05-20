@@ -20,13 +20,20 @@ macro_rules! add_motor_ffi {
                     return ptr::null_mut();
                 }
             };
-            let controller = unsafe { &mut *controller };
-            match $ensure_fn(controller).and_then(|ctrl| {
+            let controller = unsafe { &*controller };
+            let mut inner = match controller.inner.lock() {
+                Ok(inner) => inner,
+                Err(_) => {
+                    set_last_error("controller lock poisoned");
+                    return ptr::null_mut();
+                }
+            };
+            match $ensure_fn(&mut *inner).and_then(|ctrl| {
                 ctrl.add_motor(motor_id, feedback_id, &model)
                     .map_err(|e| e.to_string())
             }) {
                 Ok(motor) => Box::into_raw(Box::new(MotorHandle {
-                    inner: MotorHandleInner::$inner_variant(motor),
+                    inner: Mutex::new(MotorHandleInner::$inner_variant(motor)),
                 })),
                 Err(e) => {
                     set_last_error(e);

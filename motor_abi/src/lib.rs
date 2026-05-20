@@ -14,7 +14,7 @@ use std::cell::RefCell;
 use std::f32::consts::PI;
 use std::ffi::{c_char, CStr, CString};
 use std::ptr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 thread_local! {
@@ -79,12 +79,12 @@ enum MotorHandleInner {
 
 #[repr(C)]
 pub struct MotorController {
-    inner: ControllerInner,
+    inner: Mutex<ControllerInner>,
 }
 
 #[repr(C)]
 pub struct MotorHandle {
-    inner: MotorHandleInner,
+    inner: Mutex<MotorHandleInner>,
 }
 
 #[repr(C)]
@@ -126,14 +126,27 @@ fn ffi_rc(result: Result<(), String>) -> i32 {
     }
 }
 
-macro_rules! ffi_wrap_motor {
-    ($motor_ptr:expr, $body:expr) => {{
+macro_rules! lock_motor_inner {
+    ($motor_ptr:expr, $null_message:expr) => {{
         if $motor_ptr.is_null() {
-            set_last_error("motor is null");
+            set_last_error($null_message);
             return -1;
         }
-        let motor = unsafe { &mut *$motor_ptr };
-        ffi_rc($body(motor))
+        let motor = unsafe { &*$motor_ptr };
+        match motor.inner.lock() {
+            Ok(inner) => inner,
+            Err(_) => {
+                set_last_error("motor handle lock poisoned");
+                return -1;
+            }
+        }
+    }};
+}
+
+macro_rules! ffi_wrap_motor {
+    ($motor_ptr:expr, $body:expr) => {{
+        let inner = lock_motor_inner!($motor_ptr, "motor is null");
+        ffi_rc($body(&*inner))
     }};
 }
 
@@ -160,12 +173,11 @@ fn controller_vendor_name(inner: &ControllerInner) -> &'static str {
 
 macro_rules! ensure_controller {
     ($fn_name:ident, $variant:ident, $ty:ty, $bind_expr:expr) => {
-        fn $fn_name(controller: &mut MotorController) -> Result<&mut $ty, String> {
-            if let ControllerInner::Unbound(channel) = &controller.inner {
-                controller.inner =
-                    ControllerInner::$variant($bind_expr(channel).map_err(|e| e.to_string())?);
+        fn $fn_name(inner: &mut ControllerInner) -> Result<&mut $ty, String> {
+            if let ControllerInner::Unbound(channel) = inner {
+                *inner = ControllerInner::$variant($bind_expr(channel).map_err(|e| e.to_string())?);
             }
-            match &mut controller.inner {
+            match inner {
                 ControllerInner::$variant(ctrl) => Ok(ctrl),
                 ControllerInner::Unbound(_) => Err("controller binding failed".to_string()),
                 current => Err(format!(

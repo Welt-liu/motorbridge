@@ -378,6 +378,26 @@ Python 示例中 Damiao 用法已覆盖到位：
 - `robstride_set_active_report(True/False)` 可开启/关闭 RobStride 通信类型 `24` 主动状态上报。
 - 开启主动上报后，后台 polling 可以直接消费状态帧并更新 `get_state()` 缓存，不必每次额外发送查询命令；`request_feedback()` 仍保留为兼容/手动刷新接口。
 
+## CLI run 模式参数有效性表
+
+`motorbridge-cli run` 使用统一命令入口，但不同品牌/模式只会消费该协议真正支持的参数。
+
+| 品牌 | 模式 | 有效参数 | 说明 |
+| --- | --- | --- | --- |
+| Damiao | `mit` | `--pos --vel --kp --kd --tau` | 原生 MIT 帧 |
+| Damiao | `pos-vel` | `--pos --vlim` | 原生位置-速度帧 |
+| Damiao | `vel` | `--vel` | 原生速度帧 |
+| Damiao | `force-pos` | `--pos --vlim --ratio` | 原生力位混控帧 |
+| RobStride | `mit` | `--pos --vel --kp --kd --tau` | 原生 MIT 帧 |
+| RobStride | `pos-vel` | `--pos --vlim --loc-kp` | 映射到原生 Position 模式；未传 `--loc-kp` 时接受 `--kp` 作为 fallback |
+| RobStride | `vel` | `--vel` | 原生速度模式 |
+| HighTorque | `mit` | `--pos --vel --tau` | `--kp/--kd` 为统一签名兼容参数，`ht_can v1.5.5` 会忽略 |
+| Hexfellow | `mit` | `--pos --vel --kp --kd --tau` | CAN-FD 路径 |
+| Hexfellow | `pos-vel` | `--pos --vlim` | CAN-FD 路径 |
+
+RobStride `pos-vel` 的 `--vel`、`--kd`、`--tau` 是无效参数：该路径实际写入
+`limit_spd`、`loc_kp`、`loc_ref`。Rust CLI 和 Python CLI 在用户显式传入这些参数时会输出 warning。
+
 ## 端到端示例命令
 
 ```bash

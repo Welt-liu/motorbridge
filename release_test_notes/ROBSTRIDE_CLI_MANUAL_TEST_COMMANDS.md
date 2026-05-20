@@ -317,6 +317,12 @@ Expected: mode switch succeeds and control frames are sent without fault.
 
 Run only with the motor safely mounted or unloaded.
 
+RobStride `pos-vel` maps to the native parameter path:
+
+- effective: `--pos` -> `loc_ref`, `--vlim` -> `limit_spd`, `--loc-kp` -> `loc_kp`
+- fallback: `--kp` is used as `loc_kp` only when `--loc-kp` is omitted
+- ignored with warning: `--vel`, `--kd`, `--tau`
+
 Rust/Core CLI:
 
 ```bash

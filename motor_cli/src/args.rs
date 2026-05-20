@@ -235,6 +235,18 @@ RobStride extras:\n\
   Note: zero-by-offset currently prints a firmware-safety warning and sends no calibration CAN frames.\n\
   (scan auto-fallbacks to blind pulse probing if no ping/parameter replies)\n\
 \n\
+Run-mode effective arguments:\n\
+  Damiao mit:        --pos --vel --kp --kd --tau\n\
+  Damiao pos-vel:    --pos --vlim\n\
+  Damiao vel:        --vel\n\
+  Damiao force-pos:  --pos --vlim --ratio\n\
+  RobStride mit:     --pos --vel --kp --kd --tau\n\
+  RobStride pos-vel: --pos --vlim --loc-kp (or --kp fallback); --vel/--kd/--tau are ignored with warning\n\
+  RobStride vel:     --vel\n\
+  HighTorque mit:    --pos --vel --tau; --kp/--kd are ignored by ht_can v1.5.5\n\
+  Hexfellow mit:     --pos --vel --kp --kd --tau\n\
+  Hexfellow pos-vel: --pos --vlim\n\
+\n\
 MyActuator extras:\n\
   --current <A>          for --mode current\n\
   --vel <rad/s>          for --mode vel\n\

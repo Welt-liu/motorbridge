@@ -73,7 +73,7 @@ class Controller:
 
     def add_damiao_motor(self, motor_id: int, feedback_id: int, model: str) -> "Motor":
         m = self._abi.lib.motor_controller_add_damiao_motor(
-            self._ptr, motor_id, feedback_id, model.encode()
+            self._require_open(), motor_id, feedback_id, model.encode()
         )
         if not m:
             raise CallError(f"add_damiao_motor failed: {_err_text()}")
@@ -81,7 +81,7 @@ class Controller:
 
     def add_hexfellow_motor(self, motor_id: int, feedback_id: int, model: str) -> "Motor":
         m = self._abi.lib.motor_controller_add_hexfellow_motor(
-            self._ptr, motor_id, feedback_id, model.encode()
+            self._require_open(), motor_id, feedback_id, model.encode()
         )
         if not m:
             raise CallError(f"add_hexfellow_motor failed: {_err_text()}")
@@ -89,7 +89,7 @@ class Controller:
 
     def add_myactuator_motor(self, motor_id: int, feedback_id: int, model: str) -> "Motor":
         m = self._abi.lib.motor_controller_add_myactuator_motor(
-            self._ptr, motor_id, feedback_id, model.encode()
+            self._require_open(), motor_id, feedback_id, model.encode()
         )
         if not m:
             raise CallError(f"add_myactuator_motor failed: {_err_text()}")
@@ -101,7 +101,7 @@ class Controller:
         if not 0 <= int(feedback_id) <= 255:
             raise ValueError(f"RobStride feedback_id/host_id must be in 0..255, got {feedback_id}")
         m = self._abi.lib.motor_controller_add_robstride_motor(
-            self._ptr, motor_id, feedback_id, model.encode()
+            self._require_open(), motor_id, feedback_id, model.encode()
         )
         if not m:
             raise CallError(f"add_robstride_motor failed: {_err_text()}")
@@ -109,7 +109,7 @@ class Controller:
 
     def add_hightorque_motor(self, motor_id: int, feedback_id: int, model: str) -> "Motor":
         m = self._abi.lib.motor_controller_add_hightorque_motor(
-            self._ptr, motor_id, feedback_id, model.encode()
+            self._require_open(), motor_id, feedback_id, model.encode()
         )
         if not m:
             raise CallError(f"add_hightorque_motor failed: {_err_text()}")
@@ -132,7 +132,7 @@ class Motor:
 
     def close(self) -> None:
         if self._ptr:
-            self._abi.lib.motor_handle_free(self._ptr)
+            self._abi.lib.motor_handle_free(self._require_open())
             self._ptr = None
 
     def _require_open(self) -> int:
@@ -147,49 +147,49 @@ class Motor:
         _ok(self._abi.lib.motor_handle_disable(self._require_open()), "disable")
 
     def clear_error(self) -> None:
-        _ok(self._abi.lib.motor_handle_clear_error(self._ptr), "clear_error")
+        _ok(self._abi.lib.motor_handle_clear_error(self._require_open()), "clear_error")
 
     def set_zero_position(self) -> None:
-        _ok(self._abi.lib.motor_handle_set_zero_position(self._ptr), "set_zero_position")
+        _ok(self._abi.lib.motor_handle_set_zero_position(self._require_open()), "set_zero_position")
 
     def ensure_mode(self, mode: Mode, timeout_ms: int = 1000) -> None:
-        _ok(self._abi.lib.motor_handle_ensure_mode(self._ptr, int(mode), timeout_ms), "ensure_mode")
+        _ok(self._abi.lib.motor_handle_ensure_mode(self._require_open(), int(mode), timeout_ms), "ensure_mode")
 
     def send_mit(self, pos: float, vel: float, kp: float, kd: float, tau: float) -> None:
-        _ok(self._abi.lib.motor_handle_send_mit(self._ptr, pos, vel, kp, kd, tau), "send_mit")
+        _ok(self._abi.lib.motor_handle_send_mit(self._require_open(), pos, vel, kp, kd, tau), "send_mit")
 
     def send_pos_vel(self, pos: float, vlim: float) -> None:
-        _ok(self._abi.lib.motor_handle_send_pos_vel(self._ptr, pos, vlim), "send_pos_vel")
+        _ok(self._abi.lib.motor_handle_send_pos_vel(self._require_open(), pos, vlim), "send_pos_vel")
 
     def send_vel(self, vel: float) -> None:
-        _ok(self._abi.lib.motor_handle_send_vel(self._ptr, vel), "send_vel")
+        _ok(self._abi.lib.motor_handle_send_vel(self._require_open(), vel), "send_vel")
 
     def send_force_pos(self, pos: float, vlim: float, ratio: float) -> None:
         _ok(
-            self._abi.lib.motor_handle_send_force_pos(self._ptr, pos, vlim, ratio),
+            self._abi.lib.motor_handle_send_force_pos(self._require_open(), pos, vlim, ratio),
             "send_force_pos",
         )
 
     def request_feedback(self) -> None:
-        _ok(self._abi.lib.motor_handle_request_feedback(self._ptr), "request_feedback")
+        _ok(self._abi.lib.motor_handle_request_feedback(self._require_open()), "request_feedback")
 
     def set_can_timeout_ms(self, timeout_ms: int) -> None:
-        _ok(self._abi.lib.motor_handle_set_can_timeout_ms(self._ptr, timeout_ms), "set_can_timeout_ms")
+        _ok(self._abi.lib.motor_handle_set_can_timeout_ms(self._require_open(), timeout_ms), "set_can_timeout_ms")
 
     def store_parameters(self) -> None:
-        _ok(self._abi.lib.motor_handle_store_parameters(self._ptr), "store_parameters")
+        _ok(self._abi.lib.motor_handle_store_parameters(self._require_open()), "store_parameters")
 
     def write_register_f32(self, rid: int, value: float) -> None:
-        _ok(self._abi.lib.motor_handle_write_register_f32(self._ptr, rid, value), "write_register_f32")
+        _ok(self._abi.lib.motor_handle_write_register_f32(self._require_open(), rid, value), "write_register_f32")
 
     def write_register_u32(self, rid: int, value: int) -> None:
-        _ok(self._abi.lib.motor_handle_write_register_u32(self._ptr, rid, value), "write_register_u32")
+        _ok(self._abi.lib.motor_handle_write_register_u32(self._require_open(), rid, value), "write_register_u32")
 
     def get_register_f32(self, rid: int, timeout_ms: int = 1000) -> float:
         out = c_float(0.0)
         _ok(
             self._abi.lib.motor_handle_get_register_f32(
-                self._ptr, rid, timeout_ms, ctypes.byref(out)
+                self._require_open(), rid, timeout_ms, ctypes.byref(out)
             ),
             "get_register_f32",
         )
@@ -199,7 +199,7 @@ class Motor:
         out = c_uint32(0)
         _ok(
             self._abi.lib.motor_handle_get_register_u32(
-                self._ptr, rid, timeout_ms, ctypes.byref(out)
+                self._require_open(), rid, timeout_ms, ctypes.byref(out)
             ),
             "get_register_u32",
         )
@@ -210,7 +210,7 @@ class Motor:
         responder_id = c_uint8(0)
         _ok(
             self._abi.lib.motor_handle_robstride_ping(
-                self._ptr, ctypes.byref(device_id), ctypes.byref(responder_id)
+                self._require_open(), ctypes.byref(device_id), ctypes.byref(responder_id)
             ),
             "robstride_ping",
         )
@@ -223,7 +223,7 @@ class Motor:
         responder_id = c_uint8(0)
         _ok(
             self._abi.lib.motor_handle_robstride_ping_host_id(
-                self._ptr, host_id, timeout_ms, ctypes.byref(device_id), ctypes.byref(responder_id)
+                self._require_open(), host_id, timeout_ms, ctypes.byref(device_id), ctypes.byref(responder_id)
             ),
             "robstride_ping_host_id",
         )
@@ -235,7 +235,7 @@ class Motor:
         out = c_float(0.0)
         _ok(
             self._abi.lib.motor_handle_robstride_get_param_f32_host_id(
-                self._ptr, param_id, host_id, timeout_ms, ctypes.byref(out)
+                self._require_open(), param_id, host_id, timeout_ms, ctypes.byref(out)
             ),
             "robstride_get_param_f32_host_id",
         )
@@ -246,7 +246,7 @@ class Motor:
         warning_raw = c_uint32(0)
         _ok(
             self._abi.lib.motor_handle_robstride_get_fault_report(
-                self._ptr, ctypes.byref(fault_raw), ctypes.byref(warning_raw)
+                self._require_open(), ctypes.byref(fault_raw), ctypes.byref(warning_raw)
             ),
             "robstride_get_fault_report",
         )
@@ -255,36 +255,36 @@ class Motor:
     def robstride_set_device_id(self, new_device_id: int) -> None:
         if not 1 <= int(new_device_id) <= 255:
             raise ValueError(f"RobStride new_device_id must be in 1..255, got {new_device_id}")
-        _ok(self._abi.lib.motor_handle_robstride_set_device_id(self._ptr, new_device_id), "robstride_set_device_id")
+        _ok(self._abi.lib.motor_handle_robstride_set_device_id(self._require_open(), new_device_id), "robstride_set_device_id")
 
     def robstride_set_active_report(self, enabled: bool) -> None:
         _ok(
             self._abi.lib.motor_handle_robstride_set_active_report(
-                self._ptr, 1 if enabled else 0
+                self._require_open(), 1 if enabled else 0
             ),
             "robstride_set_active_report",
         )
 
     def robstride_write_param_i8(self, param_id: int, value: int) -> None:
-        _ok(self._abi.lib.motor_handle_robstride_write_param_i8(self._ptr, param_id, value), "robstride_write_param_i8")
+        _ok(self._abi.lib.motor_handle_robstride_write_param_i8(self._require_open(), param_id, value), "robstride_write_param_i8")
 
     def robstride_write_param_u8(self, param_id: int, value: int) -> None:
-        _ok(self._abi.lib.motor_handle_robstride_write_param_u8(self._ptr, param_id, value), "robstride_write_param_u8")
+        _ok(self._abi.lib.motor_handle_robstride_write_param_u8(self._require_open(), param_id, value), "robstride_write_param_u8")
 
     def robstride_write_param_u16(self, param_id: int, value: int) -> None:
-        _ok(self._abi.lib.motor_handle_robstride_write_param_u16(self._ptr, param_id, value), "robstride_write_param_u16")
+        _ok(self._abi.lib.motor_handle_robstride_write_param_u16(self._require_open(), param_id, value), "robstride_write_param_u16")
 
     def robstride_write_param_u32(self, param_id: int, value: int) -> None:
-        _ok(self._abi.lib.motor_handle_robstride_write_param_u32(self._ptr, param_id, value), "robstride_write_param_u32")
+        _ok(self._abi.lib.motor_handle_robstride_write_param_u32(self._require_open(), param_id, value), "robstride_write_param_u32")
 
     def robstride_write_param_f32(self, param_id: int, value: float) -> None:
-        _ok(self._abi.lib.motor_handle_robstride_write_param_f32(self._ptr, param_id, value), "robstride_write_param_f32")
+        _ok(self._abi.lib.motor_handle_robstride_write_param_f32(self._require_open(), param_id, value), "robstride_write_param_f32")
 
     def robstride_get_param_i8(self, param_id: int, timeout_ms: int = 1000) -> int:
         out = c_int8(0)
         _ok(
             self._abi.lib.motor_handle_robstride_get_param_i8(
-                self._ptr, param_id, timeout_ms, ctypes.byref(out)
+                self._require_open(), param_id, timeout_ms, ctypes.byref(out)
             ),
             "robstride_get_param_i8",
         )
@@ -294,7 +294,7 @@ class Motor:
         out = c_uint8(0)
         _ok(
             self._abi.lib.motor_handle_robstride_get_param_u8(
-                self._ptr, param_id, timeout_ms, ctypes.byref(out)
+                self._require_open(), param_id, timeout_ms, ctypes.byref(out)
             ),
             "robstride_get_param_u8",
         )
@@ -304,7 +304,7 @@ class Motor:
         out = c_uint16(0)
         _ok(
             self._abi.lib.motor_handle_robstride_get_param_u16(
-                self._ptr, param_id, timeout_ms, ctypes.byref(out)
+                self._require_open(), param_id, timeout_ms, ctypes.byref(out)
             ),
             "robstride_get_param_u16",
         )
@@ -314,7 +314,7 @@ class Motor:
         out = c_uint32(0)
         _ok(
             self._abi.lib.motor_handle_robstride_get_param_u32(
-                self._ptr, param_id, timeout_ms, ctypes.byref(out)
+                self._require_open(), param_id, timeout_ms, ctypes.byref(out)
             ),
             "robstride_get_param_u32",
         )
@@ -324,7 +324,7 @@ class Motor:
         out = c_float(0.0)
         _ok(
             self._abi.lib.motor_handle_robstride_get_param_f32(
-                self._ptr, param_id, timeout_ms, ctypes.byref(out)
+                self._require_open(), param_id, timeout_ms, ctypes.byref(out)
             ),
             "robstride_get_param_f32",
         )
@@ -334,7 +334,7 @@ class Motor:
         out = c_float(0.0)
         _ok(
             self._abi.lib.motor_handle_damiao_get_param_f32(
-                self._ptr, param_id, timeout_ms, ctypes.byref(out)
+                self._require_open(), param_id, timeout_ms, ctypes.byref(out)
             ),
             "damiao_get_param_f32",
         )
@@ -344,21 +344,21 @@ class Motor:
         out = c_uint32(0)
         _ok(
             self._abi.lib.motor_handle_damiao_get_param_u32(
-                self._ptr, param_id, timeout_ms, ctypes.byref(out)
+                self._require_open(), param_id, timeout_ms, ctypes.byref(out)
             ),
             "damiao_get_param_u32",
         )
         return int(out.value)
 
     def damiao_write_param_f32(self, param_id: int, value: float) -> None:
-        _ok(self._abi.lib.motor_handle_damiao_write_param_f32(self._ptr, param_id, value), "damiao_write_param_f32")
+        _ok(self._abi.lib.motor_handle_damiao_write_param_f32(self._require_open(), param_id, value), "damiao_write_param_f32")
 
     def damiao_write_param_u32(self, param_id: int, value: int) -> None:
-        _ok(self._abi.lib.motor_handle_damiao_write_param_u32(self._ptr, param_id, value), "damiao_write_param_u32")
+        _ok(self._abi.lib.motor_handle_damiao_write_param_u32(self._require_open(), param_id, value), "damiao_write_param_u32")
 
     def get_state(self) -> MotorState | None:
         st = CState()
-        _ok(self._abi.lib.motor_handle_get_state(self._ptr, ctypes.byref(st)), "get_state")
+        _ok(self._abi.lib.motor_handle_get_state(self._require_open(), ctypes.byref(st)), "get_state")
         if not st.has_value:
             return None
         return MotorState(

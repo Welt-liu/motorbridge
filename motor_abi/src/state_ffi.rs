@@ -9,9 +9,9 @@ pub extern "C" fn motor_handle_get_state(
         set_last_error("motor or out_state is null");
         return -1;
     }
-    let motor = unsafe { &mut *motor };
+    let motor = lock_motor_inner!(motor, "motor is null");
     let out = unsafe { &mut *out_state };
-    match &motor.inner {
+    match &*motor {
         MotorHandleInner::Damiao(m) => {
             if let Some(state) = m.latest_state() {
                 *out = MotorState {

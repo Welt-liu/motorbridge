@@ -10,8 +10,8 @@ pub extern "C" fn motor_handle_free(motor: *mut MotorHandle) {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn motor_handle_enable(motor: *mut MotorHandle) -> i32 {
-    ffi_wrap_motor!(motor, |motor: &mut MotorHandle| {
-        match &motor.inner {
+    ffi_wrap_motor!(motor, |motor: &MotorHandleInner| {
+        match motor {
             MotorHandleInner::Damiao(m) => m.enable().map_err(|e| e.to_string()),
             MotorHandleInner::Hexfellow(m) => m
                 .enable_drive(Duration::from_millis(200))
@@ -25,8 +25,8 @@ pub extern "C" fn motor_handle_enable(motor: *mut MotorHandle) -> i32 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn motor_handle_disable(motor: *mut MotorHandle) -> i32 {
-    ffi_wrap_motor!(motor, |motor: &mut MotorHandle| {
-        match &motor.inner {
+    ffi_wrap_motor!(motor, |motor: &MotorHandleInner| {
+        match motor {
             MotorHandleInner::Damiao(m) => m.disable().map_err(|e| e.to_string()),
             MotorHandleInner::Hexfellow(m) => m
                 .disable_drive(Duration::from_millis(200))
@@ -40,8 +40,8 @@ pub extern "C" fn motor_handle_disable(motor: *mut MotorHandle) -> i32 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn motor_handle_clear_error(motor: *mut MotorHandle) -> i32 {
-    ffi_wrap_motor!(motor, |motor: &mut MotorHandle| {
-        match &motor.inner {
+    ffi_wrap_motor!(motor, |motor: &MotorHandleInner| {
+        match motor {
             MotorHandleInner::Damiao(m) => m.clear_error().map_err(|e| e.to_string()),
             MotorHandleInner::Hexfellow(_) => {
                 Err("clear_error is not supported for Hexfellow".to_string())
@@ -55,8 +55,8 @@ pub extern "C" fn motor_handle_clear_error(motor: *mut MotorHandle) -> i32 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn motor_handle_set_zero_position(motor: *mut MotorHandle) -> i32 {
-    ffi_wrap_motor!(motor, |motor: &mut MotorHandle| {
-        match &motor.inner {
+    ffi_wrap_motor!(motor, |motor: &MotorHandleInner| {
+        match motor {
             MotorHandleInner::Damiao(m) => m.set_zero_position().map_err(|e| e.to_string()),
             MotorHandleInner::Hexfellow(_) => {
                 Err("set_zero_position is not supported for Hexfellow".to_string())

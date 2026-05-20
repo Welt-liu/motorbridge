@@ -1,14 +1,16 @@
 use super::*;
 
 macro_rules! dispatch_controller {
-    ($controller:expr, $method:ident) => {
-        match &mut $controller.inner {
+    ($inner:expr, $method:ident) => {
+        match $inner {
             ControllerInner::Damiao(ctrl) => ctrl.$method().map_err(|e| e.to_string()),
             ControllerInner::Hexfellow(ctrl) => ctrl.$method().map_err(|e| e.to_string()),
             ControllerInner::MyActuator(ctrl) => ctrl.$method().map_err(|e| e.to_string()),
             ControllerInner::Robstride(ctrl) => ctrl.$method().map_err(|e| e.to_string()),
             ControllerInner::Hightorque(ctrl) => ctrl.$method().map_err(|e| e.to_string()),
-            ControllerInner::Unbound(_) => Ok(()),
+            ControllerInner::Unbound(_) => Err(
+                "controller has no motor; add a motor before calling this operation".to_string(),
+            ),
         }
     };
 }
@@ -28,7 +30,7 @@ pub extern "C" fn motor_controller_new_socketcan(channel: *const c_char) -> *mut
         }
     };
     Box::into_raw(Box::new(MotorController {
-        inner: ControllerInner::Unbound(channel),
+        inner: Mutex::new(ControllerInner::Unbound(channel)),
     }))
 }
 #[unsafe(no_mangle)]
@@ -41,7 +43,7 @@ pub extern "C" fn motor_controller_new_socketcanfd(channel: *const c_char) -> *m
         }
     };
     Box::into_raw(Box::new(MotorController {
-        inner: ControllerInner::Unbound(channel),
+        inner: Mutex::new(ControllerInner::Unbound(channel)),
     }))
 }
 #[unsafe(no_mangle)]
@@ -64,7 +66,7 @@ pub extern "C" fn motor_controller_new_dm_serial(
         }
     };
     Box::into_raw(Box::new(MotorController {
-        inner: ControllerInner::Damiao(controller),
+        inner: Mutex::new(ControllerInner::Damiao(controller)),
     }))
 }
 
@@ -82,8 +84,15 @@ pub extern "C" fn motor_controller_poll_feedback_once(controller: *mut MotorCont
         set_last_error("controller is null");
         return -1;
     }
-    let controller = unsafe { &mut *controller };
-    let rc = dispatch_controller!(controller, poll_feedback_once);
+    let controller = unsafe { &*controller };
+    let mut inner = match controller.inner.lock() {
+        Ok(inner) => inner,
+        Err(_) => {
+            set_last_error("controller lock poisoned");
+            return -1;
+        }
+    };
+    let rc = dispatch_controller!(&mut *inner, poll_feedback_once);
     ffi_rc(rc)
 }
 
@@ -93,8 +102,15 @@ pub extern "C" fn motor_controller_enable_all(controller: *mut MotorController) 
         set_last_error("controller is null");
         return -1;
     }
-    let controller = unsafe { &mut *controller };
-    let rc = dispatch_controller!(controller, enable_all);
+    let controller = unsafe { &*controller };
+    let mut inner = match controller.inner.lock() {
+        Ok(inner) => inner,
+        Err(_) => {
+            set_last_error("controller lock poisoned");
+            return -1;
+        }
+    };
+    let rc = dispatch_controller!(&mut *inner, enable_all);
     ffi_rc(rc)
 }
 
@@ -104,8 +120,15 @@ pub extern "C" fn motor_controller_disable_all(controller: *mut MotorController)
         set_last_error("controller is null");
         return -1;
     }
-    let controller = unsafe { &mut *controller };
-    let rc = dispatch_controller!(controller, disable_all);
+    let controller = unsafe { &*controller };
+    let mut inner = match controller.inner.lock() {
+        Ok(inner) => inner,
+        Err(_) => {
+            set_last_error("controller lock poisoned");
+            return -1;
+        }
+    };
+    let rc = dispatch_controller!(&mut *inner, disable_all);
     ffi_rc(rc)
 }
 
@@ -115,8 +138,15 @@ pub extern "C" fn motor_controller_shutdown(controller: *mut MotorController) ->
         set_last_error("controller is null");
         return -1;
     }
-    let controller = unsafe { &mut *controller };
-    let rc = dispatch_controller!(controller, shutdown);
+    let controller = unsafe { &*controller };
+    let mut inner = match controller.inner.lock() {
+        Ok(inner) => inner,
+        Err(_) => {
+            set_last_error("controller lock poisoned");
+            return -1;
+        }
+    };
+    let rc = dispatch_controller!(&mut *inner, shutdown);
     ffi_rc(rc)
 }
 
@@ -126,7 +156,14 @@ pub extern "C" fn motor_controller_close_bus(controller: *mut MotorController) -
         set_last_error("controller is null");
         return -1;
     }
-    let controller = unsafe { &mut *controller };
-    let rc = dispatch_controller!(controller, close_bus);
+    let controller = unsafe { &*controller };
+    let mut inner = match controller.inner.lock() {
+        Ok(inner) => inner,
+        Err(_) => {
+            set_last_error("controller lock poisoned");
+            return -1;
+        }
+    };
+    let rc = dispatch_controller!(&mut *inner, close_bus);
     ffi_rc(rc)
 }

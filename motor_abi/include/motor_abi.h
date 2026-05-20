@@ -40,7 +40,20 @@ typedef struct MotorState {
 // - MyActuator
 // - HighTorque (native ht_can v1.5.5)
 
+// Returns the last error message for the calling thread.
+//
+// Lifetime: the returned pointer is owned by the ABI and remains valid only
+// until the next ABI call on the same thread changes the thread-local error
+// slot. Copy the string immediately if it must be kept.
 const char* motor_last_error_message(void);
+
+// Thread-safety:
+// - Calls using the same MotorController or MotorHandle are serialized inside
+//   the ABI.
+// - Free functions are exclusive ownership operations: do not call
+//   motor_controller_free or motor_handle_free concurrently with any other
+//   operation using the same pointer, and do not use a pointer after free.
+// - Different handles may be used from different threads.
 
 MotorController* motor_controller_new_socketcan(const char* channel);
 MotorController* motor_controller_new_socketcanfd(const char* channel);
