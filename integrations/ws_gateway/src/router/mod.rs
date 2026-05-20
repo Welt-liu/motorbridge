@@ -26,6 +26,7 @@ where
         .map_err(|e| e.to_string())
 }
 
+#[allow(clippy::result_large_err)]
 pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Result<(), String> {
     let peer = stream
         .peer_addr()
