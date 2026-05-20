@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "motorbridge"
-version = "0.3.4"
+dynamic = ["version"]
 description = "Python SDK for motorbridge Rust ABI"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -23,6 +23,9 @@ classifiers = [
   "Operating System :: POSIX :: Linux",
   "Operating System :: MacOS",
 ]
+
+[tool.setuptools.dynamic]
+version = { attr = "motorbridge._version.VERSION" }
 
 [project.urls]
 Homepage = "https://github.com/tianrking/motorbridge"

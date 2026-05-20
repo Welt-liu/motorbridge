@@ -9,6 +9,7 @@ pub mod pcan;
 pub mod socketcan;
 #[cfg(target_os = "linux")]
 pub mod socketcanfd;
+#[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
 pub mod vendor_controller;
 

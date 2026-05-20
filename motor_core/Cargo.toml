@@ -5,6 +5,12 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 
+[lints]
+workspace = true
+
+[features]
+test-support = []
+
 [lib]
 name = "motor_core"
 path = "src/lib.rs"

@@ -24,4 +24,3 @@ description = "Unified CAN motor control stack with pluggable vendor drivers and
 
 [workspace.lints.clippy]
 all = "warn"
-pedantic = "warn"

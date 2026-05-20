@@ -7,6 +7,13 @@ from setuptools import Distribution, find_packages, setup
 from setuptools.command.build_py import build_py as _build_py
 
 
+def _package_version() -> str:
+    ns: dict[str, str] = {}
+    version_file = Path(__file__).resolve().parent / "src" / "motorbridge" / "_version.py"
+    exec(version_file.read_text(encoding="utf-8"), ns)
+    return ns["VERSION"]
+
+
 def _platform_lib_name() -> str:
     if sys.platform.startswith("win"):
         return "motor_abi.dll"
@@ -102,7 +109,7 @@ class BinaryDistribution(Distribution):
 
 setup(
     name="motorbridge",
-    version="0.3.4",
+    version=_package_version(),
     description="Python SDK for motorbridge Rust ABI",
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
