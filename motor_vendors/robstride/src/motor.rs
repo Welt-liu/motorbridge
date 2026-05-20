@@ -749,6 +749,39 @@ mod tests {
     }
 
     #[test]
+    fn send_cmd_mit_sends_operation_control_with_encoded_inputs() {
+        let bus = Arc::new(MockBus::new());
+        let motor = RobstrideMotor::new(2, 0xFD, "rs-00", bus.clone()).expect("create motor");
+
+        motor
+            .send_cmd_mit(0.1, 0.2, 3.0, 0.4, 0.5)
+            .expect("send mit");
+
+        let sent = bus.sent.lock().expect("sent frames");
+        assert_eq!(sent.len(), 1);
+        let (expected_extra, expected_data) = encode_mit_command(
+            0.1,
+            0.2,
+            3.0,
+            0.4,
+            0.5,
+            motor.limits.p_max,
+            motor.limits.v_max,
+            motor.limits.t_max,
+            motor.kp_max,
+            motor.kd_max,
+        );
+        let (comm_type, extra_data, node_id) = ext_id_parts(sent[0].arbitration_id);
+        assert_eq!(comm_type, CommunicationType::OPERATION_CONTROL);
+        assert_eq!(extra_data, expected_extra);
+        assert_eq!(node_id, 2);
+        assert_eq!(sent[0].data, expected_data);
+        assert_eq!(sent[0].dlc, 8);
+        assert!(sent[0].is_extended);
+        assert!(!sent[0].is_rx);
+    }
+
+    #[test]
     fn fault_report_does_not_overwrite_latest_state() {
         let bus: Arc<dyn CanBus> = Arc::new(MockBus::new());
         let motor = RobstrideMotor::new(2, 0xFD, "rs-00", bus).expect("create motor");

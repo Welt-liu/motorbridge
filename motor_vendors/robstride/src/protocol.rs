@@ -319,4 +319,44 @@ mod tests {
             decode_read_parameter_value(0xDEAD, payload).expect("unknown param should pass raw");
         assert_eq!(unknown, [0, 0, 0, 0]);
     }
+
+    #[test]
+    fn mit_encoder_uses_each_unified_input() {
+        let limits = (12.0, 50.0, 17.0, 500.0, 5.0);
+        let (base_tau, base_data) = encode_mit_command(
+            0.1, 0.2, 3.0, 0.4, 0.5, limits.0, limits.1, limits.2, limits.3, limits.4,
+        );
+
+        let (_, pos_data) = encode_mit_command(
+            0.2, 0.2, 3.0, 0.4, 0.5, limits.0, limits.1, limits.2, limits.3, limits.4,
+        );
+        assert_ne!(pos_data[0..2], base_data[0..2]);
+        assert_eq!(pos_data[2..8], base_data[2..8]);
+
+        let (_, vel_data) = encode_mit_command(
+            0.1, 0.4, 3.0, 0.4, 0.5, limits.0, limits.1, limits.2, limits.3, limits.4,
+        );
+        assert_eq!(vel_data[0..2], base_data[0..2]);
+        assert_ne!(vel_data[2..4], base_data[2..4]);
+        assert_eq!(vel_data[4..8], base_data[4..8]);
+
+        let (_, kp_data) = encode_mit_command(
+            0.1, 0.2, 4.0, 0.4, 0.5, limits.0, limits.1, limits.2, limits.3, limits.4,
+        );
+        assert_eq!(kp_data[0..4], base_data[0..4]);
+        assert_ne!(kp_data[4..6], base_data[4..6]);
+        assert_eq!(kp_data[6..8], base_data[6..8]);
+
+        let (_, kd_data) = encode_mit_command(
+            0.1, 0.2, 3.0, 0.6, 0.5, limits.0, limits.1, limits.2, limits.3, limits.4,
+        );
+        assert_eq!(kd_data[0..6], base_data[0..6]);
+        assert_ne!(kd_data[6..8], base_data[6..8]);
+
+        let (tau, tau_data) = encode_mit_command(
+            0.1, 0.2, 3.0, 0.4, 0.8, limits.0, limits.1, limits.2, limits.3, limits.4,
+        );
+        assert_ne!(tau, base_tau);
+        assert_eq!(tau_data, base_data);
+    }
 }
