@@ -1,5 +1,6 @@
 use crate::commands::{as_bool, as_u16, as_u64, parse_transport_in_msg, parse_vendor_in_msg};
 use crate::model::{ControllerHandle, MotorHandle, Vendor};
+use crate::router::stream::RobstrideParamStream;
 use crate::session::SessionCtx;
 use serde_json::{json, Value};
 
@@ -8,6 +9,8 @@ pub(crate) fn handle(
     v: &Value,
     ctx: &mut SessionCtx,
     state_stream_enabled: &mut bool,
+    robstride_param_stream: &mut RobstrideParamStream,
+    dt_ms: u64,
 ) -> Option<Result<Value, String>> {
     match op {
         "ping" => Some(handle_ping(v, ctx)),
@@ -17,6 +20,12 @@ pub(crate) fn handle(
         "stop" => Some(handle_stop(ctx)),
         "state_once" => Some(handle_state_once(ctx)),
         "state_stream" => Some(handle_state_stream(v, state_stream_enabled)),
+        "robstride_param_stream" => Some(handle_robstride_param_stream(
+            v,
+            ctx,
+            robstride_param_stream,
+            dt_ms,
+        )),
         "status" => Some(handle_status(ctx)),
         "poll_feedback_once" => Some(handle_poll_feedback_once(ctx)),
         "shutdown" => Some(handle_shutdown(ctx)),
@@ -191,6 +200,25 @@ fn handle_state_once(ctx: &mut SessionCtx) -> Result<Value, String> {
 fn handle_state_stream(v: &Value, state_stream_enabled: &mut bool) -> Result<Value, String> {
     *state_stream_enabled = as_bool(v, "enabled", false);
     Ok(json!({"enabled": *state_stream_enabled}))
+}
+
+fn handle_robstride_param_stream(
+    v: &Value,
+    ctx: &mut SessionCtx,
+    stream: &mut RobstrideParamStream,
+    dt_ms: u64,
+) -> Result<Value, String> {
+    ctx.ensure_connected()?;
+    if !matches!(ctx.motor.as_ref(), Some(MotorHandle::Robstride(_))) {
+        return Err("robstride_param_stream requires vendor=robstride".to_string());
+    }
+    stream.apply_message(v, dt_ms)?;
+    Ok(json!({
+        "enabled": stream.enabled,
+        "interval_ms": stream.tick_div.saturating_mul(dt_ms.max(1)),
+        "timeout_ms": stream.timeout_ms,
+        "params": stream.params,
+    }))
 }
 
 fn handle_status(ctx: &mut SessionCtx) -> Result<Value, String> {

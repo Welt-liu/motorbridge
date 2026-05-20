@@ -398,7 +398,96 @@ RobStride：
 {"type":"state","data":{"has_value":true,"pos":0.1,"vel":0.0,"torq":0.0}}
 ```
 
-### 8.8 `status`
+### 8.8 `robstride_param_stream`
+
+作用：开启/关闭 RobStride 观测参数流。该流只作用于当前 WS session 的当前 target 电机；前端切换 `set_target` 到哪个 RobStride 电机，之后推送的就是那个电机的参数。
+
+适用：RobStride。它会周期性发送 `READ_PARAMETER`，因此比 `state_stream` 更重；推荐曲线 UI 使用 `profile=realtime`，需要诊断时再用 `profile=full`。
+
+参数：
+
+| 字段 | 类型 | 默认值 | 作用 |
+| --- | --- | --- | --- |
+| `enabled` | bool | `false` | 是否开启 RobStride 参数流 |
+| `profile` | string | `realtime` | `realtime` 读取常用实时观测；`full`/`all` 读取完整观测参数集 |
+| `params` / `param_ids` | array/string | 无 | 自定义参数列表；支持 `["0x7019","0x701A"]` 或 `"0x7019,0x701A"` |
+| `interval_ms` | u64 | `1000` 左右 | 推送周期；会按 gateway `--dt-ms` 对齐 |
+| `timeout_ms` | u64 | `80` | 单个参数读取超时，限制在 `20..1000` |
+
+`realtime` profile 默认读取：
+
+| 参数 | 类型 | 名称 | 作用 |
+| --- | --- | --- | --- |
+| `0x7005` | `i8` | `run_mode` | 当前运行模式 |
+| `0x7019` | `f32` | `mechPos` | 机械位置 |
+| `0x701A` | `f32` | `iqf` | 滤波 Iq 电流 |
+| `0x701B` | `f32` | `mechVel` | 机械速度 |
+| `0x701C` | `f32` | `VBUS` | 母线电压 |
+| `0x3025` | `f32` | `drv_temp` | 驱动温度 |
+| `0x302B` | `f32` | `v_bus` | 母线电压反馈 |
+| `0x302C` | `f32` | `torque_fdb` | 扭矩反馈 |
+
+开启常用实时观测：
+
+```json
+{"op":"robstride_param_stream","enabled":true,"profile":"realtime","interval_ms":1000,"timeout_ms":80}
+```
+
+开启完整观测参数集：
+
+```json
+{"op":"robstride_param_stream","enabled":true,"profile":"full","interval_ms":3000,"timeout_ms":80}
+```
+
+自定义曲线参数：
+
+```json
+{"op":"robstride_param_stream","enabled":true,"params":["0x7019","0x701A","0x701B","0x302C"],"interval_ms":500}
+```
+
+关闭：
+
+```json
+{"op":"robstride_param_stream","enabled":false}
+```
+
+普通响应：
+
+```json
+{"enabled":true,"interval_ms":1000,"timeout_ms":80,"params":[28677,28697,28698,28699,28700,12325,12331,12332]}
+```
+
+之后周期推送：
+
+```json
+{
+  "type": "robstride_params",
+  "data": {
+    "vendor": "robstride",
+    "motor_id": 1,
+    "feedback_id": 253,
+    "model": "rs-00",
+    "values": {
+      "run_mode": 1,
+      "mechPos": -0.82,
+      "iqf": 0.31,
+      "mechVel": 0.02,
+      "VBUS": 24.1,
+      "drv_temp": 36.0,
+      "v_bus": 24.1,
+      "torque_fdb": 0.08
+    },
+    "params": [
+      {"param_id": 28697, "name": "mechPos", "type": "f32", "value": -0.82, "ok": true},
+      {"param_id": 12332, "name": "torque_fdb", "type": "f32", "value": 0.08, "ok": true}
+    ]
+  }
+}
+```
+
+如果某个参数读取失败，该参数会在 `params[]` 中返回 `ok:false/error`；其它成功参数仍然推送。
+
+### 8.9 `status`
 
 作用：获取状态。MyActuator 会主动 request status + angle；其他厂商主要返回缓存状态。
 

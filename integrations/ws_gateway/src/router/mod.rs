@@ -16,6 +16,9 @@ use crate::session::SessionCtx;
 
 mod dispatch;
 mod handlers;
+pub(crate) mod stream;
+
+use stream::RobstrideParamStream;
 
 async fn send_json<S>(tx: &mut S, obj: Value) -> Result<(), String>
 where
@@ -86,6 +89,7 @@ pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Resul
     let mut state_stream_enabled: bool = false;
     let mut state_tick_counter: u64 = 0;
     let state_tick_div: u64 = 5;
+    let mut robstride_param_stream = RobstrideParamStream::default();
     loop {
         tokio::select! {
             maybe_msg = rx.next() => {
@@ -107,7 +111,14 @@ pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Resul
                         let op = v.get("op").and_then(Value::as_str).unwrap_or("").to_lowercase();
                         let req_id = v.get("req_id").cloned();
 
-                        let result = dispatch::dispatch_op(&op, &v, &mut ctx, &mut state_stream_enabled);
+                        let result = dispatch::dispatch_op(
+                            &op,
+                            &v,
+                            &mut ctx,
+                            &mut state_stream_enabled,
+                            &mut robstride_param_stream,
+                            cfg.dt_ms,
+                        );
                         match result {
                             Ok(data) => {
                                 let mut resp = json!({"ok": true, "op": op, "data": data});
@@ -151,6 +162,33 @@ pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Resul
                         match snapshot {
                             Ok(st) => send_json(&mut tx, json!({"type":"state", "data": st})).await?,
                             Err(err) => send_json(&mut tx, json!({"ok": false, "op":"state_tick","error": err})).await?,
+                        }
+                    }
+                }
+                if robstride_param_stream.enabled && ctx.motor.is_some() {
+                    robstride_param_stream.tick_counter =
+                        robstride_param_stream.tick_counter.wrapping_add(1);
+                    if robstride_param_stream
+                        .tick_counter
+                        .is_multiple_of(robstride_param_stream.tick_div)
+                    {
+                        let snapshot = tokio::task::block_in_place(|| {
+                            ctx.build_robstride_param_snapshot(
+                                &robstride_param_stream.params,
+                                robstride_param_stream.timeout_ms,
+                            )
+                        });
+                        match snapshot {
+                            Ok(st) => {
+                                send_json(&mut tx, json!({"type":"robstride_params", "data": st})).await?
+                            }
+                            Err(err) => {
+                                send_json(
+                                    &mut tx,
+                                    json!({"ok": false, "op":"robstride_param_tick","error": err}),
+                                )
+                                .await?
+                            }
                         }
                     }
                 }

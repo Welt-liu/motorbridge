@@ -187,10 +187,15 @@ cargo run -p motor_cli --release -- --vendor damiao --channel can0@1000000 --mod
 {"op":"force_pos","pos":0.8,"vlim":2.0,"ratio":0.3,"continuous":true}
 {"op":"stop"}
 {"op":"state_once"}
+{"op":"state_stream","enabled":true}
 {"op":"clear_error"}
 {"op":"set_zero_position"}
 {"op":"ensure_mode","mode":"mit","timeout_ms":1000}
 {"op":"request_feedback"}
+{"op":"set_active_report","enabled":true}
+{"op":"robstride_param_stream","enabled":true,"profile":"realtime","interval_ms":1000,"timeout_ms":80}
+{"op":"robstride_param_stream","enabled":true,"profile":"full","interval_ms":3000,"timeout_ms":80}
+{"op":"robstride_param_stream","enabled":true,"params":["0x7019","0x701A","0x701B","0x302C"],"interval_ms":500}
 {"op":"store_parameters"}
 {"op":"set_can_timeout_ms","timeout_ms":1000}
 {"op":"write_register_u32","rid":10,"value":1}
@@ -231,6 +236,12 @@ State stream frame:
 {"type":"state","data":{"has_value":true,"pos":0.12,"vel":0.01,"torq":0.0,"status_code":1}}
 ```
 
+RobStride parameter stream frame:
+
+```json
+{"type":"robstride_params","data":{"vendor":"robstride","motor_id":1,"feedback_id":253,"model":"rs-00","values":{"mechPos":0.12,"iqf":0.3,"mechVel":0.01,"torque_fdb":0.02},"params":[{"param_id":28697,"name":"mechPos","type":"f32","value":0.12,"ok":true}]}}
+```
+
 ## Notes
 
 - `--vendor damiao|robstride|hexfellow|myactuator|hightorque` controls default target vendor.
@@ -241,7 +252,7 @@ State stream frame:
   - Damiao: write `MST_ID` first, then `ESC_ID`.
   - RobStride: device ID update via `SET_DEVICE_ID`.
 - Damiao-only ops: `write/get_register_*` and `dm-serial` transport.
-- RobStride-only ops: `robstride_ping`, `robstride_read_param`, `robstride_write_param`.
+- RobStride-only ops: `robstride_ping`, `robstride_read_param`, `robstride_write_param`, `set_active_report`, `robstride_param_stream`.
 - MyActuator-native ops: `current`, `pos`, `version`, `mode-query`.
 - HighTorque-native op: `read`.
 - V2 plan can switch to binary frames while preserving operation semantics.

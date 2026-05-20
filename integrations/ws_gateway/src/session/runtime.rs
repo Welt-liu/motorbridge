@@ -6,7 +6,9 @@ use crate::vendors::hightorque_ws::{
 use motor_vendor_hexfellow::{
     MitTarget as HexfellowMitTarget, PosVelTarget as HexfellowPosVelTarget,
 };
-use motor_vendor_robstride::ParameterValue as RobstrideParameterValue;
+use motor_vendor_robstride::{
+    parameter_info, ParameterDataType, ParameterValue as RobstrideParameterValue,
+};
 use serde_json::{json, Value};
 use std::time::Duration;
 
@@ -278,5 +280,80 @@ impl SessionCtx {
             }
             _ => Err("motor not connected".to_string()),
         }
+    }
+
+    pub(crate) fn build_robstride_param_snapshot(
+        &self,
+        params: &[u16],
+        timeout_ms: u64,
+    ) -> Result<Value, String> {
+        let motor = match self.motor.as_ref() {
+            Some(MotorHandle::Robstride(motor)) => motor,
+            Some(_) => return Err("robstride param stream requires vendor=robstride".to_string()),
+            None => return Err("motor not connected".to_string()),
+        };
+        let timeout = Duration::from_millis(timeout_ms.max(1));
+        let mut values = serde_json::Map::new();
+        let mut details = Vec::new();
+
+        for param_id in params {
+            let info = parameter_info(*param_id);
+            let name = info.map(|x| x.name).unwrap_or("unknown").to_string();
+            let value_key = info
+                .map(|x| x.name.to_string())
+                .unwrap_or_else(|| format!("0x{param_id:04X}"));
+            let ty = info.map(|x| x.data_type);
+            match motor.get_parameter(*param_id, timeout) {
+                Ok(value) => {
+                    let value_json = robstride_param_value_json(value);
+                    values.insert(value_key, value_json.clone());
+                    details.push(json!({
+                        "param_id": *param_id,
+                        "name": name,
+                        "type": ty.map(robstride_param_type_name).unwrap_or("u32"),
+                        "value": value_json,
+                        "ok": true
+                    }));
+                }
+                Err(err) => {
+                    details.push(json!({
+                        "param_id": *param_id,
+                        "name": name,
+                        "type": ty.map(robstride_param_type_name).unwrap_or("unknown"),
+                        "ok": false,
+                        "error": err.to_string()
+                    }));
+                }
+            }
+        }
+
+        Ok(json!({
+            "vendor": "robstride",
+            "motor_id": self.target.motor_id,
+            "feedback_id": self.target.feedback_id,
+            "model": self.target.model,
+            "values": values,
+            "params": details
+        }))
+    }
+}
+
+fn robstride_param_type_name(ty: ParameterDataType) -> &'static str {
+    match ty {
+        ParameterDataType::Int8 => "i8",
+        ParameterDataType::UInt8 => "u8",
+        ParameterDataType::UInt16 => "u16",
+        ParameterDataType::UInt32 => "u32",
+        ParameterDataType::Float32 => "f32",
+    }
+}
+
+fn robstride_param_value_json(value: RobstrideParameterValue) -> Value {
+    match value {
+        RobstrideParameterValue::I8(v) => json!(v),
+        RobstrideParameterValue::U8(v) => json!(v),
+        RobstrideParameterValue::U16(v) => json!(v),
+        RobstrideParameterValue::U32(v) => json!(v),
+        RobstrideParameterValue::F32(v) => json!(v),
     }
 }
