@@ -52,6 +52,9 @@
 - CLI: `motorbridge-cli`
 - 网关启动命令（pip 安装后进入 PATH）：
   - `motorbridge-gateway -- --bind 127.0.0.1:9002 ...`
+  - 该命令实际启动随 Python wheel 打包的 Rust `ws_gateway` 二进制，
+    因此 `state_stream`、`param_stream`、`damiao_param_stream`、
+    `robstride_param_stream` 等 WS JSON op 由随包网关版本直接支持。
 - 安全说明：
   - 本地使用建议保持回环地址 `127.0.0.1`。
   - 若绑定到非回环地址（`0.0.0.0` 或网卡 IP），启动前必须设置 `MOTORBRIDGE_WS_TOKEN`。

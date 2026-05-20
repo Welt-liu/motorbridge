@@ -1,5 +1,5 @@
 use crate::commands::{cmd_scan, cmd_set_id, cmd_verify};
-use crate::router::stream::RobstrideParamStream;
+use crate::router::stream::ParamStream;
 use crate::session::SessionCtx;
 use serde_json::Value;
 
@@ -10,17 +10,12 @@ pub(crate) fn dispatch_op(
     v: &Value,
     ctx: &mut SessionCtx,
     state_stream_enabled: &mut bool,
-    robstride_param_stream: &mut RobstrideParamStream,
+    param_stream: &mut ParamStream,
     dt_ms: u64,
 ) -> Result<serde_json::Value, String> {
-    if let Some(r) = handlers::connection::handle(
-        op,
-        v,
-        ctx,
-        state_stream_enabled,
-        robstride_param_stream,
-        dt_ms,
-    ) {
+    if let Some(r) =
+        handlers::connection::handle(op, v, ctx, state_stream_enabled, param_stream, dt_ms)
+    {
         return r;
     }
     if let Some(r) = handlers::control::handle(op, v, ctx) {

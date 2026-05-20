@@ -18,7 +18,7 @@ mod dispatch;
 mod handlers;
 pub(crate) mod stream;
 
-use stream::RobstrideParamStream;
+use stream::ParamStream;
 
 async fn send_json<S>(tx: &mut S, obj: Value) -> Result<(), String>
 where
@@ -89,7 +89,7 @@ pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Resul
     let mut state_stream_enabled: bool = false;
     let mut state_tick_counter: u64 = 0;
     let state_tick_div: u64 = 5;
-    let mut robstride_param_stream = RobstrideParamStream::default();
+    let mut param_stream = ParamStream::default();
     loop {
         tokio::select! {
             maybe_msg = rx.next() => {
@@ -116,7 +116,7 @@ pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Resul
                             &v,
                             &mut ctx,
                             &mut state_stream_enabled,
-                            &mut robstride_param_stream,
+                            &mut param_stream,
                             cfg.dt_ms,
                         );
                         match result {
@@ -165,27 +165,28 @@ pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Resul
                         }
                     }
                 }
-                if robstride_param_stream.enabled && ctx.motor.is_some() {
-                    robstride_param_stream.tick_counter =
-                        robstride_param_stream.tick_counter.wrapping_add(1);
-                    if robstride_param_stream
+                if param_stream.enabled && ctx.motor.is_some() {
+                    param_stream.tick_counter = param_stream.tick_counter.wrapping_add(1);
+                    if param_stream
                         .tick_counter
-                        .is_multiple_of(robstride_param_stream.tick_div)
+                        .is_multiple_of(param_stream.tick_div)
                     {
                         let snapshot = tokio::task::block_in_place(|| {
-                            ctx.build_robstride_param_snapshot(
-                                &robstride_param_stream.params,
-                                robstride_param_stream.timeout_ms,
-                            )
+                            ctx.build_param_snapshot(&param_stream.params, param_stream.timeout_ms)
                         });
                         match snapshot {
                             Ok(st) => {
-                                send_json(&mut tx, json!({"type":"robstride_params", "data": st})).await?
+                                let frame_type = match st.get("vendor").and_then(Value::as_str) {
+                                    Some("damiao") => "damiao_params",
+                                    Some("robstride") => "robstride_params",
+                                    _ => "motor_params",
+                                };
+                                send_json(&mut tx, json!({"type": frame_type, "data": st})).await?
                             }
                             Err(err) => {
                                 send_json(
                                     &mut tx,
-                                    json!({"ok": false, "op":"robstride_param_tick","error": err}),
+                                    json!({"ok": false, "op":"param_tick","error": err}),
                                 )
                                 .await?
                             }

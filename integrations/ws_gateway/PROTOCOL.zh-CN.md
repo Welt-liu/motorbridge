@@ -398,23 +398,42 @@ RobStride：
 {"type":"state","data":{"has_value":true,"pos":0.1,"vel":0.0,"torq":0.0}}
 ```
 
-### 8.8 `robstride_param_stream`
+### 8.8 `param_stream` / `damiao_param_stream` / `robstride_param_stream`
 
-作用：开启/关闭 RobStride 观测参数流。该流只作用于当前 WS session 的当前 target 电机；前端切换 `set_target` 到哪个 RobStride 电机，之后推送的就是那个电机的参数。
+作用：开启/关闭当前 WS session 的当前 target 电机观测参数流。前端切换 `set_target` 到哪个电机，之后推送的就是那个电机的参数。
 
-适用：RobStride。它会周期性发送 `READ_PARAMETER`，因此比 `state_stream` 更重；推荐曲线 UI 使用 `profile=realtime`，需要诊断时再用 `profile=full`。
+适用：Damiao、RobStride。
+
+- 推荐前端统一使用 `param_stream`，gateway 会按当前 vendor 自动选择 Damiao 或 RobStride。
+- `damiao_param_stream` 是 Damiao 专用别名，当前 target 不是 Damiao 时返回错误。
+- `robstride_param_stream` 是 RobStride 专用别名，当前 target 不是 RobStride 时返回错误。
+- 参数流会周期性读取寄存器/参数，因此比 `state_stream` 更重；曲线 UI 推荐 `profile=realtime`，诊断时再用 `profile=full`。
 
 参数：
 
 | 字段 | 类型 | 默认值 | 作用 |
 | --- | --- | --- | --- |
-| `enabled` | bool | `false` | 是否开启 RobStride 参数流 |
+| `enabled` | bool | `false` | 是否开启参数流 |
 | `profile` | string | `realtime` | `realtime` 读取常用实时观测；`full`/`all` 读取完整观测参数集 |
-| `params` / `param_ids` | array/string | 无 | 自定义参数列表；支持 `["0x7019","0x701A"]` 或 `"0x7019,0x701A"` |
+| `params` / `param_ids` | array/string | 无 | 自定义参数列表；RobStride 用参数 ID，Damiao 用 RID；支持数组或逗号字符串 |
 | `interval_ms` | u64 | `1000` 左右 | 推送周期；会按 gateway `--dt-ms` 对齐 |
 | `timeout_ms` | u64 | `80` | 单个参数读取超时，限制在 `20..1000` |
 
-`realtime` profile 默认读取：
+Damiao `realtime` profile 默认读取：
+
+| RID | 类型 | 名称 | 作用 |
+| --- | --- | --- | --- |
+| `10` | `u32` | `CTRL_MODE` | 控制模式 |
+| `21` | `f32` | `PMAX` | 位置映射范围 |
+| `22` | `f32` | `VMAX` | 速度映射范围 |
+| `23` | `f32` | `TMAX` | 扭矩映射范围 |
+| `60` | `f32` | `VBus` | 电源电压 |
+| `61` | `f32` | `Tpcb` | 驱动板温度 |
+| `62` | `f32` | `Tmtr` | 电机温度 |
+| `80` | `f32` | `p_m` | 电机位置 |
+| `81` | `f32` | `xout` | 输出轴位置 |
+
+RobStride `realtime` profile 默认读取：
 
 | 参数 | 类型 | 名称 | 作用 |
 | --- | --- | --- | --- |
@@ -427,62 +446,52 @@ RobStride：
 | `0x302B` | `f32` | `v_bus` | 母线电压反馈 |
 | `0x302C` | `f32` | `torque_fdb` | 扭矩反馈 |
 
-开启常用实时观测：
+通用开启方式：
+
+```json
+{"op":"param_stream","enabled":true,"profile":"realtime","interval_ms":1000,"timeout_ms":80}
+```
+
+Damiao 专用开启方式：
+
+```json
+{"op":"damiao_param_stream","enabled":true,"profile":"realtime","interval_ms":1000,"timeout_ms":80}
+```
+
+RobStride 专用开启方式：
 
 ```json
 {"op":"robstride_param_stream","enabled":true,"profile":"realtime","interval_ms":1000,"timeout_ms":80}
 ```
 
-开启完整观测参数集：
-
-```json
-{"op":"robstride_param_stream","enabled":true,"profile":"full","interval_ms":3000,"timeout_ms":80}
-```
-
 自定义曲线参数：
 
 ```json
-{"op":"robstride_param_stream","enabled":true,"params":["0x7019","0x701A","0x701B","0x302C"],"interval_ms":500}
+{"op":"param_stream","enabled":true,"params":["0x7019","0x701A","0x701B","0x302C"],"interval_ms":500}
 ```
 
 关闭：
 
 ```json
-{"op":"robstride_param_stream","enabled":false}
+{"op":"param_stream","enabled":false}
 ```
 
 普通响应：
 
 ```json
-{"enabled":true,"interval_ms":1000,"timeout_ms":80,"params":[28677,28697,28698,28699,28700,12325,12331,12332]}
+{"enabled":true,"vendor":"robstride","interval_ms":1000,"timeout_ms":80,"params":[28677,28697,28698,28699,28700,12325,12331,12332]}
 ```
 
-之后周期推送：
+RobStride 周期推送：
 
 ```json
-{
-  "type": "robstride_params",
-  "data": {
-    "vendor": "robstride",
-    "motor_id": 1,
-    "feedback_id": 253,
-    "model": "rs-00",
-    "values": {
-      "run_mode": 1,
-      "mechPos": -0.82,
-      "iqf": 0.31,
-      "mechVel": 0.02,
-      "VBUS": 24.1,
-      "drv_temp": 36.0,
-      "v_bus": 24.1,
-      "torque_fdb": 0.08
-    },
-    "params": [
-      {"param_id": 28697, "name": "mechPos", "type": "f32", "value": -0.82, "ok": true},
-      {"param_id": 12332, "name": "torque_fdb", "type": "f32", "value": 0.08, "ok": true}
-    ]
-  }
-}
+{"type":"robstride_params","data":{"vendor":"robstride","motor_id":1,"feedback_id":253,"model":"rs-00","values":{"mechPos":-0.82,"iqf":0.31,"mechVel":0.02,"torque_fdb":0.08},"params":[{"param_id":28697,"name":"mechPos","type":"f32","value":-0.82,"ok":true}]}}
+```
+
+Damiao 周期推送：
+
+```json
+{"type":"damiao_params","data":{"vendor":"damiao","motor_id":1,"feedback_id":17,"model":"4340P","values":{"VBus":24.1,"Tpcb":36.0,"Tmtr":34.0,"p_m":0.12,"xout":0.12},"params":[{"rid":60,"name":"VBus","type":"f32","value":24.1,"ok":true}]}}
 ```
 
 如果某个参数读取失败，该参数会在 `params[]` 中返回 `ok:false/error`；其它成功参数仍然推送。

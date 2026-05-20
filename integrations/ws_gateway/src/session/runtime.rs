@@ -3,6 +3,9 @@ use crate::vendors::hightorque_ws::{
     pos_raw_from_rad, send_hightorque_ext, tqe_raw_from_tau, vel_raw_from_rad_s,
     wait_hightorque_status_for_motor, TWO_PI,
 };
+use motor_vendor_damiao::{
+    register_info as damiao_register_info, RegisterDataType as DamiaoRegisterDataType,
+};
 use motor_vendor_hexfellow::{
     MitTarget as HexfellowMitTarget, PosVelTarget as HexfellowPosVelTarget,
 };
@@ -282,7 +285,22 @@ impl SessionCtx {
         }
     }
 
-    pub(crate) fn build_robstride_param_snapshot(
+    pub(crate) fn build_param_snapshot(
+        &self,
+        params: &[u16],
+        timeout_ms: u64,
+    ) -> Result<Value, String> {
+        match self.motor.as_ref() {
+            Some(MotorHandle::Damiao(_)) => self.build_damiao_param_snapshot(params, timeout_ms),
+            Some(MotorHandle::Robstride(_)) => {
+                self.build_robstride_param_snapshot(params, timeout_ms)
+            }
+            Some(_) => Err("param stream is supported for damiao and robstride".to_string()),
+            None => Err("motor not connected".to_string()),
+        }
+    }
+
+    fn build_robstride_param_snapshot(
         &self,
         params: &[u16],
         timeout_ms: u64,
@@ -335,6 +353,79 @@ impl SessionCtx {
             "values": values,
             "params": details
         }))
+    }
+
+    fn build_damiao_param_snapshot(
+        &self,
+        params: &[u16],
+        timeout_ms: u64,
+    ) -> Result<Value, String> {
+        let motor = match self.motor.as_ref() {
+            Some(MotorHandle::Damiao(motor)) => motor,
+            Some(_) => return Err("damiao param stream requires vendor=damiao".to_string()),
+            None => return Err("motor not connected".to_string()),
+        };
+        let timeout = Duration::from_millis(timeout_ms.max(1));
+        let mut values = serde_json::Map::new();
+        let mut details = Vec::new();
+
+        for param_id in params {
+            let rid = *param_id as u8;
+            let info = damiao_register_info(rid);
+            let name = info.map(|x| x.variable).unwrap_or("unknown").to_string();
+            let value_key = info
+                .map(|x| x.variable.to_string())
+                .unwrap_or_else(|| format!("rid_{rid}"));
+            let ty = info.map(|x| x.data_type);
+            let result = match ty {
+                Some(DamiaoRegisterDataType::UInt32) => motor
+                    .get_register_u32(rid, timeout)
+                    .map(|v| json!(v))
+                    .map_err(|e| e.to_string()),
+                Some(DamiaoRegisterDataType::Float) => motor
+                    .get_register_f32(rid, timeout)
+                    .map(|v| json!(v))
+                    .map_err(|e| e.to_string()),
+                None => Err(format!("unknown damiao register rid {rid}")),
+            };
+            match result {
+                Ok(value_json) => {
+                    values.insert(value_key, value_json.clone());
+                    details.push(json!({
+                        "rid": rid,
+                        "name": name,
+                        "type": ty.map(damiao_register_type_name).unwrap_or("unknown"),
+                        "value": value_json,
+                        "ok": true
+                    }));
+                }
+                Err(err) => {
+                    details.push(json!({
+                        "rid": rid,
+                        "name": name,
+                        "type": ty.map(damiao_register_type_name).unwrap_or("unknown"),
+                        "ok": false,
+                        "error": err
+                    }));
+                }
+            }
+        }
+
+        Ok(json!({
+            "vendor": "damiao",
+            "motor_id": self.target.motor_id,
+            "feedback_id": self.target.feedback_id,
+            "model": self.target.model,
+            "values": values,
+            "params": details
+        }))
+    }
+}
+
+fn damiao_register_type_name(ty: DamiaoRegisterDataType) -> &'static str {
+    match ty {
+        DamiaoRegisterDataType::UInt32 => "u32",
+        DamiaoRegisterDataType::Float => "f32",
     }
 }
 

@@ -190,10 +190,15 @@ cargo run -p motor_cli --release -- --vendor damiao --channel can0@1000000 --mod
 {"op":"force_pos","pos":0.8,"vlim":2.0,"ratio":0.3,"continuous":true}
 {"op":"stop"}
 {"op":"state_once"}
+{"op":"state_stream","enabled":true}
 {"op":"clear_error"}
 {"op":"set_zero_position"}
 {"op":"ensure_mode","mode":"mit","timeout_ms":1000}
 {"op":"request_feedback"}
+{"op":"set_active_report","enabled":true}
+{"op":"param_stream","enabled":true,"profile":"realtime","interval_ms":1000,"timeout_ms":80}
+{"op":"damiao_param_stream","enabled":true,"profile":"realtime","interval_ms":1000,"timeout_ms":80}
+{"op":"robstride_param_stream","enabled":true,"profile":"realtime","interval_ms":1000,"timeout_ms":80}
 {"op":"store_parameters"}
 {"op":"set_can_timeout_ms","timeout_ms":1000}
 {"op":"write_register_u32","rid":10,"value":1}
@@ -234,6 +239,12 @@ cargo run -p motor_cli --release -- --vendor damiao --channel can0@1000000 --mod
 {"type":"state","data":{"has_value":true,"pos":0.12,"vel":0.01,"torq":0.0,"status_code":1}}
 ```
 
+参数流：
+
+```json
+{"type":"robstride_params","data":{"vendor":"robstride","motor_id":1,"feedback_id":253,"values":{"mechPos":0.12,"iqf":0.3,"mechVel":0.01,"torque_fdb":0.02}}}
+```
+
 ## 说明
 
 - `--vendor damiao|robstride|hexfellow|myactuator|hightorque` 用于设置会话默认厂商。
@@ -244,7 +255,8 @@ cargo run -p motor_cli --release -- --vendor damiao --channel can0@1000000 --mod
   - Damiao：先写 `MST_ID`，再写 `ESC_ID`。
   - RobStride：使用 `SET_DEVICE_ID` 更新设备 ID。
 - Damiao 专属操作：`write/get_register_*` 与 `dm-serial` transport。
-- RobStride 专属操作：`robstride_ping`、`robstride_read_param`、`robstride_write_param`。
+- 参数流：`param_stream` 支持 Damiao 与 RobStride；`damiao_param_stream` / `robstride_param_stream` 是厂商专用别名。
+- RobStride 专属操作：`robstride_ping`、`robstride_read_param`、`robstride_write_param`、`set_active_report`。
 - MyActuator 专属操作：`current`、`pos`、`version`、`mode-query`。
 - HighTorque 专属操作：`read`。
 - 后续 V2 可升级为二进制帧，同时保留同一语义。

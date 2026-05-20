@@ -1,6 +1,6 @@
 use crate::commands::{as_bool, as_u16, as_u64, parse_transport_in_msg, parse_vendor_in_msg};
 use crate::model::{ControllerHandle, MotorHandle, Vendor};
-use crate::router::stream::RobstrideParamStream;
+use crate::router::stream::ParamStream;
 use crate::session::SessionCtx;
 use serde_json::{json, Value};
 
@@ -9,7 +9,7 @@ pub(crate) fn handle(
     v: &Value,
     ctx: &mut SessionCtx,
     state_stream_enabled: &mut bool,
-    robstride_param_stream: &mut RobstrideParamStream,
+    param_stream: &mut ParamStream,
     dt_ms: u64,
 ) -> Option<Result<Value, String>> {
     match op {
@@ -20,11 +20,20 @@ pub(crate) fn handle(
         "stop" => Some(handle_stop(ctx)),
         "state_once" => Some(handle_state_once(ctx)),
         "state_stream" => Some(handle_state_stream(v, state_stream_enabled)),
-        "robstride_param_stream" => Some(handle_robstride_param_stream(
+        "param_stream" => Some(handle_param_stream(v, ctx, param_stream, dt_ms, None)),
+        "robstride_param_stream" => Some(handle_param_stream(
             v,
             ctx,
-            robstride_param_stream,
+            param_stream,
             dt_ms,
+            Some(Vendor::Robstride),
+        )),
+        "damiao_param_stream" => Some(handle_param_stream(
+            v,
+            ctx,
+            param_stream,
+            dt_ms,
+            Some(Vendor::Damiao),
         )),
         "status" => Some(handle_status(ctx)),
         "poll_feedback_once" => Some(handle_poll_feedback_once(ctx)),
@@ -202,19 +211,33 @@ fn handle_state_stream(v: &Value, state_stream_enabled: &mut bool) -> Result<Val
     Ok(json!({"enabled": *state_stream_enabled}))
 }
 
-fn handle_robstride_param_stream(
+fn handle_param_stream(
     v: &Value,
     ctx: &mut SessionCtx,
-    stream: &mut RobstrideParamStream,
+    stream: &mut ParamStream,
     dt_ms: u64,
+    required_vendor: Option<Vendor>,
 ) -> Result<Value, String> {
     ctx.ensure_connected()?;
-    if !matches!(ctx.motor.as_ref(), Some(MotorHandle::Robstride(_))) {
-        return Err("robstride_param_stream requires vendor=robstride".to_string());
+    let vendor = match ctx.motor.as_ref() {
+        Some(MotorHandle::Damiao(_)) => Vendor::Damiao,
+        Some(MotorHandle::Robstride(_)) => Vendor::Robstride,
+        Some(_) => return Err("param_stream is supported for damiao and robstride".to_string()),
+        None => return Err("motor not connected".to_string()),
+    };
+    if let Some(required) = required_vendor {
+        if vendor != required {
+            return Err(format!(
+                "{}_param_stream requires vendor={}",
+                required.as_str(),
+                required.as_str()
+            ));
+        }
     }
-    stream.apply_message(v, dt_ms)?;
+    stream.apply_message(v, dt_ms, vendor)?;
     Ok(json!({
         "enabled": stream.enabled,
+        "vendor": vendor.as_str(),
         "interval_ms": stream.tick_div.saturating_mul(dt_ms.max(1)),
         "timeout_ms": stream.timeout_ms,
         "params": stream.params,

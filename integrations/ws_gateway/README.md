@@ -193,6 +193,8 @@ cargo run -p motor_cli --release -- --vendor damiao --channel can0@1000000 --mod
 {"op":"ensure_mode","mode":"mit","timeout_ms":1000}
 {"op":"request_feedback"}
 {"op":"set_active_report","enabled":true}
+{"op":"param_stream","enabled":true,"profile":"realtime","interval_ms":1000,"timeout_ms":80}
+{"op":"damiao_param_stream","enabled":true,"profile":"realtime","interval_ms":1000,"timeout_ms":80}
 {"op":"robstride_param_stream","enabled":true,"profile":"realtime","interval_ms":1000,"timeout_ms":80}
 {"op":"robstride_param_stream","enabled":true,"profile":"full","interval_ms":3000,"timeout_ms":80}
 {"op":"robstride_param_stream","enabled":true,"params":["0x7019","0x701A","0x701B","0x302C"],"interval_ms":500}
@@ -252,7 +254,8 @@ RobStride parameter stream frame:
   - Damiao: write `MST_ID` first, then `ESC_ID`.
   - RobStride: device ID update via `SET_DEVICE_ID`.
 - Damiao-only ops: `write/get_register_*` and `dm-serial` transport.
-- RobStride-only ops: `robstride_ping`, `robstride_read_param`, `robstride_write_param`, `set_active_report`, `robstride_param_stream`.
+- Parameter streams: `param_stream` supports Damiao and RobStride; `damiao_param_stream` and `robstride_param_stream` are vendor-specific aliases.
+- RobStride-only ops: `robstride_ping`, `robstride_read_param`, `robstride_write_param`, `set_active_report`.
 - MyActuator-native ops: `current`, `pos`, `version`, `mode-query`.
 - HighTorque-native op: `read`.
 - V2 plan can switch to binary frames while preserving operation semantics.

@@ -56,6 +56,9 @@ Packaging note:
 
 - Gateway launch command (added to PATH by pip):
   - `motorbridge-gateway -- --bind 127.0.0.1:9002 ...`
+  - This launcher executes the packaged Rust `ws_gateway` binary, so WS JSON
+    ops such as `state_stream`, `param_stream`, `damiao_param_stream`, and
+    `robstride_param_stream` are supported by the bundled gateway version.
 - Security note:
   - keep loopback bind (`127.0.0.1`) for local usage.
   - if you bind to non-loopback addresses (`0.0.0.0` or host IP), export `MOTORBRIDGE_WS_TOKEN` before launch.
