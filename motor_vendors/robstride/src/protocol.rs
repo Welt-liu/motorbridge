@@ -100,6 +100,7 @@ pub fn encode_parameter_write(param_id: u16, raw_value: [u8; 4]) -> [u8; 8] {
     out
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn encode_mit_command(
     position: f32,
     velocity: f32,

@@ -1,5 +1,3 @@
-#![cfg(target_os = "linux")]
-
 use crate::bus::{CanBus, CanFrame};
 use crate::error::{MotorError, Result};
 use core::ffi::{c_char, c_int, c_short, c_uint, c_void};

@@ -42,13 +42,14 @@ Notes:
 ## Scope
 Packaging note:
 
-- Current package target version: `0.3.3`.
+- Current package target version: `0.3.4`.
 - Published wheel includes `motor_abi` shared library and `ws_gateway` binary for that platform.
 - After `pip install motorbridge`, gateway binary path is typically:
   `.../site-packages/motorbridge/bin/ws_gateway` (or `ws_gateway.exe` on Windows).
-- `0.3.3` adds CLI version output (`motorbridge-cli -v`), exposes
-  `motorbridge.__version__` / `motorbridge.get_version()`, and adds unified
-  `--store 1` support to RobStride and Damiao parameter-write commands.
+- `0.3.4` fixes RobStride parameter-save acknowledgement handling, improves
+  Damiao `ensure_mode` robustness on timing-sensitive links, fixes
+  `ws_gateway` Damiao `dm-serial` ID updates, and adds detailed WS/RobStride
+  manual test documentation.
 
 - Gateway launch command (added to PATH by pip):
   - `motorbridge-gateway -- --bind 127.0.0.1:9002 ...`

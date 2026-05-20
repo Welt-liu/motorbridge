@@ -1,6 +1,4 @@
 use crate::model::{Target, Vendor};
-use motor_vendor_damiao::DamiaoController;
-use motor_vendor_robstride::RobstrideController;
 use serde_json::{json, Value};
 use std::time::Duration;
 
@@ -181,6 +179,7 @@ pub(crate) fn cmd_verify(v: &Value, base: &Target) -> Result<Value, String> {
 
 pub(crate) fn cmd_set_id(v: &Value, base: &Target) -> Result<Value, String> {
     let vendor = parse_vendor_in_msg(v, base.vendor)?;
+    let transport = parse_transport_in_msg(v, base.transport)?;
     match vendor {
         Vendor::Damiao => {
             let old_mid = as_u16(v, "old_motor_id", base.motor_id);
@@ -191,7 +190,7 @@ pub(crate) fn cmd_set_id(v: &Value, base: &Target) -> Result<Value, String> {
             let verify = as_bool(v, "verify", true);
             let timeout_ms = as_u64(v, "timeout_ms", 1000);
 
-            let ctrl = DamiaoController::new_socketcan(&base.channel).map_err(|e| e.to_string())?;
+            let ctrl = open_damiao_controller(base, transport)?;
             let preferred_model = v
                 .get("model")
                 .and_then(Value::as_str)
@@ -233,6 +232,7 @@ pub(crate) fn cmd_set_id(v: &Value, base: &Target) -> Result<Value, String> {
 
             let mut out = json!({
                 "vendor": "damiao",
+                "transport": transport.as_str(),
                 "old_motor_id": old_mid,
                 "old_feedback_id": old_fid,
                 "new_motor_id": new_mid,
@@ -245,6 +245,7 @@ pub(crate) fn cmd_set_id(v: &Value, base: &Target) -> Result<Value, String> {
                 let verify_result = cmd_verify(
                     &json!({
                         "vendor":"damiao",
+                        "transport": transport.as_str(),
                         "motor_id": new_mid,
                         "feedback_id": new_fid,
                         "timeout_ms": timeout_ms
@@ -264,8 +265,7 @@ pub(crate) fn cmd_set_id(v: &Value, base: &Target) -> Result<Value, String> {
             let new_mid_u8 = robstride_device_id(new_mid, "new_motor_id")?;
             let verify = as_bool(v, "verify", true);
             let timeout_ms = as_u64(v, "timeout_ms", 1000);
-            let ctrl =
-                RobstrideController::new_socketcan(&base.channel).map_err(|e| e.to_string())?;
+            let ctrl = open_robstride_controller(base, transport)?;
             let motor = ctrl
                 .add_motor(old_mid, fid, &base.model)
                 .map_err(|e| e.to_string())?;
@@ -274,6 +274,7 @@ pub(crate) fn cmd_set_id(v: &Value, base: &Target) -> Result<Value, String> {
 
             let mut out = json!({
                 "vendor": "robstride",
+                "transport": transport.as_str(),
                 "old_motor_id": old_mid,
                 "new_motor_id": new_mid,
                 "feedback_id": fid
@@ -283,6 +284,7 @@ pub(crate) fn cmd_set_id(v: &Value, base: &Target) -> Result<Value, String> {
                 let verify_result = cmd_verify(
                     &json!({
                         "vendor":"robstride",
+                        "transport": transport.as_str(),
                         "motor_id": new_mid,
                         "feedback_id": fid,
                         "timeout_ms": timeout_ms

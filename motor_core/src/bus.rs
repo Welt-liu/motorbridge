@@ -27,12 +27,12 @@ pub fn open_socketcan(channel: &str) -> Result<Arc<dyn CanBus>> {
     #[cfg(target_os = "linux")]
     {
         let bus: Arc<dyn CanBus> = Arc::new(SocketCanBus::open(channel)?);
-        return Ok(bus);
+        Ok(bus)
     }
     #[cfg(any(target_os = "windows", target_os = "macos"))]
     {
         let bus: Arc<dyn CanBus> = Arc::new(PcanBus::open(channel)?);
-        return Ok(bus);
+        Ok(bus)
     }
     #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
     {
@@ -47,7 +47,7 @@ pub fn open_socketcanfd(channel: &str) -> Result<Arc<dyn CanBus>> {
     #[cfg(target_os = "linux")]
     {
         let bus: Arc<dyn CanBus> = Arc::new(SocketCanFdBus::open(channel)?);
-        return Ok(bus);
+        Ok(bus)
     }
     #[cfg(not(target_os = "linux"))]
     {

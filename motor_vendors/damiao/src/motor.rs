@@ -16,6 +16,8 @@ use std::time::{Duration, Instant};
 
 const REGISTER_POLL_INTERVAL_MS: u64 = 2;
 const SET_ZERO_SETTLE_MS: u64 = 20;
+const ENSURE_MODE_VERIFY_ATTEMPTS: usize = 3;
+const ENSURE_MODE_VERIFY_RETRY_GAP_MS: u64 = 10;
 
 const DAMIAO_MODELS: &[MotorModelSpec] = &[
     MotorModelSpec {
@@ -327,17 +329,37 @@ impl DamiaoMotor {
 
     pub fn ensure_control_mode(&self, mode: ControlMode, timeout: Duration) -> Result<()> {
         let desired = mode as u32;
-        let current = self.get_register_u32(10, timeout)?;
-        if current != desired {
-            self.write_register_u32(10, desired)?;
-            let verify = self.get_register_u32(10, timeout)?;
-            if verify != desired {
-                return Err(MotorError::Protocol(format!(
-                    "control mode verify failed: expected {desired}, got {verify}"
-                )));
+        match self.get_register_u32(10, timeout) {
+            Ok(current) if current == desired => return Ok(()),
+            Ok(_) => {}
+            Err(MotorError::Timeout(_)) => {}
+            Err(e) => return Err(e),
+        }
+
+        self.write_register_u32(10, desired)?;
+
+        let mut last_error = None;
+        for attempt in 0..ENSURE_MODE_VERIFY_ATTEMPTS {
+            match self.get_register_u32(10, timeout) {
+                Ok(verify) if verify == desired => return Ok(()),
+                Ok(verify) => {
+                    last_error = Some(MotorError::Protocol(format!(
+                        "control mode verify failed: expected {desired}, got {verify}"
+                    )));
+                }
+                Err(MotorError::Timeout(e)) => {
+                    last_error = Some(MotorError::Timeout(e));
+                }
+                Err(e) => return Err(e),
+            }
+            if attempt + 1 < ENSURE_MODE_VERIFY_ATTEMPTS {
+                std::thread::sleep(Duration::from_millis(ENSURE_MODE_VERIFY_RETRY_GAP_MS));
             }
         }
-        Ok(())
+
+        Err(last_error.unwrap_or_else(|| {
+            MotorError::Protocol(format!("control mode verify failed: expected {desired}"))
+        }))
     }
 
     pub fn request_register_reading(&self, rid: u8) -> Result<()> {
@@ -616,6 +638,58 @@ mod tests {
             .get_register_u32(10, Duration::from_millis(1))
             .expect_err("stale cache must not satisfy new request");
         assert!(matches!(err, MotorError::Timeout(_)));
+    }
+
+    #[test]
+    fn ensure_control_mode_writes_when_initial_read_times_out() {
+        let bus_impl = Arc::new(MockBus::new());
+        let bus: Arc<dyn CanBus> = bus_impl.clone();
+        let motor = Arc::new(DamiaoMotor::new(0x01, 0x11, "4340P", bus).expect("create motor"));
+        let responder = Arc::clone(&motor);
+        let bus_for_thread = Arc::clone(&bus_impl);
+
+        let handle = std::thread::spawn(move || {
+            let deadline = Instant::now() + Duration::from_millis(100);
+            loop {
+                let should_reply = {
+                    let sent = bus_for_thread.sent.lock().expect("sent lock");
+                    let saw_mode_write = sent
+                        .iter()
+                        .any(|f| f.data == encode_register_write_cmd(0x01, 10, 2u32.to_le_bytes()));
+                    let mode_read_count = sent
+                        .iter()
+                        .filter(|f| f.data == encode_register_read_cmd(0x01, 10))
+                        .count();
+                    saw_mode_write && mode_read_count >= 2
+                };
+                if should_reply {
+                    responder
+                        .process_feedback_frame_impl(CanFrame {
+                            arbitration_id: 0x11,
+                            data: [0x01, 0x01, 0x33, 10, 2, 0, 0, 0],
+                            dlc: 8,
+                            is_extended: false,
+                            is_rx: true,
+                        })
+                        .expect("process register reply");
+                    return;
+                }
+                if Instant::now() >= deadline {
+                    return;
+                }
+                std::thread::sleep(Duration::from_millis(1));
+            }
+        });
+
+        motor
+            .ensure_control_mode(ControlMode::PosVel, Duration::from_millis(5))
+            .expect("ensure should recover after initial read timeout");
+        handle.join().expect("responder thread");
+
+        let sent = bus_impl.sent.lock().expect("sent lock");
+        assert!(sent
+            .iter()
+            .any(|f| f.data == encode_register_write_cmd(0x01, 10, 2u32.to_le_bytes())));
     }
 
     #[test]

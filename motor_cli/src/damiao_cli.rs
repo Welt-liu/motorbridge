@@ -53,7 +53,7 @@ fn verify_declared_damiao_model(
         .map_err(|e| format!("model handshake failed reading TMAX(rid=23): {e}"))?;
 
     let matched = match_models_by_limits(pmax, vmax, tmax, tol);
-    if matched.iter().any(|m| *m == declared_model) {
+    if matched.contains(&declared_model) {
         println!(
             "[ok] model handshake passed: --model {} matches PMAX/VMAX/TMAX=({:.3}, {:.3}, {:.3})",
             declared_model, pmax, vmax, tmax

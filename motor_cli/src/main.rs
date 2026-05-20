@@ -58,9 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "ping"
         } else if vendor == "hightorque" {
             "read"
-        } else if vendor == "myactuator" {
-            "status"
-        } else if vendor == "hexfellow" {
+        } else if vendor == "myactuator" || vendor == "hexfellow" {
             "status"
         } else if vendor == "all" {
             "scan"

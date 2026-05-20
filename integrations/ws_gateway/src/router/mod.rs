@@ -21,7 +21,7 @@ async fn send_json<S>(tx: &mut S, obj: Value) -> Result<(), String>
 where
     S: futures_util::Sink<Message, Error = tokio_tungstenite::tungstenite::Error> + Unpin,
 {
-    tx.send(Message::Text(obj.to_string().into()))
+    tx.send(Message::Text(obj.to_string()))
         .await
         .map_err(|e| e.to_string())
 }
@@ -145,7 +145,7 @@ pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Resul
                 }
                 if state_stream_enabled && ctx.motor.is_some() {
                     state_tick_counter = state_tick_counter.wrapping_add(1);
-                    if state_tick_counter % state_tick_div == 0 {
+                    if state_tick_counter.is_multiple_of(state_tick_div) {
                         let snapshot = tokio::task::block_in_place(|| ctx.build_state_snapshot());
                         match snapshot {
                             Ok(st) => send_json(&mut tx, json!({"type":"state", "data": st})).await?,

@@ -19,7 +19,7 @@ pub fn parse_args() -> HashMap<String, String> {
         if !k.starts_with("--") {
             // Accept the Python CLI style `motor_cli scan --vendor ...` as a
             // shorthand for the Rust CLI's historical `--mode scan` form.
-            if out.get("mode").is_none() && is_mode_word(&k) {
+            if !out.contains_key("mode") && is_mode_word(&k) {
                 out.insert("mode".to_string(), k);
             }
             continue;

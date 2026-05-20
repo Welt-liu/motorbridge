@@ -15,12 +15,13 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
-## 更新说明（2026-05）：v0.3.3
+## 更新说明（2026-05）：v0.3.4
 
-- `v0.3.3` 对齐 CLI 版本输出和参数保存流程。
-- Rust CLI 和 Python CLI 现在支持 `-v` / `--version`。
-- Python binding 暴露 `motorbridge.__version__` 和 `motorbridge.get_version()`。
-- RobStride 与 Damiao 写参数 CLI 支持 `--store 1`，用于显式执行“写入 -> 验证 -> 保存”。
+- `v0.3.4` 修复 RobStride 参数保存 ACK 兼容性，适配
+  `SAVE_PARAMETERS` 后返回非 status 但有效设备回复的固件。
+- Damiao `ensure_mode` 在 `dm-serial` 等时序敏感链路上更稳。
+- `ws_gateway` 的 Damiao `set_id` 现在会正确遵守 `dm-serial` transport。
+- 严格 Clippy 已清理通过，并新增 WS 协议与 RobStride 手测文档。
 
 ## 传输链路标识
 

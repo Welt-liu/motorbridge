@@ -119,6 +119,7 @@ pub struct RobstrideMotor {
     state: Mutex<Option<MotorFeedbackState>>,
     fault_report: Mutex<Option<FaultReport>>,
     status_seq: AtomicU64,
+    response_seq: AtomicU64,
     param_state: Mutex<ParameterState>,
     ping_reply: Mutex<Option<PingReply>>,
 }
@@ -152,6 +153,7 @@ impl RobstrideMotor {
             state: Mutex::new(None),
             fault_report: Mutex::new(None),
             status_seq: AtomicU64::new(0),
+            response_seq: AtomicU64::new(0),
             param_state: Mutex::new(ParameterState::default()),
             ping_reply: Mutex::new(None),
         })
@@ -170,11 +172,7 @@ impl RobstrideMotor {
     }
 
     fn host_id_candidates(&self) -> Vec<u16> {
-        let mut cands = Vec::new();
-        cands.push(self.feedback_id);
-        cands.push(0x00FD);
-        cands.push(0x00FF);
-        cands.push(0x00FE);
+        let mut cands = vec![self.feedback_id, 0x00FD, 0x00FF, 0x00FE];
         cands.dedup();
         cands
     }
@@ -235,6 +233,31 @@ impl RobstrideMotor {
         }
         Err(MotorError::Timeout(format!(
             "control ack timeout: comm_type={comm_type}"
+        )))
+    }
+
+    fn send_with_response_ack(
+        &self,
+        comm_type: u32,
+        data: [u8; 8],
+        dlc: u8,
+        timeout: Duration,
+    ) -> Result<()> {
+        let cands = self.host_id_candidates();
+        let per_try = Duration::from_millis((timeout.as_millis() as u64).max(120));
+        for host in cands {
+            let start_seq = self.response_seq.load(Ordering::Acquire);
+            self.send_ext(comm_type, host, data, dlc)?;
+            let deadline = Instant::now() + per_try;
+            while Instant::now() < deadline {
+                if self.response_seq.load(Ordering::Acquire) > start_seq {
+                    return Ok(());
+                }
+                std::thread::sleep(Duration::from_millis(4));
+            }
+        }
+        Err(MotorError::Timeout(format!(
+            "response ack timeout: comm_type={comm_type}"
         )))
     }
 
@@ -343,7 +366,7 @@ impl RobstrideMotor {
     }
 
     pub fn save_parameters(&self) -> Result<()> {
-        self.send_with_status_ack(
+        self.send_with_response_ack(
             CommunicationType::SAVE_PARAMETERS,
             [1, 2, 3, 4, 5, 6, 7, 8],
             8,
@@ -541,6 +564,7 @@ impl RobstrideMotor {
     }
 
     fn process_feedback_frame_impl(&self, frame: CanFrame) -> Result<()> {
+        self.response_seq.fetch_add(1, Ordering::Release);
         let (comm_type, extra_data, _) = ext_id_parts(frame.arbitration_id);
         match comm_type {
             CommunicationType::GET_DEVICE_ID => {
@@ -651,7 +675,7 @@ impl MotorDevice for RobstrideMotor {
             return false;
         }
         let (comm_type, extra_data, _responder_id) = ext_id_parts(frame.arbitration_id);
-        let device_id = (extra_data & 0xFF) as u16;
+        let device_id = extra_data & 0xFF;
         match comm_type {
             CommunicationType::GET_DEVICE_ID => device_id == self.motor_id,
             CommunicationType::READ_PARAMETER => device_id == self.motor_id,
@@ -764,5 +788,52 @@ mod tests {
         assert_eq!(fault.fault_raw, 0);
         assert_eq!(fault.warning_raw, 1);
         assert!(fault.warnings.overtemperature_warning);
+    }
+
+    #[test]
+    fn save_parameters_accepts_non_status_device_reply() {
+        let bus_impl = Arc::new(MockBus::new());
+        let bus: Arc<dyn CanBus> = bus_impl.clone();
+        let motor = Arc::new(RobstrideMotor::new(1, 0xFD, "rs-00", bus).expect("create motor"));
+        let responder = Arc::clone(&motor);
+        let bus_for_thread = Arc::clone(&bus_impl);
+
+        let handle = std::thread::spawn(move || {
+            let deadline = Instant::now() + Duration::from_millis(100);
+            loop {
+                let saw_save = {
+                    let sent = bus_for_thread.sent.lock().expect("sent lock");
+                    sent.iter().any(|f| {
+                        let (comm_type, _, _) = ext_id_parts(f.arbitration_id);
+                        comm_type == CommunicationType::SAVE_PARAMETERS
+                    })
+                };
+                if saw_save {
+                    responder
+                        .process_feedback_frame(CanFrame {
+                            arbitration_id: build_ext_id(
+                                CommunicationType::GET_DEVICE_ID,
+                                0x0001,
+                                0xFE,
+                            ),
+                            data: [0x35, 0x10, 0x32, 0x31, 0x30, 0x37, 0x35, 0x0D],
+                            dlc: 8,
+                            is_extended: true,
+                            is_rx: true,
+                        })
+                        .expect("process save reply");
+                    return;
+                }
+                if Instant::now() >= deadline {
+                    return;
+                }
+                std::thread::sleep(Duration::from_millis(1));
+            }
+        });
+
+        motor
+            .save_parameters()
+            .expect("save should accept device reply");
+        handle.join().expect("responder thread");
     }
 }

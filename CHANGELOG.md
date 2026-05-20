@@ -7,6 +7,36 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-05-20
+
+### Added
+
+- Added a detailed Chinese WebSocket gateway protocol manual covering every
+  JSON `op`, parameters, defaults, vendor applicability, responses, and browser
+  usage examples.
+- Added RobStride Rust/Python CLI manual test commands for read/write/readback,
+  optional store, active-report, clear-error, control smoke tests, and ID update
+  workflows.
+- Added regression coverage for RobStride parameter save responses that return
+  a non-status device reply.
+
+### Fixed
+
+- Fixed `ws_gateway` `set_id` so Damiao `--transport dm-serial` is honored
+  instead of accidentally opening the SocketCAN/PCAN path.
+- Improved Damiao `ensure_control_mode()` so an initial register-10 read timeout
+  no longer prevents writing the requested mode; write verification now retries.
+- Fixed RobStride `save_parameters()` to accept valid device replies after
+  communication type `22`, avoiding false `control ack timeout: comm_type=22`
+  errors after a parameter was already written and read back successfully.
+- Fixed strict Clippy failures across `motor_core`, `motor_cli`,
+  `motor_vendor_robstride`, and `ws_gateway`.
+
+### Changed
+
+- Python package version advanced to `0.3.4`.
+- Rust workspace package version advanced to `0.3.4` for release/tag alignment.
+
 ## [0.3.3] - 2026-05-19
 
 ### Added

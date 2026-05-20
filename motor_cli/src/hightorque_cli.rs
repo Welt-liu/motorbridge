@@ -161,11 +161,11 @@ fn tqe_raw_from_args(args: &HashMap<String, String>) -> Result<i16, String> {
 fn open_can_bus(channel: &str) -> Result<Box<dyn CanBus>, Box<dyn std::error::Error>> {
     #[cfg(target_os = "linux")]
     {
-        return Ok(Box::new(SocketCanBus::open(channel)?));
+        Ok(Box::new(SocketCanBus::open(channel)?))
     }
     #[cfg(any(target_os = "windows", target_os = "macos"))]
     {
-        return Ok(Box::new(PcanBus::open(channel)?));
+        Ok(Box::new(PcanBus::open(channel)?))
     }
     #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
     {
@@ -215,15 +215,13 @@ pub fn run_hightorque(
         send_count = 1;
     }
 
-    if mode == "mit" {
-        if args.contains_key("kp") || args.contains_key("kd") {
-            let kp = get_f32(args, "kp", 0.0)?;
-            let kd = get_f32(args, "kd", 0.0)?;
-            println!(
-                "[info] vendor=hightorque mode=mit ignores --kp/--kd in ht_can v1.5.5 (received kp={:.3}, kd={:.3})",
-                kp, kd
-            );
-        }
+    if mode == "mit" && (args.contains_key("kp") || args.contains_key("kd")) {
+        let kp = get_f32(args, "kp", 0.0)?;
+        let kd = get_f32(args, "kd", 0.0)?;
+        println!(
+            "[info] vendor=hightorque mode=mit ignores --kp/--kd in ht_can v1.5.5 (received kp={:.3}, kd={:.3})",
+            kp, kd
+        );
     }
 
     for i in 0..send_count {

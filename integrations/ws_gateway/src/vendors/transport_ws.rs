@@ -82,9 +82,9 @@ pub(crate) fn open_hightorque_bus(
         Transport::Auto | Transport::SocketCan => {
             #[cfg(target_os = "linux")]
             {
-                return Ok(Box::new(
+                Ok(Box::new(
                     SocketCanBus::open(&_base.channel).map_err(|e| e.to_string())?,
-                ));
+                ))
             }
             #[cfg(target_os = "windows")]
             {

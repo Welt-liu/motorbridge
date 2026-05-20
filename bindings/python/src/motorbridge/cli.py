@@ -463,6 +463,7 @@ def _parse_with_legacy_support() -> argparse.Namespace:
     parser = _build_parser()
     if len(sys.argv) > 1 and sys.argv[1].startswith("--") and sys.argv[1] not in ("-h", "--help"):
         legacy = argparse.ArgumentParser(description="motorbridge Python SDK CLI (legacy run mode)", allow_abbrev=False)
+        legacy.add_argument("-v", "--version", action="version", version=f"motorbridge {get_version()}")
         _add_common_args(legacy)
         _add_run_args(legacy)
         legacy_args = legacy.parse_args()
@@ -476,6 +477,7 @@ def _parse_with_legacy_support() -> argparse.Namespace:
         return args
 
     legacy = argparse.ArgumentParser(description="motorbridge Python SDK CLI (legacy run mode)", allow_abbrev=False)
+    legacy.add_argument("-v", "--version", action="version", version=f"motorbridge {get_version()}")
     _add_common_args(legacy)
     _add_run_args(legacy)
     legacy_args = legacy.parse_args()

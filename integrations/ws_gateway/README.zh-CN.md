@@ -13,6 +13,9 @@
 
 高性能 Rust WebSocket 网关（V1：JSON over WS）。
 
+完整 JSON 协议、每个 `op` 的参数/默认值/返回值/示例见：
+[`PROTOCOL.zh-CN.md`](./PROTOCOL.zh-CN.md)。
+
 ```mermaid
 sequenceDiagram
   participant Client as WS 客户端

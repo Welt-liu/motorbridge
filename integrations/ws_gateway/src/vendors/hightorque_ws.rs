@@ -113,10 +113,10 @@ pub(crate) fn open_hightorque_bus(target: &Target) -> Result<Box<dyn CanBus>, St
         Transport::Auto | Transport::SocketCan => {
             #[cfg(target_os = "linux")]
             {
-                return Ok(Box::new(
+                Ok(Box::new(
                     SocketCanBus::open(&target.channel)
                         .map_err(|e| format!("open bus failed: {e}"))?,
-                ));
+                ))
             }
             #[cfg(target_os = "windows")]
             {
