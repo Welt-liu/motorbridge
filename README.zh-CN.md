@@ -15,12 +15,19 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
-## 更新说明（2026-05）：v0.3.6
+## 更新说明（2026-05）：v0.3.7
 
-- `v0.3.6` 稳定 Windows PCAN 与 Linux SocketCAN 下的 RobStride 扫描：
+- `v0.3.7` 稳定 Windows PCAN 与 Linux SocketCAN 下的 RobStride 扫描：
   host/feedback ID 改为顺序探测，避免同一 CAN 通道上存在互相竞争的接收者。
 - Python CLI 与 WebSocket gateway 的 RobStride scan 现在使用精确 host-id
-  ping/参数探测，并跳过已发现的 motor ID。
+  ping 探测，跳过已发现的 motor ID，并避免在 RobStride 扫描中混入
+  Damiao 默认 feedback ID，例如 `0x11`。
+- WebSocket gateway 的 RobStride scan 现在会实时发送 `scan_progress`
+  事件，覆盖 `start`、`probe`、`hit`、`no_reply`、`done`，同时保留原有最终
+  `{"ok":true,"op":"scan"}` 响应，兼容旧前端。
+- WebSocket gateway 现在支持 `capabilities` 与 `batch_scan`，并且在
+  Windows PCAN 扫描 RobStride 前会释放当前 RobStride session，避免重复扫描时
+  出现 `PCAN_ERROR_INITIALIZE`。
 - `CoreController` 在 `Drop` 时会停止后台 polling 线程，即使用户忘记调用
   `shutdown()` / `close_bus()` 也不会泄漏接收线程。
 - Python CLI 从单文件拆为 `motorbridge.cli` 包，但继续兼容

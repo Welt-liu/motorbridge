@@ -82,6 +82,8 @@ def _scan_robstride(args: argparse.Namespace, start_id: int, end_id: int) -> lis
                     if hit_meta is not None:
                         found_by_mid[mid] = hit_meta
                         print(f"[hit] probe=0x{mid:02X} {hit_meta}")
+                    elif len(feedback_ids) == 1:
+                        print(f"[.. ] vendor=robstride probe=0x{mid:02X} no reply")
                 finally:
                     motor.close()
         finally:
@@ -93,9 +95,10 @@ def _scan_robstride(args: argparse.Namespace, start_id: int, end_id: int) -> lis
         for mid in range(start_id, end_id + 1)
         if mid in found_by_mid
     ]
-    for mid in range(start_id, end_id + 1):
-        if mid not in found_by_mid:
-            print(f"[.. ] vendor=robstride probe=0x{mid:02X} no reply")
+    if len(feedback_ids) != 1:
+        for mid in range(start_id, end_id + 1):
+            if mid not in found_by_mid:
+                print(f"[.. ] vendor=robstride probe=0x{mid:02X} no reply")
     return found
 
 def _scan_myactuator(args: argparse.Namespace, start_id: int, end_id: int) -> list[tuple[int, str]]:

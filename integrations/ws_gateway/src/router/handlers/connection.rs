@@ -13,6 +13,7 @@ pub(crate) fn handle(
     dt_ms: u64,
 ) -> Option<Result<Value, String>> {
     match op {
+        "capabilities" => Some(handle_capabilities(ctx)),
         "ping" => Some(handle_ping(v, ctx)),
         "set_target" => Some(handle_set_target(v, ctx)),
         "enable" => Some(handle_enable(ctx)),
@@ -41,6 +42,62 @@ pub(crate) fn handle(
         "close_bus" => Some(handle_close_bus(ctx)),
         _ => None,
     }
+}
+
+fn handle_capabilities(ctx: &SessionCtx) -> Result<Value, String> {
+    Ok(json!({
+        "api_version": "v1",
+        "gateway_version": env!("CARGO_PKG_VERSION"),
+        "default_vendor": ctx.target.vendor.as_str(),
+        "default_target": {
+            "vendor": ctx.target.vendor.as_str(),
+            "transport": ctx.target.transport.as_str(),
+            "channel": ctx.target.channel,
+            "model": ctx.target.model,
+            "motor_id": ctx.target.motor_id,
+            "feedback_id": ctx.target.feedback_id,
+        },
+        "features": [
+            "dynamic_target",
+            "batch_scan",
+            "state_stream",
+            "param_stream",
+            "robstride_exact_host_scan"
+        ],
+        "vendors": {
+            "damiao": {
+                "transports": ["auto", "socketcan", "socketcanfd", "dm-serial"],
+                "modes": ["mit", "pos_vel", "vel", "force_pos"],
+                "ops_unified": ["scan", "set_id", "enable", "disable", "stop", "state_once", "status", "verify"],
+                "ops_vendor_native": ["write_register_u32", "write_register_f32", "get_register_u32", "get_register_f32"]
+            },
+            "robstride": {
+                "transports": ["auto", "socketcan", "socketcanfd"],
+                "modes": ["mit", "pos_vel", "vel"],
+                "ops_unified": ["scan", "set_id", "enable", "disable", "stop", "state_once", "status", "verify"],
+                "ops_vendor_native": ["robstride_ping", "robstride_read_param", "robstride_write_param", "set_active_report"]
+            },
+            "hexfellow": {
+                "transports": ["auto", "socketcanfd"],
+                "modes": ["mit", "pos_vel"],
+                "ops_unified": ["scan", "enable", "disable", "stop", "state_once", "status", "verify"],
+                "ops_vendor_native": []
+            },
+            "myactuator": {
+                "transports": ["auto", "socketcan", "socketcanfd"],
+                "modes": ["pos_vel", "vel"],
+                "ops_unified": ["scan", "enable", "disable", "stop", "state_once", "status", "verify"],
+                "ops_vendor_native": ["status", "version", "mode-query"]
+            },
+            "hightorque": {
+                "transports": ["auto", "socketcan"],
+                "modes": ["mit", "pos_vel", "vel", "force_pos"],
+                "ops_unified": ["scan", "stop", "state_once", "status", "verify"],
+                "ops_vendor_native": ["read"]
+            }
+        },
+        "unsupported_behavior": "return {ok:false,error:'unsupported ...'}"
+    }))
 }
 
 fn handle_ping(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {

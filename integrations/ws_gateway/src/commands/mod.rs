@@ -16,5 +16,5 @@ pub(crate) use common::{
 pub(crate) use parse::{
     parse_damiao_mode, parse_robstride_mode, parse_transport_in_msg, parse_vendor_in_msg,
 };
-pub(crate) use scan::cmd_scan;
+pub(crate) use scan::{cmd_batch_scan, cmd_scan, cmd_scan_robstride_progress};
 pub(crate) use vendor_ops::{cmd_set_id, cmd_verify};

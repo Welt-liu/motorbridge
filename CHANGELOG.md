@@ -7,7 +7,7 @@ Versioning.
 
 ## [Unreleased]
 
-## [0.3.6] - 2026-05-21
+## [0.3.7] - 2026-05-21
 
 ### Fixed
 
@@ -17,20 +17,46 @@ Versioning.
 - Fixed Python CLI RobStride scan cleanup so unbound probe controllers are not
   asked to `close_bus()`, removing the misleading `controller has no motor`
   error after scan results.
+- Fixed Python CLI RobStride single-host scans to print `hit` and `no reply`
+  lines in probe order, so operators can see `0x01`, `0x02`, `0x03`, ... live
+  instead of seeing missed IDs only after the full scan completes.
 - Fixed WebSocket gateway RobStride scans to probe each requested host/feedback
-  ID exactly and sequentially. This also ensures later host IDs are actually
-  tested instead of being skipped after the first motor registration.
+  ID exactly and sequentially, use request-level `channel` and `model`, avoid
+  appending unrelated default feedback IDs, and clamp default probe timing for
+  Windows PCAN reliability.
+- Fixed Windows WebSocket gateway RobStride repeated scans by releasing any
+  active RobStride session before scan probes and adding a short PCAN release
+  gap after scan `close_bus()`.
+- Fixed PCAN error reporting to include names for `PCAN_ERROR_INITIALIZE` and
+  `PCAN_ERROR_ILLHW`.
 
 ### Added
 
 - Added Python scan regression coverage for the single-controller RobStride
   probing behavior.
+- Added optional `MOTORBRIDGE_WS_DEBUG=1` connection logs for gateway TCP accept
+  and WebSocket handshake diagnostics.
+- Added the WebSocket gateway `capabilities` operation so MotorBridge Studio
+  can discover batch scan support instead of falling back to legacy per-ID
+  frontend probing.
+- Added the WebSocket gateway `batch_scan` operation for Studio compatibility.
+- Added live WebSocket `scan_progress` events for RobStride scans with
+  `start`, `probe`, `hit`, `no_reply`, and `done` phases while preserving the
+  final `scan` response.
 
 ### Changed
 
-- Python package version advanced to `0.3.6`.
-- Rust workspace package version advanced to `0.3.6` for release/tag alignment.
-- C++ package metadata advanced to `0.3.6`.
+- Python package version advanced to `0.3.7`.
+- Rust workspace package version advanced to `0.3.7` for release/tag alignment.
+- C++ package metadata advanced to `0.3.7`.
+
+## [0.3.6] - 2026-05-21
+
+### Fixed
+
+- Fixed Python CLI RobStride scans on Windows PCAN by probing one
+  host/feedback ID at a time, avoiding multiple active controllers and receive
+  workers on the same CAN channel.
 
 ## [0.3.5] - 2026-05-20
 

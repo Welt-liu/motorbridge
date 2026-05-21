@@ -39,6 +39,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         let (stream, _) = listener.accept().await?;
+        if std::env::var("MOTORBRIDGE_WS_DEBUG").is_ok() {
+            if let Ok(peer) = stream.peer_addr() {
+                eprintln!("[ws_gateway] accepted tcp peer: {peer}");
+            }
+        }
         let cfg_cloned = cfg.clone();
         tokio::spawn(async move {
             if let Err(e) = handle_socket(stream, cfg_cloned).await {

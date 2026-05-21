@@ -71,6 +71,10 @@ After startup:\n\
             );
             std::process::exit(0);
         }
+        if k == "--version" || k == "-V" {
+            println!("ws_gateway {}", env!("CARGO_PKG_VERSION"));
+            std::process::exit(0);
+        }
         let next = args
             .get(i + 1)
             .ok_or_else(|| format!("missing value for {k}"))?;

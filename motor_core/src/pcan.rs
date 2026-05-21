@@ -14,6 +14,8 @@ const PCAN_USBBUS1: TPCANHandle = 0x51;
 
 const PCAN_ERROR_OK: TPCANStatus = 0x00000;
 const PCAN_ERROR_QRCVEMPTY: TPCANStatus = 0x00020;
+const PCAN_ERROR_ILLHW: TPCANStatus = 0x01400;
+const PCAN_ERROR_INITIALIZE: TPCANStatus = 0x4000000;
 
 const PCAN_MESSAGE_STANDARD: u8 = 0x00;
 const PCAN_MESSAGE_EXTENDED: u8 = 0x02;
@@ -220,7 +222,12 @@ fn parse_channel_and_bitrate(input: &str) -> Result<(TPCANHandle, u16)> {
 }
 
 fn pcan_status_to_error(prefix: &str, status: TPCANStatus) -> MotorError {
-    MotorError::Io(format!("{prefix}: PCAN status=0x{status:08X}"))
+    let name = match status {
+        PCAN_ERROR_ILLHW => "PCAN_ERROR_ILLHW",
+        PCAN_ERROR_INITIALIZE => "PCAN_ERROR_INITIALIZE",
+        _ => "PCAN_ERROR_UNKNOWN",
+    };
+    MotorError::Io(format!("{prefix}: PCAN status=0x{status:08X} ({name})"))
 }
 
 pub struct PcanBus {

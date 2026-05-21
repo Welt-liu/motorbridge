@@ -1,4 +1,4 @@
-# motorbridge Python SDK
+﻿# motorbridge Python SDK
 
 <!-- channel-compat-note -->
 ## Channel Compatibility (PCAN + CANable candleLight/gs_usb + CAN-FD + Damiao Serial Bridge)
@@ -42,11 +42,11 @@ Notes:
 ## Scope
 Packaging note:
 
-- Current package target version: `0.3.6`.
+- Current package target version: `0.3.7`.
 - Published wheel includes `motor_abi` shared library and `ws_gateway` binary for that platform.
 - After `pip install motorbridge`, gateway binary path is typically:
   `.../site-packages/motorbridge/bin/ws_gateway` (or `ws_gateway.exe` on Windows).
-- `0.3.6` keeps the public Python binding API stable while aligning Python CLI
+- `0.3.7` keeps the public Python binding API stable while aligning Python CLI
   and WebSocket gateway RobStride scans around sequential host-id probing for
   Windows PCAN and Linux SocketCAN reliability.
 - The Python CLI is now implemented as a `motorbridge.cli` package, but
@@ -437,3 +437,4 @@ This repository includes `.github/workflows/pypi-publish.yml`.
 1. Create API token on PyPI and add repository secret `PYPI_API_TOKEN`.
 2. Create API token on TestPyPI and add repository secret `TEST_PYPI_API_TOKEN`.
 3. Keep package version unique for every upload (for example `0.1.6`, `0.1.7`).
+

@@ -15,13 +15,20 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
   Standalone web control UI built on top of `ws_gateway`.
 
-## Update (2026-05): v0.3.6
+## Update (2026-05): v0.3.7
 
-- `v0.3.6` stabilizes RobStride scan behavior on Windows PCAN and Linux
+- `v0.3.7` stabilizes RobStride scan behavior on Windows PCAN and Linux
   SocketCAN by probing host/feedback IDs sequentially instead of keeping
   competing receivers open on the same CAN channel.
 - Python CLI and WebSocket gateway RobStride scans now use exact
-  host-id-specific ping/parameter probes and skip already discovered motor IDs.
+  host-id-specific ping probes, skip already discovered motor IDs, and avoid
+  hidden Damiao feedback IDs such as `0x11` in RobStride scans.
+- WebSocket gateway RobStride scans now emit live `scan_progress` events for
+  `start`, `probe`, `hit`, `no_reply`, and `done`, while preserving the final
+  `{"ok":true,"op":"scan"}` response for existing clients.
+- WebSocket gateway now supports `capabilities` and `batch_scan`, and releases
+  an active RobStride session before Windows PCAN scan probes to avoid
+  `PCAN_ERROR_INITIALIZE` on repeated scan attempts.
 - `CoreController` now stops the background polling worker on `Drop`, so users
   do not leak a receive thread when they forget to call `shutdown()` or
   `close_bus()`.

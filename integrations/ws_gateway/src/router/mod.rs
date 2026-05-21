@@ -1,3 +1,5 @@
+use crate::commands::{cmd_scan_robstride_progress, parse_vendor_in_msg};
+use crate::model::Vendor;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
 use std::time::Duration;
@@ -36,6 +38,9 @@ pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Resul
         .map(|a| a.to_string())
         .unwrap_or_else(|_| "unknown".to_string());
     let expected_token = std::env::var("MOTORBRIDGE_WS_TOKEN").ok();
+    if std::env::var("MOTORBRIDGE_WS_DEBUG").is_ok() {
+        eprintln!("[ws_gateway] websocket handshake start: {peer}");
+    }
     let ws = accept_hdr_async(stream, move |req: &Request, response: Response| {
         if let Some(token) = expected_token.as_deref() {
             let provided = req
@@ -62,6 +67,9 @@ pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Resul
     })
     .await
     .map_err(|e| e.to_string())?;
+    if std::env::var("MOTORBRIDGE_WS_DEBUG").is_ok() {
+        eprintln!("[ws_gateway] websocket handshake ok: {peer}");
+    }
     let (mut tx, mut rx) = ws.split();
 
     let mut ctx = SessionCtx::new(cfg.target.clone());
@@ -110,6 +118,69 @@ pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Resul
                         };
                         let op = v.get("op").and_then(Value::as_str).unwrap_or("").to_lowercase();
                         let req_id = v.get("req_id").cloned();
+
+                        if op == "scan"
+                            && parse_vendor_in_msg(&v, ctx.target.vendor).ok()
+                                == Some(Vendor::Robstride)
+                        {
+                            dispatch::release_robstride_session_before_scan(&v, &mut ctx);
+                            let target = ctx.target.clone();
+                            let req = v.clone();
+                            let (progress_tx, mut progress_rx) =
+                                tokio::sync::mpsc::unbounded_channel::<Value>();
+                            let mut task = tokio::task::spawn_blocking(move || {
+                                let mut emit = |event: Value| {
+                                    let _ = progress_tx.send(event);
+                                };
+                                cmd_scan_robstride_progress(&req, &target, &mut emit)
+                            });
+
+                            let result = loop {
+                                tokio::select! {
+                                    Some(mut event) = progress_rx.recv() => {
+                                        if let Some(id) = req_id.clone() {
+                                            if let Some(obj) = event.as_object_mut() {
+                                                obj.insert("req_id".to_string(), id);
+                                            }
+                                        }
+                                        send_json(&mut tx, event).await?;
+                                    }
+                                    joined = &mut task => {
+                                        break joined.map_err(|e| e.to_string())?;
+                                    }
+                                }
+                            };
+                            while let Ok(mut event) = progress_rx.try_recv() {
+                                if let Some(id) = req_id.clone() {
+                                    if let Some(obj) = event.as_object_mut() {
+                                        obj.insert("req_id".to_string(), id);
+                                    }
+                                }
+                                send_json(&mut tx, event).await?;
+                            }
+
+                            match result {
+                                Ok(data) => {
+                                    let mut resp = json!({"ok": true, "op": op, "data": data});
+                                    if let Some(id) = req_id.clone() {
+                                        if let Some(obj) = resp.as_object_mut() {
+                                            obj.insert("req_id".to_string(), id);
+                                        }
+                                    }
+                                    send_json(&mut tx, resp).await?
+                                }
+                                Err(err) => {
+                                    let mut resp = json!({"ok": false, "op": op, "error": err});
+                                    if let Some(id) = req_id.clone() {
+                                        if let Some(obj) = resp.as_object_mut() {
+                                            obj.insert("req_id".to_string(), id);
+                                        }
+                                    }
+                                    send_json(&mut tx, resp).await?
+                                }
+                            }
+                            continue;
+                        }
 
                         let result = dispatch::dispatch_op(
                             &op,
