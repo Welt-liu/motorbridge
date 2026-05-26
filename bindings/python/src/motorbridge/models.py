@@ -7,6 +7,7 @@ class Mode(IntEnum):
     POS_VEL = 2
     VEL = 3
     FORCE_POS = 4
+    ROBSTRIDE_POS_VEL_CSP = 5
 
 
 @dataclass(frozen=True)

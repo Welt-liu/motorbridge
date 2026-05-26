@@ -47,7 +47,8 @@ fn to_robstride_mode(mode: u32) -> Result<RobstrideControlMode, &'static str> {
         1 => Ok(RobstrideControlMode::Mit),
         2 => Ok(RobstrideControlMode::Position),
         3 => Ok(RobstrideControlMode::Velocity),
-        _ => Err("RobStride mode must be 1(MIT) / 2(POSITION) / 3(VELOCITY)"),
+        5 => Ok(RobstrideControlMode::PositionCsp),
+        _ => Err("RobStride mode must be 1(MIT) / 2(POSITION-PP) / 3(VELOCITY) / 5(POSITION-CSP)"),
     }
 }
 

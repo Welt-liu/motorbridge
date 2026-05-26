@@ -7,6 +7,36 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-05-26
+
+### Added
+
+- Added RobStride-specific `pos-vel-pp` and `pos-vel-csp` control paths that
+  follow the vendor manual sequences for PP and CSP position modes.
+- Added C ABI and Python binding entrypoints for
+  `robstride_send_pos_vel_pp()` and `robstride_send_pos_vel_csp()`.
+- Added Python CLI and Rust CLI support for RobStride `pos-vel-pp` and
+  `pos-vel-csp`.
+- Added `robstride_posvel_timing_demo.py` to compare legacy `pos-vel`, PP, and
+  CSP timing, including full-sequence and prepared high-rate profiles.
+- Added documentation and Python code examples for RobStride PP/CSP usage and
+  high-rate `loc_ref` loops.
+
+### Fixed
+
+- Removed the default 260 ms blocking wait from RobStride communication type 18
+  parameter writes; set `MOTORBRIDGE_ROBSTRIDE_WRITE_ACK_TIMEOUT_MS` to restore
+  conservative synchronous waiting.
+- Clarified the difference between RobStride full manual PP/CSP sequences and
+  high-rate prepared loops so users do not pay an `enable` ack wait every
+  control cycle.
+
+### Changed
+
+- Python package version advanced to `0.3.8`.
+- Rust workspace package version advanced to `0.3.8` for release/tag alignment.
+- C++ package metadata advanced to `0.3.8`.
+
 ## [0.3.7] - 2026-05-21
 
 ### Fixed

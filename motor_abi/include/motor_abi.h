@@ -80,6 +80,8 @@ int32_t motor_handle_ensure_mode(MotorHandle* motor, uint32_t mode, uint32_t tim
 
 int32_t motor_handle_send_mit(MotorHandle* motor, float target_position, float target_velocity, float stiffness, float damping, float feedforward_torque);
 int32_t motor_handle_send_pos_vel(MotorHandle* motor, float target_position, float velocity_limit);
+int32_t motor_handle_robstride_send_pos_vel_pp(MotorHandle* motor, float target_position, float velocity_max, float acceleration);
+int32_t motor_handle_robstride_send_pos_vel_csp(MotorHandle* motor, float target_position, float velocity_limit);
 int32_t motor_handle_send_vel(MotorHandle* motor, float target_velocity);
 int32_t motor_handle_send_force_pos(MotorHandle* motor, float target_position, float velocity_limit, float torque_limit_ratio);
 

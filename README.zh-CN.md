@@ -15,30 +15,19 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
-## 更新说明（2026-05）：v0.3.7
+## 更新说明（2026-05）：v0.3.8
 
-- `v0.3.7` 稳定 Windows PCAN 与 Linux SocketCAN 下的 RobStride 扫描：
-  host/feedback ID 改为顺序探测，避免同一 CAN 通道上存在互相竞争的接收者。
-- Python CLI 与 WebSocket gateway 的 RobStride scan 现在使用精确 host-id
-  ping 探测，跳过已发现的 motor ID，并避免在 RobStride 扫描中混入
-  Damiao 默认 feedback ID，例如 `0x11`。
-- WebSocket gateway 的 RobStride scan 现在会实时发送 `scan_progress`
-  事件，覆盖 `start`、`probe`、`hit`、`no_reply`、`done`，同时保留原有最终
-  `{"ok":true,"op":"scan"}` 响应，兼容旧前端。
-- WebSocket gateway 现在支持 `capabilities` 与 `batch_scan`，并且在
-  Windows PCAN 扫描 RobStride 前会释放当前 RobStride session，避免重复扫描时
-  出现 `PCAN_ERROR_INITIALIZE`。
-- `CoreController` 在 `Drop` 时会停止后台 polling 线程，即使用户忘记调用
-  `shutdown()` / `close_bus()` 也不会泄漏接收线程。
-- Python CLI 从单文件拆为 `motorbridge.cli` 包，但继续兼容
-  `motorbridge-cli`、`python -m motorbridge.cli`、`python -m motorbridge`
-  以及旧式扁平 run 参数。
-- RobStride Python scan 现在按每个 host/feedback 候选复用 controller，
-  不再为每个 `(motor_id, feedback_id)` 反复打开 CAN socket；RobStride
-  MIT 已有测试锁定 `pos/vel/kp/kd/tau` 的真实编码。
-- `open_can_bus()` 是明确的跨平台 classic-CAN 入口；`open_socketcan()`
-  继续作为兼容别名保留。
-- CI 现在强制执行 `fmt`、`clippy -D warnings` 和 workspace tests。
+- `v0.3.8` 新增 RobStride 专用 `pos-vel-pp` 和 `pos-vel-csp` 路径，严格
+  对应厂家手册中的 PP 与 CSP 位置模式流程。
+- Rust CLI、C ABI、Python binding、Python CLI 都已暴露 RobStride PP/CSP
+  专用控制接口，同时保留旧的统一 `pos-vel` 兼容映射。
+- RobStride 参数写入默认不再等待状态 ack，移除了高频目标下发中的旧
+  `260ms` 阻塞行为；需要恢复同步等待时可设置
+  `MOTORBRIDGE_ROBSTRIDE_WRITE_ACK_TIMEOUT_MS`。
+- 新增 `robstride_posvel_timing_demo.py`，可对比旧 `pos-vel`、PP、CSP 的
+  耗时，并区分完整手册流程和初始化后的高频循环。
+- 文档已记录 PP/CSP 的准确寄存器顺序，并补充一次性命令与高频
+  `loc_ref(0x7016)` 循环的 Python 代码示例。
 
 ## 传输链路标识
 
@@ -57,7 +46,7 @@
   - 模式: `scan`, `MIT`, `POS_VEL`, `VEL`, `FORCE_POS`
 - RobStride:
   - 型号: `rs-00`, `rs-01`, `rs-02`, `rs-03`, `rs-04`, `rs-05`, `rs-06`
-  - 模式: `scan`, `ping`, `MIT`, `POS_VEL`, `VEL`, 参数读写
+  - 模式: `scan`, `ping`, `MIT`, `POS_VEL`, `POS_VEL_PP`, `POS_VEL_CSP`, `VEL`, 参数读写
   - 说明: 力矩/电流当前仅支持参数级写入（如 `iq_ref`/限幅参数），尚未开放为统一高层模式
 - MyActuator:
   - 型号: `X8`（运行时字符串，协议按 ID 通信）

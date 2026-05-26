@@ -100,7 +100,17 @@ def _run_command(args: argparse.Namespace) -> None:
                 )
                 ctrl.enable_all()
                 time.sleep(0.1)
-            elif args.mode not in ("enable", "disable", "clear-error", "active-report", "ping", "zero", "set-zero"):
+            elif args.mode not in (
+                "enable",
+                "disable",
+                "clear-error",
+                "active-report",
+                "ping",
+                "zero",
+                "set-zero",
+                "pos-vel-pp",
+                "pos-vel-csp",
+            ):
                 ctrl.enable_all()
                 time.sleep(0.3)
 
@@ -159,6 +169,14 @@ def _run_command(args: argparse.Namespace) -> None:
                         motor.robstride_write_param_f32(0x7016, float(args.pos))
                     else:
                         motor.send_pos_vel(args.pos, args.vlim)
+                elif args.mode == "pos-vel-pp":
+                    if args.vendor != "robstride":
+                        raise ValueError("pos-vel-pp mode is only valid for RobStride")
+                    motor.robstride_send_pos_vel_pp(args.pos, args.vlim, args.acc)
+                elif args.mode == "pos-vel-csp":
+                    if args.vendor != "robstride":
+                        raise ValueError("pos-vel-csp mode is only valid for RobStride")
+                    motor.robstride_send_pos_vel_csp(args.pos, args.vlim)
                 elif args.mode == "vel":
                     if args.vendor == "hexfellow":
                         raise ValueError("hexfellow does not support vel command")

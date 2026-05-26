@@ -152,7 +152,7 @@ class Motor:
     def set_zero_position(self) -> None:
         _ok(self._abi.lib.motor_handle_set_zero_position(self._require_open()), "set_zero_position")
 
-    def ensure_mode(self, mode: Mode, timeout_ms: int = 1000) -> None:
+    def ensure_mode(self, mode: Mode | int, timeout_ms: int = 1000) -> None:
         _ok(self._abi.lib.motor_handle_ensure_mode(self._require_open(), int(mode), timeout_ms), "ensure_mode")
 
     def send_mit(self, pos: float, vel: float, kp: float, kd: float, tau: float) -> None:
@@ -160,6 +160,18 @@ class Motor:
 
     def send_pos_vel(self, pos: float, vlim: float) -> None:
         _ok(self._abi.lib.motor_handle_send_pos_vel(self._require_open(), pos, vlim), "send_pos_vel")
+
+    def robstride_send_pos_vel_pp(self, pos: float, vel_max: float, acc_set: float) -> None:
+        _ok(
+            self._abi.lib.motor_handle_robstride_send_pos_vel_pp(self._require_open(), pos, vel_max, acc_set),
+            "robstride_send_pos_vel_pp",
+        )
+
+    def robstride_send_pos_vel_csp(self, pos: float, vlim: float) -> None:
+        _ok(
+            self._abi.lib.motor_handle_robstride_send_pos_vel_csp(self._require_open(), pos, vlim),
+            "robstride_send_pos_vel_csp",
+        )
 
     def send_vel(self, vel: float) -> None:
         _ok(self._abi.lib.motor_handle_send_vel(self._require_open(), vel), "send_vel")

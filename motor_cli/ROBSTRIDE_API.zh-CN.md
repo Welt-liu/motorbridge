@@ -124,6 +124,92 @@ motor_cli \
   - 可选写 `0x701E`（`loc_kp`）来自 `--loc-kp` 或 `--kp`
   - 写 `0x7016`（`loc_ref`）为 `--pos`
 - `--vel`、`--kd`、`--tau` 不属于原生 Position 模式，在 `--mode pos-vel` 下会被忽略。
+- 该旧 `pos-vel` 为兼容映射，保持不变。
+
+#### RobStride 专用 PP / CSP
+
+`pos-vel-pp` 完全按手册 PP 位置模式执行：
+
+- 写 `0x7005`（`run_mode`）为 `1`
+- 发送使能帧（通信类型 3）
+- 写 `0x7024`（`vel_max`）为 `--vlim`
+- 写 `0x7025`（`acc_set`）为 `--acc`
+- 写 `0x7016`（`loc_ref`）为 `--pos`
+
+```bash
+motor_cli \
+  --vendor robstride --channel can0 --model rs-06 --motor-id 127 --feedback-id 0xFD \
+  --mode pos-vel-pp --pos 1.0 --vlim 1.5 --acc 10.0
+```
+
+`pos-vel-csp` 完全按手册 CSP 位置模式执行：
+
+- 写 `0x7005`（`run_mode`）为 `5`
+- 发送使能帧（通信类型 3）
+- 写 `0x7017`（`limit_spd`）为 `--vlim`
+- 写 `0x7016`（`loc_ref`）为 `--pos`
+
+```bash
+motor_cli \
+  --vendor robstride --channel can0 --model rs-06 --motor-id 127 --feedback-id 0xFD \
+  --mode pos-vel-csp --pos 1.0 --vlim 1.5
+```
+
+RobStride 参数写入默认不等待状态 ack，以便 `pos-vel` / PP / CSP 的目标下发频率接近外层循环周期。需要恢复保守同步等待时，可设置：
+
+```bash
+export MOTORBRIDGE_ROBSTRIDE_WRITE_ACK_TIMEOUT_MS=260
+```
+
+该环境变量只影响通信类型 18 的参数写入等待；`enable`、`disable`、`set-zero` 等控制帧仍使用各自的等待逻辑。
+
+Python binding 中也可以直接调用这两个接口：
+
+```python
+from motorbridge import Controller
+
+with Controller("can0") as ctrl:
+    motor = ctrl.add_robstride_motor(1, 0xFD, "rs-00")
+
+    # PP：run_mode=1 -> enable -> vel_max(0x7024) -> acc_set(0x7025) -> loc_ref(0x7016)
+    motor.robstride_send_pos_vel_pp(pos=0.0, vel_max=1.0, acc_set=10.0)
+
+    # CSP：run_mode=5 -> enable -> limit_spd(0x7017) -> loc_ref(0x7016)
+    motor.robstride_send_pos_vel_csp(pos=0.0, vlim=1.0)
+```
+
+注意：上面两个接口是“完整手册流程”封装，适合一次性命令、调试和协议验证。如果要做高频位置循环，建议只初始化一次模式和限制参数，循环里只写 `loc_ref(0x7016)`：
+
+```python
+from motorbridge import Controller
+
+with Controller("can0") as ctrl:
+    motor = ctrl.add_robstride_motor(1, 0xFD, "rs-00")
+
+    # CSP 高频写法：初始化一次
+    motor.robstride_write_param_u8(0x7005, 5)      # run_mode = CSP
+    motor.enable()
+    motor.robstride_write_param_f32(0x7017, 1.0)   # limit_spd
+
+    # 周期控制中只写 loc_ref
+    for pos in [0.0, 0.1, 0.2, 0.1, 0.0]:
+        motor.robstride_write_param_f32(0x7016, pos)
+```
+
+PP 高频写法类似：
+
+```python
+with Controller("can0") as ctrl:
+    motor = ctrl.add_robstride_motor(1, 0xFD, "rs-00")
+
+    motor.robstride_write_param_u8(0x7005, 1)       # run_mode = PP
+    motor.enable()
+    motor.robstride_write_param_f32(0x7024, 1.0)    # vel_max
+    motor.robstride_write_param_f32(0x7025, 10.0)   # acc_set
+
+    for pos in [0.0, 0.1, 0.2, 0.1, 0.0]:
+        motor.robstride_write_param_f32(0x7016, pos)
+```
 
 ### 2.5 两种使用方式（统一封装 / 原生参数）
 

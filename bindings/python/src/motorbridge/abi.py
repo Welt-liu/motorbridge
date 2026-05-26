@@ -131,6 +131,10 @@ class Abi:
         lib.motor_handle_send_mit.restype = c_int32
         lib.motor_handle_send_pos_vel.argtypes = [c_void_p, c_float, c_float]
         lib.motor_handle_send_pos_vel.restype = c_int32
+        lib.motor_handle_robstride_send_pos_vel_pp.argtypes = [c_void_p, c_float, c_float, c_float]
+        lib.motor_handle_robstride_send_pos_vel_pp.restype = c_int32
+        lib.motor_handle_robstride_send_pos_vel_csp.argtypes = [c_void_p, c_float, c_float]
+        lib.motor_handle_robstride_send_pos_vel_csp.restype = c_int32
         lib.motor_handle_send_vel.argtypes = [c_void_p, c_float]
         lib.motor_handle_send_vel.restype = c_int32
         lib.motor_handle_send_force_pos.argtypes = [c_void_p, c_float, c_float, c_float]

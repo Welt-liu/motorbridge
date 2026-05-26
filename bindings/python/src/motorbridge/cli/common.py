@@ -9,6 +9,8 @@ def _mode_to_enum(mode: str) -> Mode:
     return {
         "mit": Mode.MIT,
         "pos-vel": Mode.POS_VEL,
+        "pos-vel-pp": Mode.POS_VEL,
+        "pos-vel-csp": Mode.ROBSTRIDE_POS_VEL_CSP,
         "vel": Mode.VEL,
         "force-pos": Mode.FORCE_POS,
     }[mode]
@@ -54,6 +56,8 @@ def _add_run_args(p: argparse.ArgumentParser) -> None:
             "active-report",
             "mit",
             "pos-vel",
+            "pos-vel-pp",
+            "pos-vel-csp",
             "vel",
             "force-pos",
             "ping",
@@ -79,6 +83,7 @@ def _add_run_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--kd", type=float, default=1.0, help="MIT kd")
     p.add_argument("--tau", type=float, default=0.0, help="target torque/feed-forward torque")
     p.add_argument("--vlim", type=float, default=1.0, help="velocity limit for pos-vel/force-pos")
+    p.add_argument("--acc", type=float, default=10.0, help="RobStride pos-vel-pp acc_set in rad/s^2")
     p.add_argument("--ratio", type=float, default=0.3, help="force-pos interpolation ratio")
     p.add_argument("--zero-exp", type=int, default=0, help="RobStride experimental zero sequence, 1/0")
     p.add_argument(

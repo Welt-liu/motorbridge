@@ -41,10 +41,11 @@
 
 ## 范围
 
-- 当前目标包版本：`0.3.7`。
-- `0.3.7` 保持 Python binding 公开 API 兼容，同时让 Python CLI 与
-  WebSocket gateway 的 RobStride scan 统一使用顺序 host-id 探测，以提升
-  Windows PCAN 与 Linux SocketCAN 下的可靠性。
+- 当前目标包版本：`0.3.8`。
+- `0.3.8` 新增 RobStride PP/CSP 专用位置控制接口，同时保持 Python
+  binding 公开 API 向后兼容。
+- RobStride 参数写入默认不等待状态 ack；需要恢复同步等待时可设置
+  `MOTORBRIDGE_ROBSTRIDE_WRITE_ACK_TIMEOUT_MS`。
 - Python CLI 现在实现为 `motorbridge.cli` 包，但 `motorbridge-cli`、
   `python -m motorbridge.cli`、`python -m motorbridge`、
   `from motorbridge.cli import main` 和旧式扁平 run 参数继续可用。
@@ -473,4 +474,3 @@ python3 bindings/python/examples/robstride_wrapper_demo.py \
 1. 在 PyPI 创建 API token，并配置仓库 secret：`PYPI_API_TOKEN`。
 2. 在 TestPyPI 创建 API token，并配置仓库 secret：`TEST_PYPI_API_TOKEN`。
 3. 每次上传必须使用全新版本号（例如 `0.1.6`、`0.1.7`）。
-

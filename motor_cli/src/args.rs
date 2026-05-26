@@ -56,6 +56,8 @@ fn is_mode_word(s: &str) -> bool {
             | "read"
             | "mit"
             | "pos-vel"
+            | "pos-vel-pp"
+            | "pos-vel-csp"
             | "force-pos"
             | "zero"
             | "set-zero"
@@ -188,7 +190,7 @@ Vendors:\n\
 Damiao modes:\n\
   --mode scan | enable | disable | mit | pos-vel | vel | force-pos | read-param | write-param\n\n\
 RobStride modes:\n\
-  --mode ping | scan | enable | disable | clear-error | active-report | zero | set-zero | save | zero-by-offset | mit | pos-vel | vel | read-param | write-param\n\n\
+  --mode ping | scan | enable | disable | clear-error | active-report | zero | set-zero | save | zero-by-offset | mit | pos-vel | pos-vel-pp | pos-vel-csp | vel | read-param | write-param\n\n\
 HighTorque modes:\n\
   --mode ping | scan | read | mit | pos | vel | tqe | volt | cur | pos-vel-tqe | stop | brake | rezero | conf-write | timed-read\n\n\
 MyActuator modes:\n\
@@ -222,6 +224,7 @@ RobStride extras:\n\
   --param-value <number>    for write-param\n\
   --type u32|f32            for Damiao read-param / write-param (default f32)\n\
   --loc-kp <float>          for pos-vel native position-loop gain; --kp is accepted as fallback\n\
+  --acc <rad/s^2>           for pos-vel-pp acc_set(0x7025), default 10\n\
   --feedback-ids <list>     for scan host_id candidates, default 0xFD,0xFF,0xFE,0x00,0xAA\n\
   --timeout-ms <ms>         for scan ping timeout, default 80\n\
   --param-timeout-ms <ms>   for scan parameter fallback timeout, default 120\n\

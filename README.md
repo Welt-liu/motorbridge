@@ -15,32 +15,21 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
   Standalone web control UI built on top of `ws_gateway`.
 
-## Update (2026-05): v0.3.7
+## Update (2026-05): v0.3.8
 
-- `v0.3.7` stabilizes RobStride scan behavior on Windows PCAN and Linux
-  SocketCAN by probing host/feedback IDs sequentially instead of keeping
-  competing receivers open on the same CAN channel.
-- Python CLI and WebSocket gateway RobStride scans now use exact
-  host-id-specific ping probes, skip already discovered motor IDs, and avoid
-  hidden Damiao feedback IDs such as `0x11` in RobStride scans.
-- WebSocket gateway RobStride scans now emit live `scan_progress` events for
-  `start`, `probe`, `hit`, `no_reply`, and `done`, while preserving the final
-  `{"ok":true,"op":"scan"}` response for existing clients.
-- WebSocket gateway now supports `capabilities` and `batch_scan`, and releases
-  an active RobStride session before Windows PCAN scan probes to avoid
-  `PCAN_ERROR_INITIALIZE` on repeated scan attempts.
-- `CoreController` now stops the background polling worker on `Drop`, so users
-  do not leak a receive thread when they forget to call `shutdown()` or
-  `close_bus()`.
-- Python CLI was split into a maintainable `motorbridge.cli` package without
-  removing the existing `motorbridge-cli`, `python -m motorbridge.cli`, or
-  legacy flat run entrypoints.
-- RobStride scan in Python now reuses one controller per host/feedback
-  candidate instead of reopening the CAN socket for every probe; RobStride MIT
-  tests now lock down `pos/vel/kp/kd/tau` encoding.
-- `open_can_bus()` is the explicit cross-platform classic-CAN selector;
-  `open_socketcan()` remains as a compatibility alias.
-- CI now enforces `fmt`, `clippy -D warnings`, and workspace tests.
+- `v0.3.8` adds RobStride-specific `pos-vel-pp` and `pos-vel-csp` paths that
+  match the vendor manual's PP and CSP position-mode sequences.
+- Rust CLI, C ABI, Python binding, and Python CLI now expose the dedicated
+  RobStride PP/CSP controls while keeping the legacy unified `pos-vel` mapping
+  compatible.
+- RobStride parameter writes now default to no status-ack wait, removing the
+  old 260 ms blocking behavior from high-rate target updates. Set
+  `MOTORBRIDGE_ROBSTRIDE_WRITE_ACK_TIMEOUT_MS` to restore synchronous waiting.
+- The new `robstride_posvel_timing_demo.py` example compares legacy `pos-vel`,
+  PP, and CSP timing, including full manual sequences and prepared high-rate
+  loops.
+- Documentation now records the exact PP/CSP register sequences and Python code
+  examples for one-shot commands and high-rate `loc_ref(0x7016)` loops.
 
 ## Transport Legend
 
@@ -59,7 +48,7 @@ Current status:
   - modes: `scan`, `enable`, `disable`, `MIT`, `POS_VEL`, `VEL`, `FORCE_POS`, `set-id`, `set-zero`
 - RobStride:
   - models: `rs-00`, `rs-01`, `rs-02`, `rs-03`, `rs-04`, `rs-05`, `rs-06`
-  - modes: `scan`, `ping`, `enable`, `disable`, `MIT`, `POS_VEL`, `VEL`, parameter read/write, `set-id`, `zero`
+  - modes: `scan`, `ping`, `enable`, `disable`, `MIT`, `POS_VEL`, `POS_VEL_PP`, `POS_VEL_CSP`, `VEL`, parameter read/write, `set-id`, `zero`
   - host/feedback default: `0xFD` (with `0xFF/0xFE` fallback probing)
   - note: torque/current control is currently parameter-level only (`write-param` on `iq_ref`/limits), not a first-class unified mode
 - MyActuator:

@@ -141,6 +141,7 @@ python3 bindings/python/examples/quad_vendor_binding_ws_demo.py \
 - `dm_serial_08_negative_enable_setzero_guard_demo.py`: SOP-08 dm-serial negative test (`enable` state `set_zero` should be rejected by core guard)
 - `dm_serial_leader_monitor_demo.py`: Damiao dm-serial leader monitor (enable-all + selected-ID full state stream)
 - `robstride_wrapper_demo.py`: RobStride ping / clear-error / read-param / write-param / active-report / pos-vel / mit / vel demo
+- `robstride_posvel_timing_demo.py`: RobStride legacy `pos-vel` / manual PP / manual CSP timing comparison
 - `quad_vendor_pos_binding_demo.py`: 4-motor sync position demo via Python binding (no ws_gateway)
 - `quad_vendor_binding_ws_demo.py`: Python binding WS bridge backend (for web UI control)
 - `quad_vendor_binding_ws_demo.html`: simple web UI for `quad_vendor_binding_ws_demo.py`
@@ -292,6 +293,52 @@ RobStride position command:
 PYTHONPATH=bindings/python/src python3 bindings/python/examples/robstride_wrapper_demo.py \
   --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
   --mode pos-vel --pos 1.5 --vlim 1.0 --loc-kp 5.0 --loop 1 --dt-ms 20
+```
+
+RobStride POS_VEL timing comparison (legacy / PP / CSP):
+
+```bash
+# Default ack behavior: no wait for RobStride parameter writes.
+PYTHONPATH=bindings/python/src python3 bindings/python/examples/robstride_posvel_timing_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode all --pos 0.0 --vlim 1.0 --acc 10.0 --loop 100 --dt-ms 10
+
+# Optional comparison: restore conservative parameter-write ack wait.
+PYTHONPATH=bindings/python/src python3 bindings/python/examples/robstride_posvel_timing_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode legacy --pos 0.0 --vlim 1.0 --loop 20 --dt-ms 10 --ack-timeout-ms 260
+```
+
+The demo prints per-mode call time and effective loop frequency. `pp` follows
+`run_mode=1 -> enable -> vel_max(0x7024) -> acc_set(0x7025) -> loc_ref(0x7016)`;
+`csp` follows `run_mode=5 -> enable -> limit_spd(0x7017) -> loc_ref(0x7016)`.
+
+Python code can use the two dedicated RobStride interfaces directly:
+
+```python
+from motorbridge import Controller
+
+with Controller("can0") as ctrl:
+    motor = ctrl.add_robstride_motor(1, 0xFD, "rs-00")
+
+    motor.robstride_send_pos_vel_pp(0.0, 1.0, 10.0)  # pos, vel_max, acc_set
+    motor.robstride_send_pos_vel_csp(0.0, 1.0)       # pos, limit_spd
+```
+
+For high-rate loops, prepare PP/CSP once and write only `loc_ref(0x7016)` in the loop:
+
+```python
+from motorbridge import Controller
+
+with Controller("can0") as ctrl:
+    motor = ctrl.add_robstride_motor(1, 0xFD, "rs-00")
+
+    motor.robstride_write_param_u8(0x7005, 5)      # run_mode = CSP
+    motor.enable()
+    motor.robstride_write_param_f32(0x7017, 1.0)   # limit_spd
+
+    for pos in positions:
+        motor.robstride_write_param_f32(0x7016, pos)
 ```
 
 Hexfellow (CAN-FD only):

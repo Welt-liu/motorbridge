@@ -150,6 +150,39 @@ pub extern "C" fn motor_handle_send_pos_vel(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn motor_handle_robstride_send_pos_vel_csp(
+    motor: *mut MotorHandle,
+    target_position: f32,
+    velocity_limit: f32,
+) -> i32 {
+    ffi_wrap_motor!(motor, |motor: &MotorHandleInner| {
+        match motor {
+            MotorHandleInner::Robstride(m) => m
+                .send_cmd_pos_vel_csp(target_position, velocity_limit)
+                .map_err(|e| e.to_string()),
+            _ => Err("robstride_send_pos_vel_csp requires a RobStride motor".to_string()),
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn motor_handle_robstride_send_pos_vel_pp(
+    motor: *mut MotorHandle,
+    target_position: f32,
+    velocity_max: f32,
+    acceleration: f32,
+) -> i32 {
+    ffi_wrap_motor!(motor, |motor: &MotorHandleInner| {
+        match motor {
+            MotorHandleInner::Robstride(m) => m
+                .send_cmd_pos_vel_pp(target_position, velocity_max, acceleration)
+                .map_err(|e| e.to_string()),
+            _ => Err("robstride_send_pos_vel_pp requires a RobStride motor".to_string()),
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn motor_handle_send_vel(motor: *mut MotorHandle, target_velocity: f32) -> i32 {
     ffi_wrap_motor!(motor, |motor: &MotorHandleInner| {
         match motor {

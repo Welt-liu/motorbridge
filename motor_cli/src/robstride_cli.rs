@@ -471,6 +471,7 @@ pub fn run_robstride(
             }
             "pos-vel" => motor
                 .ensure_control_mode(RobstrideControlMode::Position, Duration::from_millis(1000))?,
+            "pos-vel-pp" | "pos-vel-csp" => {}
             "vel" => motor
                 .ensure_control_mode(RobstrideControlMode::Velocity, Duration::from_millis(1000))?,
             _ => {}
@@ -487,6 +488,8 @@ pub fn run_robstride(
         && mode != "clear-error"
         && mode != "active-report"
         && mode != "zero-by-offset"
+        && mode != "pos-vel-pp"
+        && mode != "pos-vel-csp"
     {
         controller.enable_all()?;
         std::thread::sleep(Duration::from_millis(100));
@@ -645,6 +648,29 @@ pub fn run_robstride(
                     }
                 }
                 motor.write_parameter(0x7016, ParameterValue::F32(get_f32(args, "pos", 0.0)?))?;
+            }
+            "pos-vel-pp" => {
+                if i == 0 {
+                    println!(
+                        "[info] robstride pos-vel-pp maps to native PP mode: run_mode=1, vel_max(0x7024), acc_set(0x7025), loc_ref(0x7016)"
+                    );
+                }
+                motor.send_cmd_pos_vel_pp(
+                    get_f32(args, "pos", 0.0)?,
+                    get_f32(args, "vlim", 1.0)?,
+                    get_f32(args, "acc", 10.0)?,
+                )?;
+            }
+            "pos-vel-csp" => {
+                if i == 0 {
+                    println!(
+                        "[info] robstride pos-vel-csp maps to native CSP mode: run_mode=5, limit_spd(0x7017), loc_ref(0x7016)"
+                    );
+                }
+                motor.send_cmd_pos_vel_csp(
+                    get_f32(args, "pos", 0.0)?,
+                    get_f32(args, "vlim", 1.0)?,
+                )?;
             }
             "vel" => {
                 motor.set_velocity_target(get_f32(args, "vel", 0.0)?)?;

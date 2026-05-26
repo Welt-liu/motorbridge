@@ -139,6 +139,7 @@ python3 bindings/python/examples/quad_vendor_binding_ws_demo.py \
 - `dm_serial_08_negative_enable_setzero_guard_demo.py`：SOP-08 串口桥负向测试（`enable` 态 `set_zero` 应被核心拒绝）
 - `dm_serial_leader_monitor_demo.py`：Damiao 串口桥 leader 监视（enable-all + 指定 ID 全状态流）
 - `robstride_wrapper_demo.py`：RobStride ping / 清故障 / 读参 / 写参 / 主动上报 / pos-vel / mit / vel 示例
+- `robstride_posvel_timing_demo.py`：RobStride 旧 `pos-vel` / 手册 PP / 手册 CSP 控制耗时与频率对比
 - `quad_vendor_pos_binding_demo.py`：Python binding 四电机同步位置示例（不经过 ws_gateway）
 - `quad_vendor_binding_ws_demo.py`：Python binding WS 桥后端（用于网页控制）
 - `quad_vendor_binding_ws_demo.html`：`quad_vendor_binding_ws_demo.py` 的网页 UI
@@ -290,6 +291,52 @@ RobStride 位置命令：
 PYTHONPATH=bindings/python/src python3 bindings/python/examples/robstride_wrapper_demo.py \
   --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
   --mode pos-vel --pos 1.5 --vlim 1.0 --loc-kp 5.0 --loop 1 --dt-ms 20
+```
+
+RobStride POS_VEL 频率对比（旧 pos-vel / PP / CSP）：
+
+```bash
+# 默认行为：RobStride 参数写入不等待 ack。
+PYTHONPATH=bindings/python/src python3 bindings/python/examples/robstride_posvel_timing_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode all --pos 0.0 --vlim 1.0 --acc 10.0 --loop 100 --dt-ms 10
+
+# 可选对比：恢复保守参数写入 ack 等待。
+PYTHONPATH=bindings/python/src python3 bindings/python/examples/robstride_posvel_timing_demo.py \
+  --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
+  --mode legacy --pos 0.0 --vlim 1.0 --loop 20 --dt-ms 10 --ack-timeout-ms 260
+```
+
+该示例会打印每种模式的调用耗时和实际循环频率。`pp` 按
+`run_mode=1 -> enable -> vel_max(0x7024) -> acc_set(0x7025) -> loc_ref(0x7016)`；
+`csp` 按 `run_mode=5 -> enable -> limit_spd(0x7017) -> loc_ref(0x7016)`。
+
+Python 代码中也可以直接调用两个专用接口：
+
+```python
+from motorbridge import Controller
+
+with Controller("can0") as ctrl:
+    motor = ctrl.add_robstride_motor(1, 0xFD, "rs-00")
+
+    motor.robstride_send_pos_vel_pp(0.0, 1.0, 10.0)  # pos, vel_max, acc_set
+    motor.robstride_send_pos_vel_csp(0.0, 1.0)       # pos, limit_spd
+```
+
+如果要高频循环，推荐先初始化一次 PP/CSP，再在循环里只写 `loc_ref(0x7016)`：
+
+```python
+from motorbridge import Controller
+
+with Controller("can0") as ctrl:
+    motor = ctrl.add_robstride_motor(1, 0xFD, "rs-00")
+
+    motor.robstride_write_param_u8(0x7005, 5)      # run_mode = CSP
+    motor.enable()
+    motor.robstride_write_param_f32(0x7017, 1.0)   # limit_spd
+
+    for pos in positions:
+        motor.robstride_write_param_f32(0x7016, pos)
 ```
 
 Hexfellow（仅 CAN-FD）：

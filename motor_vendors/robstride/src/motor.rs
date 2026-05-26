@@ -10,7 +10,7 @@ use motor_core::error::{MotorError, Result};
 use motor_core::model::{ModelCatalog, MotorModelSpec, PvTLimits, StaticModelCatalog};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 const ROBSTRIDE_MODELS: &[MotorModelSpec] = &[
@@ -81,6 +81,7 @@ pub enum ControlMode {
     Mit = 0,
     Position = 1,
     Velocity = 2,
+    PositionCsp = 5,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -457,11 +458,67 @@ impl RobstrideMotor {
     pub fn write_parameter(&self, param_id: u16, value: ParameterValue) -> Result<()> {
         let raw = encode_parameter_value(param_id, value)?;
         let data = encode_parameter_write(param_id, raw);
-        self.send_with_status_ack(
-            CommunicationType::WRITE_PARAMETER,
-            data,
-            8,
-            Duration::from_millis(260),
+        let timeout = Self::write_ack_timeout();
+        if timeout.is_zero() {
+            return self.send_ext(
+                CommunicationType::WRITE_PARAMETER,
+                self.host_id_u16(),
+                data,
+                8,
+            );
+        }
+        self.send_with_status_ack(CommunicationType::WRITE_PARAMETER, data, 8, timeout)
+    }
+
+    fn write_ack_timeout() -> Duration {
+        static TIMEOUT: OnceLock<Duration> = OnceLock::new();
+        *TIMEOUT.get_or_init(|| {
+            std::env::var("MOTORBRIDGE_ROBSTRIDE_WRITE_ACK_TIMEOUT_MS")
+                .ok()
+                .and_then(|s| s.parse::<u64>().ok())
+                .map(Duration::from_millis)
+                .unwrap_or(Duration::ZERO)
+        })
+    }
+
+    pub fn send_cmd_pos_vel_csp(&self, target_position: f32, velocity_limit: f32) -> Result<()> {
+        self.set_mode(ControlMode::PositionCsp)?;
+        self.enable()?;
+        let vlim = velocity_limit.abs();
+        if vlim.is_finite() && vlim > 0.0 {
+            self.write_parameter(ParameterId::VelocityLimit as u16, ParameterValue::F32(vlim))?;
+        }
+        self.write_parameter(
+            ParameterId::PositionTarget as u16,
+            ParameterValue::F32(target_position),
+        )
+    }
+
+    pub fn send_cmd_pos_vel_pp(
+        &self,
+        target_position: f32,
+        velocity_max: f32,
+        acceleration: f32,
+    ) -> Result<()> {
+        self.set_mode(ControlMode::Position)?;
+        self.enable()?;
+        let vel_max = velocity_max.abs();
+        if vel_max.is_finite() && vel_max > 0.0 {
+            self.write_parameter(
+                ParameterId::PpVelocityMax as u16,
+                ParameterValue::F32(vel_max),
+            )?;
+        }
+        let acc_set = acceleration.abs();
+        if acc_set.is_finite() && acc_set > 0.0 {
+            self.write_parameter(
+                ParameterId::PpAccelerationTarget as u16,
+                ParameterValue::F32(acc_set),
+            )?;
+        }
+        self.write_parameter(
+            ParameterId::PositionTarget as u16,
+            ParameterValue::F32(target_position),
         )
     }
 

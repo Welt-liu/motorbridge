@@ -42,13 +42,14 @@ Notes:
 ## Scope
 Packaging note:
 
-- Current package target version: `0.3.7`.
+- Current package target version: `0.3.8`.
 - Published wheel includes `motor_abi` shared library and `ws_gateway` binary for that platform.
 - After `pip install motorbridge`, gateway binary path is typically:
   `.../site-packages/motorbridge/bin/ws_gateway` (or `ws_gateway.exe` on Windows).
-- `0.3.7` keeps the public Python binding API stable while aligning Python CLI
-  and WebSocket gateway RobStride scans around sequential host-id probing for
-  Windows PCAN and Linux SocketCAN reliability.
+- `0.3.8` adds RobStride PP/CSP-specific position-control entrypoints while
+  keeping the public Python binding API backward compatible.
+- RobStride parameter writes default to no status-ack wait; set
+  `MOTORBRIDGE_ROBSTRIDE_WRITE_ACK_TIMEOUT_MS` to restore synchronous waiting.
 - The Python CLI is now implemented as a `motorbridge.cli` package, but
   `motorbridge-cli`, `python -m motorbridge.cli`, `python -m motorbridge`,
   `from motorbridge.cli import main`, and legacy flat run arguments remain
@@ -437,4 +438,3 @@ This repository includes `.github/workflows/pypi-publish.yml`.
 1. Create API token on PyPI and add repository secret `PYPI_API_TOKEN`.
 2. Create API token on TestPyPI and add repository secret `TEST_PYPI_API_TOKEN`.
 3. Keep package version unique for every upload (for example `0.1.6`, `0.1.7`).
-

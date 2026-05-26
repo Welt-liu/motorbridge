@@ -89,6 +89,92 @@ Notes:
   - optional write `0x701E` (`loc_kp`) from `--loc-kp` or `--kp`
   - write `0x7016` (`loc_ref`) from `--pos`
 - `--vel`, `--kd`, and `--tau` do not belong to native Position mode and are ignored in `--mode pos-vel`.
+- This legacy `pos-vel` mapping is kept for compatibility.
+
+#### RobStride-Specific PP / CSP
+
+`pos-vel-pp` follows the manual's PP position mode sequence:
+
+- write `0x7005` (`run_mode`) = `1`
+- send enable frame (communication type 3)
+- write `0x7024` (`vel_max`) from `--vlim`
+- write `0x7025` (`acc_set`) from `--acc`
+- write `0x7016` (`loc_ref`) from `--pos`
+
+```bash
+motor_cli \
+  --vendor robstride --channel can0 --model rs-06 --motor-id 127 --feedback-id 0xFD \
+  --mode pos-vel-pp --pos 1.0 --vlim 1.5 --acc 10.0
+```
+
+`pos-vel-csp` follows the manual's CSP position mode sequence:
+
+- write `0x7005` (`run_mode`) = `5`
+- send enable frame (communication type 3)
+- write `0x7017` (`limit_spd`) from `--vlim`
+- write `0x7016` (`loc_ref`) from `--pos`
+
+```bash
+motor_cli \
+  --vendor robstride --channel can0 --model rs-06 --motor-id 127 --feedback-id 0xFD \
+  --mode pos-vel-csp --pos 1.0 --vlim 1.5
+```
+
+RobStride parameter writes do not wait for status ack by default, so `pos-vel` / PP / CSP target updates can run close to the outer loop cadence. To restore conservative synchronous waiting, set:
+
+```bash
+export MOTORBRIDGE_ROBSTRIDE_WRITE_ACK_TIMEOUT_MS=260
+```
+
+This environment variable only affects communication type 18 parameter-write waits; `enable`, `disable`, `set-zero`, and similar control frames keep their dedicated wait behavior.
+
+Python binding code can call the two dedicated interfaces directly:
+
+```python
+from motorbridge import Controller
+
+with Controller("can0") as ctrl:
+    motor = ctrl.add_robstride_motor(1, 0xFD, "rs-00")
+
+    # PP: run_mode=1 -> enable -> vel_max(0x7024) -> acc_set(0x7025) -> loc_ref(0x7016)
+    motor.robstride_send_pos_vel_pp(pos=0.0, vel_max=1.0, acc_set=10.0)
+
+    # CSP: run_mode=5 -> enable -> limit_spd(0x7017) -> loc_ref(0x7016)
+    motor.robstride_send_pos_vel_csp(pos=0.0, vlim=1.0)
+```
+
+Those two calls are full manual-sequence wrappers. For a high-rate position loop, prepare the mode and limits once, then write only `loc_ref(0x7016)` cyclically:
+
+```python
+from motorbridge import Controller
+
+with Controller("can0") as ctrl:
+    motor = ctrl.add_robstride_motor(1, 0xFD, "rs-00")
+
+    # CSP high-rate path: prepare once.
+    motor.robstride_write_param_u8(0x7005, 5)      # run_mode = CSP
+    motor.enable()
+    motor.robstride_write_param_f32(0x7017, 1.0)   # limit_spd
+
+    # Cyclic loop: loc_ref only.
+    for pos in [0.0, 0.1, 0.2, 0.1, 0.0]:
+        motor.robstride_write_param_f32(0x7016, pos)
+```
+
+PP high-rate code follows the same shape:
+
+```python
+with Controller("can0") as ctrl:
+    motor = ctrl.add_robstride_motor(1, 0xFD, "rs-00")
+
+    motor.robstride_write_param_u8(0x7005, 1)       # run_mode = PP
+    motor.enable()
+    motor.robstride_write_param_f32(0x7024, 1.0)    # vel_max
+    motor.robstride_write_param_f32(0x7025, 10.0)   # acc_set
+
+    for pos in [0.0, 0.1, 0.2, 0.1, 0.0]:
+        motor.robstride_write_param_f32(0x7016, pos)
+```
 
 ### 2.4 Velocity
 
