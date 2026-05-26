@@ -41,8 +41,8 @@
 
 ## 范围
 
-- 当前目标包版本：`0.3.8`。
-- `0.3.8` 新增 RobStride PP/CSP 专用位置控制接口，同时保持 Python
+- 当前目标包版本：`0.3.9`。
+- `0.3.9` 新增 RobStride PP/CSP 专用位置控制接口，同时保持 Python
   binding 公开 API 向后兼容。
 - RobStride 参数写入默认不等待状态 ack；需要恢复同步等待时可设置
   `MOTORBRIDGE_ROBSTRIDE_WRITE_ACK_TIMEOUT_MS`。
@@ -78,7 +78,7 @@
   - HighTorque: `add_hightorque_motor(...)`
 - 状态查询统一范式：
   - 推荐统一使用 `request_feedback() -> poll_feedback_once() -> get_state()`。
-  - RobStride 路径在 ABI 内部已做兼容处理，可按同一范式调用（`robstride_ping()` 仍保留可用）。
+  - RobStride 私有协议没有单次“请求状态帧”命令；RobStride 的 `request_feedback()` 是非阻塞 no-op。连通性检查请用 `robstride_ping()`，连续状态请用主动上报，需要新鲜位置/速度请读类型化参数。
 
 ## 统一模式映射摘要（顶层协议 -> 厂商原生）
 

@@ -7,6 +7,25 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.3.9] - 2026-05-26
+
+### Fixed
+
+- Changed RobStride handling of the unified `request_feedback()` ABI call to a
+  non-blocking no-op instead of issuing a blocking `ping`.
+- Avoided misleading RobStride state semantics: `ping` replies do not synthesize
+  `MotorState`, so `request_feedback() -> get_state()` no longer appears to
+  refresh state when it cannot.
+- Documented the correct RobStride state-query choices: use `robstride_ping()`
+  for connectivity checks, active report for streaming state, or typed
+  parameter reads for fresh position/velocity values.
+
+### Changed
+
+- Python package version advanced to `0.3.9`.
+- Rust workspace package version advanced to `0.3.9` for release/tag alignment.
+- C++ package metadata advanced to `0.3.9`.
+
 ## [0.3.8] - 2026-05-26
 
 ### Added

@@ -260,13 +260,12 @@ pub extern "C" fn motor_handle_request_feedback(motor: *mut MotorHandle) -> i32 
                 .map(|_| ())
                 .map_err(|e| e.to_string()),
             MotorHandleInner::MyActuator(m) => m.request_status().map_err(|e| e.to_string()),
-            // For unified wrappers, treat RobStride feedback request as a lightweight
-            // communication check. RobStride ping does not synthesize MotorState; callers
-            // should use RobStride parameter helpers for fresh position/velocity values.
-            MotorHandleInner::Robstride(m) => m
-                .ping(Duration::from_millis(300))
-                .map(|_| ())
-                .map_err(|e| e.to_string()),
+            // RobStride has no single-shot "request status frame" command in the private
+            // protocol. Do not turn this unified feedback request into a blocking ping:
+            // ping does not synthesize MotorState and can stall control loops. Use
+            // robstride_ping() for connectivity checks, active report for streaming state,
+            // or typed parameter reads for fresh position/velocity values.
+            MotorHandleInner::Robstride(_) => Ok(()),
             MotorHandleInner::Hightorque(m) => m
                 .request_motor_feedback(Duration::from_millis(500))
                 .map_err(|e| e.to_string()),

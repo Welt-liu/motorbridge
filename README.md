@@ -15,21 +15,19 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
   Standalone web control UI built on top of `ws_gateway`.
 
-## Update (2026-05): v0.3.8
+## Update (2026-05): v0.3.9
 
-- `v0.3.8` adds RobStride-specific `pos-vel-pp` and `pos-vel-csp` paths that
-  match the vendor manual's PP and CSP position-mode sequences.
-- Rust CLI, C ABI, Python binding, and Python CLI now expose the dedicated
-  RobStride PP/CSP controls while keeping the legacy unified `pos-vel` mapping
-  compatible.
-- RobStride parameter writes now default to no status-ack wait, removing the
-  old 260 ms blocking behavior from high-rate target updates. Set
-  `MOTORBRIDGE_ROBSTRIDE_WRITE_ACK_TIMEOUT_MS` to restore synchronous waiting.
-- The new `robstride_posvel_timing_demo.py` example compares legacy `pos-vel`,
-  PP, and CSP timing, including full manual sequences and prepared high-rate
-  loops.
-- Documentation now records the exact PP/CSP register sequences and Python code
-  examples for one-shot commands and high-rate `loc_ref(0x7016)` loops.
+- `v0.3.9` corrects RobStride unified `request_feedback()` semantics.
+- RobStride `request_feedback()` is now a non-blocking no-op instead of sending
+  a blocking `ping`. This avoids a misleading `request_feedback() ->
+  get_state()` flow, because RobStride ping replies do not synthesize
+  `MotorState`.
+- Use `robstride_ping()` for RobStride connectivity checks.
+- Use active report for streaming RobStride state, or typed parameter reads such
+  as `0x7019 mechPos` and `0x701B mechVel` when fresh position/velocity values
+  are required.
+- `v0.3.8` PP/CSP additions remain available: `pos-vel-pp`, `pos-vel-csp`,
+  `robstride_send_pos_vel_pp()`, and `robstride_send_pos_vel_csp()`.
 
 ## Transport Legend
 

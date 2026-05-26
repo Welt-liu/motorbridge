@@ -15,19 +15,17 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
-## 更新说明（2026-05）：v0.3.8
+## 更新说明（2026-05）：v0.3.9
 
-- `v0.3.8` 新增 RobStride 专用 `pos-vel-pp` 和 `pos-vel-csp` 路径，严格
-  对应厂家手册中的 PP 与 CSP 位置模式流程。
-- Rust CLI、C ABI、Python binding、Python CLI 都已暴露 RobStride PP/CSP
-  专用控制接口，同时保留旧的统一 `pos-vel` 兼容映射。
-- RobStride 参数写入默认不再等待状态 ack，移除了高频目标下发中的旧
-  `260ms` 阻塞行为；需要恢复同步等待时可设置
-  `MOTORBRIDGE_ROBSTRIDE_WRITE_ACK_TIMEOUT_MS`。
-- 新增 `robstride_posvel_timing_demo.py`，可对比旧 `pos-vel`、PP、CSP 的
-  耗时，并区分完整手册流程和初始化后的高频循环。
-- 文档已记录 PP/CSP 的准确寄存器顺序，并补充一次性命令与高频
-  `loc_ref(0x7016)` 循环的 Python 代码示例。
+- `v0.3.9` 修正 RobStride 统一 `request_feedback()` 的语义。
+- RobStride `request_feedback()` 现在是非阻塞 no-op，不再发送阻塞式
+  `ping`。这样避免误导用户以为 `request_feedback() -> get_state()` 会刷新
+  RobStride 的 `MotorState`，因为 RobStride ping 应答不会生成运动状态。
+- RobStride 连通性检查请使用 `robstride_ping()`。
+- 连续状态建议使用主动上报；需要新鲜位置/速度时，使用类型化参数读取，
+  例如 `0x7019 mechPos` 和 `0x701B mechVel`。
+- `v0.3.8` 增加的 PP/CSP 接口继续保留：`pos-vel-pp`、`pos-vel-csp`、
+  `robstride_send_pos_vel_pp()` 和 `robstride_send_pos_vel_csp()`。
 
 ## 传输链路标识
 

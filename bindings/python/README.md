@@ -42,11 +42,11 @@ Notes:
 ## Scope
 Packaging note:
 
-- Current package target version: `0.3.8`.
+- Current package target version: `0.3.9`.
 - Published wheel includes `motor_abi` shared library and `ws_gateway` binary for that platform.
 - After `pip install motorbridge`, gateway binary path is typically:
   `.../site-packages/motorbridge/bin/ws_gateway` (or `ws_gateway.exe` on Windows).
-- `0.3.8` adds RobStride PP/CSP-specific position-control entrypoints while
+- `0.3.9` adds RobStride PP/CSP-specific position-control entrypoints while
   keeping the public Python binding API backward compatible.
 - RobStride parameter writes default to no status-ack wait; set
   `MOTORBRIDGE_ROBSTRIDE_WRITE_ACK_TIMEOUT_MS` to restore synchronous waiting.
@@ -86,7 +86,7 @@ Packaging note:
   - HighTorque: `add_hightorque_motor(...)`
 - Unified state-query pattern:
   - Recommended flow: `request_feedback() -> poll_feedback_once() -> get_state()`.
-  - RobStride now supports this unified pattern via ABI-level compatibility (while `robstride_ping()` is still available).
+  - RobStride has no single-shot private-protocol status request; `request_feedback()` is a non-blocking no-op for RobStride. Use `robstride_ping()` for connectivity, active report for streaming state, or typed parameter reads for fresh position/velocity values.
 
 ## Unified Mode Mapping Summary (Top-Level -> Vendor Native)
 
