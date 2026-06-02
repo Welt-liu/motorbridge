@@ -99,7 +99,7 @@ Recommended: client calls `{"op":"capabilities"}` on connect and adapts UI/flows
         "transports": ["auto", "socketcan", "socketcanfd", "dm-serial"],
         "modes": ["mit", "pos_vel", "vel", "force_pos"],
         "ops_unified": ["scan", "set_id", "enable", "disable", "stop", "state_once", "status", "verify"],
-        "ops_vendor_native": ["write_register_u32", "write_register_f32", "get_register_u32", "get_register_f32"]
+        "ops_vendor_native": ["write_register_u32", "write_register_f32", "get_register_u32", "get_register_f32", "damiao_state_many"]
       },
       "robstride": {
         "transports": ["auto", "socketcan", "socketcanfd"],
@@ -188,6 +188,7 @@ cargo run -p motor_cli --release -- --vendor damiao --channel can0@1000000 --mod
 {"op":"stop"}
 {"op":"state_once"}
 {"op":"state_stream","enabled":true}
+{"op":"damiao_state_many","items":[{"motor_id":1,"feedback_id":17,"model":"4340P"},{"motor_id":2,"feedback_id":18,"model":"4340P"}],"timeout_ms":120}
 {"op":"clear_error"}
 {"op":"set_zero_position"}
 {"op":"ensure_mode","mode":"mit","timeout_ms":1000}
@@ -217,6 +218,20 @@ cargo run -p motor_cli --release -- --vendor damiao --channel can0@1000000 --mod
 {"op":"verify","motor_id":5,"feedback_id":21,"timeout_ms":1000}
 {"op":"verify","vendor":"robstride","motor_id":127,"feedback_id":255,"timeout_ms":500}
 ```
+
+## Damiao `dm-serial` Arm Telemetry
+
+`v0.4.0` adds scan-safe Damiao session handling for Windows serial bridges. If a
+scan or batch scan starts while the gateway already has a Damiao session open,
+the gateway stops state/parameter streams, releases the active session, waits a
+short Windows release gap, and then probes the serial bridge. This avoids serial
+port contention during whole-arm scans.
+
+For browser HMIs, prefer `damiao_state_many` after scan results are known. The
+request accepts an `items` array with `motor_id`, `feedback_id`, and optional
+`model`. Each returned state includes the same identity fields plus
+`has_value`; missing/offline joints return `has_value:false` instead of breaking
+the whole response.
 
 ## Outbound frames
 

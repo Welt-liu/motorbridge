@@ -15,13 +15,22 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
   Standalone web control UI built on top of `ws_gateway`.
 
-## Update (2026-05): v0.3.9
+## Update (2026-06): v0.4.0
 
-- `v0.3.9` corrects RobStride unified `request_feedback()` semantics.
-- RobStride `request_feedback()` is now a non-blocking no-op instead of sending
-  a blocking `ping`. This avoids a misleading `request_feedback() ->
-  get_state()` flow, because RobStride ping replies do not synthesize
-  `MotorState`.
+- `v0.4.0` fixes Windows Damiao `dm-serial` whole-arm scans through
+  `ws_gateway`. Active Damiao sessions and state/parameter streams are released
+  before scan probes reuse the serial bridge, preventing the "only joint1
+  online" failure pattern.
+- WebSocket clients can use `damiao_state_many` to refresh every discovered
+  Damiao joint in one logical request. State payloads now include
+  `motor_id`, `feedback_id`, and `model`, so browser HMIs can merge telemetry
+  by joint.
+- Damiao state snapshots now request fresh feedback with a bounded timeout
+  before returning `pos`, `vel`, and `torq`, reducing stale cached values after
+  scan or enable.
+- `v0.3.9` RobStride semantics remain: unified `request_feedback()` is a
+  non-blocking no-op instead of sending a blocking `ping`, because RobStride
+  ping replies do not synthesize `MotorState`.
 - Use `robstride_ping()` for RobStride connectivity checks.
 - Use active report for streaming RobStride state, or typed parameter reads such
   as `0x7019 mechPos` and `0x701B mechVel` when fresh position/velocity values

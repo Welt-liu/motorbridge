@@ -15,12 +15,17 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
-## 更新说明（2026-05）：v0.3.9
+## 更新说明（2026-06）：v0.4.0
 
-- `v0.3.9` 修正 RobStride 统一 `request_feedback()` 的语义。
-- RobStride `request_feedback()` 现在是非阻塞 no-op，不再发送阻塞式
-  `ping`。这样避免误导用户以为 `request_feedback() -> get_state()` 会刷新
-  RobStride 的 `MotorState`，因为 RobStride ping 应答不会生成运动状态。
+- `v0.4.0` 修复 Windows 下 Damiao `dm-serial` 通过 `ws_gateway`
+  扫描整机机械臂时的串口会话争用问题。扫描前会释放当前 Damiao 会话并停止
+  state/parameter stream，避免只显示 joint1 online 的异常。
+- WebSocket 新增 `damiao_state_many`，浏览器上位机可以一次逻辑请求刷新所有已发现
+  Damiao 关节。状态返回会携带 `motor_id`、`feedback_id` 和 `model`，前端可以按关节
+  合并 pos/vel/torq。
+- Damiao 状态快照返回前会带超时请求新鲜反馈，减少 scan 或 enable 后读到旧缓存的情况。
+- `v0.3.9` 的 RobStride 语义继续保留：统一 `request_feedback()` 是非阻塞 no-op，
+  不再发送阻塞式 `ping`，因为 RobStride ping 应答不会生成运动状态。
 - RobStride 连通性检查请使用 `robstride_ping()`。
 - 连续状态建议使用主动上报；需要新鲜位置/速度时，使用类型化参数读取，
   例如 `0x7019 mechPos` 和 `0x701B mechVel`。

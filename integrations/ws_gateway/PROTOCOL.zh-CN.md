@@ -398,7 +398,53 @@ RobStride：
 {"type":"state","data":{"has_value":true,"pos":0.1,"vel":0.0,"torq":0.0}}
 ```
 
-### 8.8 `param_stream` / `damiao_param_stream` / `robstride_param_stream`
+### 8.8 `damiao_state_many`
+
+作用：Damiao 专用的多电机状态批量读取。适合 `dm-serial` 整机机械臂扫描后，
+浏览器上位机按扫描结果周期刷新多个关节的 `pos` / `vel` / `torq`。
+
+请求：
+
+```json
+{
+  "op": "damiao_state_many",
+  "items": [
+    {"motor_id": 1, "feedback_id": 17, "model": "4340P"},
+    {"motor_id": 2, "feedback_id": 18, "model": "4340P"}
+  ],
+  "timeout_ms": 120
+}
+```
+
+参数：
+
+| 字段 | 类型 | 默认值 | 作用 |
+| --- | --- | --- | --- |
+| `items` / `motors` | array | 必填 | 要读取的 Damiao 电机列表 |
+| `motor_id` / `esc_id` | u16 | 必填 | 电机命令 ID |
+| `feedback_id` / `mst_id` | u16 | 必填 | 电机反馈 ID |
+| `model` | string | 当前 target model | 电机型号 |
+| `timeout_ms` | u64 | `120` | 单个电机等待新鲜反馈的超时 |
+
+返回：
+
+```json
+{
+  "vendor": "damiao",
+  "states": [
+    {"motor_id":1,"feedback_id":17,"model":"4340P","has_value":true,"pos":0.12,"vel":0.01,"torq":0.0,"status_code":1},
+    {"motor_id":2,"feedback_id":18,"model":"4340P","has_value":false}
+  ]
+}
+```
+
+说明：
+
+- 该 op 只支持 Damiao。当前 target 不是 Damiao 时返回 `ok:false`。
+- 不在线或没有及时返回的关节会以 `has_value:false` 留在 `states` 中，不会导致整个请求失败。
+- v0.4.0 起，扫描前 gateway 会释放 Damiao 活跃会话和 stream，避免 Windows `dm-serial` 整臂扫描时串口争用。
+
+### 8.9 `param_stream` / `damiao_param_stream` / `robstride_param_stream`
 
 作用：开启/关闭当前 WS session 的当前 target 电机观测参数流。前端切换 `set_target` 到哪个电机，之后推送的就是那个电机的参数。
 
@@ -496,7 +542,7 @@ Damiao 周期推送：
 
 如果某个参数读取失败，该参数会在 `params[]` 中返回 `ok:false/error`；其它成功参数仍然推送。
 
-### 8.9 `status`
+### 8.10 `status`
 
 作用：获取状态。MyActuator 会主动 request status + angle；其他厂商主要返回缓存状态。
 
@@ -512,7 +558,7 @@ Damiao 周期推送：
 {"state":{"has_value":true,"pos":0.1,"vel":0.0,"torq":0.0}}
 ```
 
-### 8.9 `poll_feedback_once`
+### 8.11 `poll_feedback_once`
 
 作用：手动 drain 一次 CAN RX 队列，将反馈帧分发到对应 motor。
 
@@ -528,7 +574,7 @@ Damiao 周期推送：
 {"polled":true}
 ```
 
-### 8.10 `shutdown`
+### 8.12 `shutdown`
 
 作用：对当前 controller/bus 执行 shutdown，并清除 active 命令。
 
@@ -544,7 +590,7 @@ Damiao 周期推送：
 {"shutdown":true}
 ```
 
-### 8.11 `close_bus`
+### 8.13 `close_bus`
 
 作用：断开当前 session 的 controller/motor，不一定执行硬件 shutdown。
 

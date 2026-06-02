@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(motorbridge_cpp VERSION 0.3.9 LANGUAGES CXX)
+project(motorbridge_cpp VERSION 0.4.0 LANGUAGES CXX)
 
 include(CMakePackageConfigHelpers)
 

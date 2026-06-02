@@ -7,6 +7,36 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-02
+
+### Added
+
+- Added WebSocket gateway `damiao_state_many` for Damiao multi-joint state
+  reads, so browser HMIs can refresh every discovered joint in one logical
+  request over `dm-serial`.
+- Added Damiao state identity fields (`motor_id`, `feedback_id`, `model`) to
+  gateway state snapshots, allowing clients to merge whole-arm telemetry by
+  joint instead of treating all feedback as the active target.
+- Added capability discovery for the Damiao multi-state operation.
+
+### Fixed
+
+- Fixed Windows Damiao `dm-serial` whole-arm scans in the WebSocket gateway by
+  releasing active Damiao sessions and stopping state/parameter streams before
+  scan probes reuse the serial port.
+- Fixed stale Damiao state reads by requesting fresh feedback with a bounded
+  timeout before returning gateway state snapshots.
+- Fixed `param_stream enabled=false` so disabling the stream no longer opens or
+  reopens hardware sessions.
+- Fixed RobStride scan/session release handling to keep the same scan-safe
+  behavior introduced for Windows PCAN.
+
+### Changed
+
+- Python package version advanced to `0.4.0`.
+- Rust workspace package version advanced to `0.4.0` for release/tag alignment.
+- C++ package metadata advanced to `0.4.0`.
+
 ## [0.3.9] - 2026-05-26
 
 ### Fixed

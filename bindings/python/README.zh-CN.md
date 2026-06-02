@@ -41,9 +41,11 @@
 
 ## 范围
 
-- 当前目标包版本：`0.3.9`。
-- `0.3.9` 新增 RobStride PP/CSP 专用位置控制接口，同时保持 Python
-  binding 公开 API 向后兼容。
+- 当前目标包版本：`0.4.0`。
+- `0.4.0` 修复随包 `ws_gateway` 在 Damiao `dm-serial` 整臂扫描时的会话释放
+  与串口争用问题，并新增 `damiao_state_many` 用于浏览器多关节状态同步。
+- `0.3.9` 的 RobStride `request_feedback()` 语义修正和 `0.3.8` 的 PP/CSP
+  专用位置控制接口继续保留，同时保持 Python binding 公开 API 向后兼容。
 - RobStride 参数写入默认不等待状态 ack；需要恢复同步等待时可设置
   `MOTORBRIDGE_ROBSTRIDE_WRITE_ACK_TIMEOUT_MS`。
 - Python CLI 现在实现为 `motorbridge.cli` 包，但 `motorbridge-cli`、
@@ -54,8 +56,8 @@
 - 网关启动命令（pip 安装后进入 PATH）：
   - `motorbridge-gateway -- --bind 127.0.0.1:9002 ...`
   - 该命令实际启动随 Python wheel 打包的 Rust `ws_gateway` 二进制，
-    因此 `state_stream`、`param_stream`、`damiao_param_stream`、
-    `robstride_param_stream` 等 WS JSON op 由随包网关版本直接支持。
+    因此 `state_stream`、`damiao_state_many`、`param_stream`、
+    `damiao_param_stream`、`robstride_param_stream` 等 WS JSON op 由随包网关版本直接支持。
 - 安全说明：
   - 本地使用建议保持回环地址 `127.0.0.1`。
   - 若绑定到非回环地址（`0.0.0.0` 或网卡 IP），启动前必须设置 `MOTORBRIDGE_WS_TOKEN`。

@@ -42,12 +42,16 @@ Notes:
 ## Scope
 Packaging note:
 
-- Current package target version: `0.3.9`.
+- Current package target version: `0.4.0`.
 - Published wheel includes `motor_abi` shared library and `ws_gateway` binary for that platform.
 - After `pip install motorbridge`, gateway binary path is typically:
   `.../site-packages/motorbridge/bin/ws_gateway` (or `ws_gateway.exe` on Windows).
-- `0.3.9` adds RobStride PP/CSP-specific position-control entrypoints while
-  keeping the public Python binding API backward compatible.
+- `0.4.0` fixes Damiao `dm-serial` whole-arm scan/session handling in the
+  bundled gateway and adds `damiao_state_many` for multi-joint browser
+  telemetry.
+- `0.3.9` RobStride `request_feedback()` semantics and `0.3.8` PP/CSP-specific
+  position-control entrypoints remain available while keeping the public Python
+  binding API backward compatible.
 - RobStride parameter writes default to no status-ack wait; set
   `MOTORBRIDGE_ROBSTRIDE_WRITE_ACK_TIMEOUT_MS` to restore synchronous waiting.
 - The Python CLI is now implemented as a `motorbridge.cli` package, but
@@ -58,8 +62,9 @@ Packaging note:
 - Gateway launch command (added to PATH by pip):
   - `motorbridge-gateway -- --bind 127.0.0.1:9002 ...`
   - This launcher executes the packaged Rust `ws_gateway` binary, so WS JSON
-    ops such as `state_stream`, `param_stream`, `damiao_param_stream`, and
-    `robstride_param_stream` are supported by the bundled gateway version.
+    ops such as `state_stream`, `damiao_state_many`, `param_stream`,
+    `damiao_param_stream`, and `robstride_param_stream` are supported by the
+    bundled gateway version.
 - Security note:
   - keep loopback bind (`127.0.0.1`) for local usage.
   - if you bind to non-loopback addresses (`0.0.0.0` or host IP), export `MOTORBRIDGE_WS_TOKEN` before launch.

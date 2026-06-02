@@ -62,6 +62,7 @@ fn handle_capabilities(ctx: &SessionCtx) -> Result<Value, String> {
             "dynamic_target",
             "batch_scan",
             "state_stream",
+            "damiao_state_many",
             "param_stream",
             "robstride_exact_host_scan"
         ],
@@ -70,7 +71,7 @@ fn handle_capabilities(ctx: &SessionCtx) -> Result<Value, String> {
                 "transports": ["auto", "socketcan", "socketcanfd", "dm-serial"],
                 "modes": ["mit", "pos_vel", "vel", "force_pos"],
                 "ops_unified": ["scan", "set_id", "enable", "disable", "stop", "state_once", "status", "verify"],
-                "ops_vendor_native": ["write_register_u32", "write_register_f32", "get_register_u32", "get_register_f32"]
+                "ops_vendor_native": ["write_register_u32", "write_register_f32", "get_register_u32", "get_register_f32", "damiao_state_many"]
             },
             "robstride": {
                 "transports": ["auto", "socketcan", "socketcanfd"],
