@@ -1,5 +1,6 @@
 import ctypes
 import ctypes.util
+import json
 import os
 from ctypes import POINTER, Structure, c_char_p, c_float, c_int8, c_int32, c_uint8, c_uint16, c_uint32, c_void_p
 from pathlib import Path
@@ -85,6 +86,8 @@ class Abi:
         lib = self.lib
 
         lib.motor_last_error_message.restype = c_char_p
+        lib.motor_abi_version.restype = c_char_p
+        lib.motor_abi_capabilities_json.restype = c_char_p
 
         lib.motor_controller_new_socketcan.argtypes = [c_char_p]
         lib.motor_controller_new_socketcan.restype = c_void_p
@@ -214,3 +217,13 @@ def get_abi() -> Abi:
     if _abi_singleton is None:
         _abi_singleton = Abi()
     return _abi_singleton
+
+
+def abi_version() -> str:
+    msg = get_abi().lib.motor_abi_version()
+    return msg.decode() if msg else ""
+
+
+def abi_capabilities() -> dict:
+    msg = get_abi().lib.motor_abi_capabilities_json()
+    return json.loads(msg.decode() if msg else "{}")

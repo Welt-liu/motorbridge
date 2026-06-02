@@ -14,11 +14,40 @@ use std::cell::RefCell;
 use std::f32::consts::PI;
 use std::ffi::{c_char, CStr, CString};
 use std::ptr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 thread_local! {
     static LAST_ERROR: RefCell<CString> = RefCell::new(CString::new("ok").expect("static cstring"));
+}
+
+static ABI_CAPABILITIES_JSON: OnceLock<CString> = OnceLock::new();
+
+const ABI_CAPABILITIES: &str = r#"{
+  "schema": 1,
+  "abi": {
+    "name": "motor_abi",
+    "version": "__MOTORBRIDGE_VERSION__"
+  },
+  "transports": ["socketcan", "socketcanfd", "dm-serial"],
+  "vendors": ["damiao", "robstride", "myactuator", "hexfellow", "hightorque"],
+  "features": {
+    "state_cache": true,
+    "controller_lifecycle": ["shutdown", "close_bus", "poll_feedback_once", "enable_all", "disable_all"],
+    "control_modes": ["mit", "pos-vel", "vel", "force-pos", "robstride-pos-vel-pp", "robstride-pos-vel-csp"],
+    "damiao": ["dm-serial", "register_u32", "register_f32", "param_u32", "param_f32", "set_can_timeout_ms"],
+    "robstride": ["ping", "ping_host_id", "fault_report", "active_report", "device_id", "param_i8", "param_u8", "param_u16", "param_u32", "param_f32", "param_f32_host_id", "pos_vel_pp", "pos_vel_csp"],
+    "myactuator": ["param_i8", "param_u8", "param_u16", "param_u32", "param_f32"],
+    "hexfellow": ["socketcanfd", "mit", "pos_vel"],
+    "hightorque": ["mit", "vel", "param_i8", "param_u8", "param_u16", "param_u32", "param_f32"]
+  }
+}"#;
+
+fn abi_capabilities_json() -> &'static CString {
+    ABI_CAPABILITIES_JSON.get_or_init(|| {
+        CString::new(ABI_CAPABILITIES.replace("__MOTORBRIDGE_VERSION__", env!("CARGO_PKG_VERSION")))
+            .expect("capabilities json has no nul bytes")
+    })
 }
 
 fn set_last_error(msg: impl AsRef<str>) {

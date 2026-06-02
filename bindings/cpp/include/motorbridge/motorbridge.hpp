@@ -25,6 +25,18 @@ inline std::string last_error_message() {
   return std::string(msg);
 }
 
+inline std::string abi_version() {
+  const char* msg = motor_abi_version();
+  if (!msg) return "";
+  return std::string(msg);
+}
+
+inline std::string abi_capabilities_json() {
+  const char* msg = motor_abi_capabilities_json();
+  if (!msg) return "{}";
+  return std::string(msg);
+}
+
 inline void check_rc(int32_t rc, const char* what) {
   if (rc == 0) return;
   throw Error(std::string(what) + " failed: " + last_error_message());
@@ -222,9 +234,54 @@ class Motor {
     return {device_id, responder_id};
   }
 
+  std::pair<uint8_t, uint8_t> robstride_ping_host_id(uint16_t host_id,
+                                                     uint32_t timeout_ms = 500) {
+    require_open();
+    if (host_id > 255) {
+      throw Error("RobStride host_id must be in 0..255");
+    }
+    uint8_t device_id = 0;
+    uint8_t responder_id = 0;
+    check_rc(
+        motor_handle_robstride_ping_host_id(ptr_, host_id, timeout_ms, &device_id, &responder_id),
+        "robstride_ping_host_id");
+    return {device_id, responder_id};
+  }
+
+  float robstride_get_param_f32_host_id(uint16_t param_id, uint16_t host_id,
+                                        uint32_t timeout_ms = 1000) {
+    require_open();
+    if (host_id > 255) {
+      throw Error("RobStride host_id must be in 0..255");
+    }
+    float out = 0.0f;
+    check_rc(
+        motor_handle_robstride_get_param_f32_host_id(ptr_, param_id, host_id, timeout_ms, &out),
+        "robstride_get_param_f32_host_id");
+    return out;
+  }
+
+  std::pair<uint32_t, uint32_t> robstride_get_fault_report() {
+    require_open();
+    uint32_t fault_raw = 0;
+    uint32_t warning_raw = 0;
+    check_rc(motor_handle_robstride_get_fault_report(ptr_, &fault_raw, &warning_raw),
+             "robstride_get_fault_report");
+    return {fault_raw, warning_raw};
+  }
+
   void robstride_set_device_id(uint8_t new_device_id) {
     require_open();
+    if (new_device_id < 1) {
+      throw Error("RobStride new_device_id must be in 1..255");
+    }
     check_rc(motor_handle_robstride_set_device_id(ptr_, new_device_id), "robstride_set_device_id");
+  }
+
+  void robstride_set_active_report(bool enabled) {
+    require_open();
+    check_rc(motor_handle_robstride_set_active_report(ptr_, enabled ? 1 : 0),
+             "robstride_set_active_report");
   }
 
   void robstride_write_param_i8(uint16_t param_id, int8_t value) {
@@ -399,6 +456,12 @@ class Controller {
   }
 
   Motor add_robstride_motor(uint16_t motor_id, uint16_t feedback_id, const std::string& model) {
+    if (motor_id < 1 || motor_id > 255) {
+      throw Error("RobStride motor_id must be in 1..255");
+    }
+    if (feedback_id > 255) {
+      throw Error("RobStride feedback_id/host_id must be in 0..255");
+    }
     MotorHandle* m =
         motor_controller_add_robstride_motor(handle_->ptr, motor_id, feedback_id, model.c_str());
     if (!m) {

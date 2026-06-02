@@ -1,3 +1,4 @@
+from .abi import abi_capabilities, abi_version
 from .core import Controller, Motor
 from .damiao_registers import (
     DAMIAO_HIGH_IMPACT_RIDS,
@@ -35,6 +36,8 @@ __version__ = get_version()
 __all__ = [
     "__version__",
     "get_version",
+    "abi_version",
+    "abi_capabilities",
     "Controller",
     "Motor",
     "Mode",

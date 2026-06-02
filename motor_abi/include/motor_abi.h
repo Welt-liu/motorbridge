@@ -46,6 +46,8 @@ typedef struct MotorState {
 // until the next ABI call on the same thread changes the thread-local error
 // slot. Copy the string immediately if it must be kept.
 const char* motor_last_error_message(void);
+const char* motor_abi_version(void);
+const char* motor_abi_capabilities_json(void);
 
 // Thread-safety:
 // - Calls using the same MotorController or MotorHandle are serialized inside

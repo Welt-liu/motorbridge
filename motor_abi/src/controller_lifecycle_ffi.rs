@@ -21,6 +21,16 @@ pub extern "C" fn motor_last_error_message() -> *const c_char {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn motor_abi_version() -> *const c_char {
+    concat!(env!("CARGO_PKG_VERSION"), "\0").as_ptr() as *const c_char
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn motor_abi_capabilities_json() -> *const c_char {
+    abi_capabilities_json().as_ptr()
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn motor_controller_new_socketcan(channel: *const c_char) -> *mut MotorController {
     let channel = match parse_cstr(channel, "channel") {
         Ok(v) => v,
