@@ -156,11 +156,16 @@ impl SessionCtx {
     pub(crate) fn build_state_snapshot(&self) -> Result<Value, String> {
         match (&self.controller, &self.motor) {
             (Some(ControllerHandle::Damiao(_)), Some(MotorHandle::Damiao(motor))) => {
-                let _ = motor.request_motor_feedback();
-                if let Some(s) = motor.latest_state() {
+                if let Some(s) = motor
+                    .request_fresh_state(Duration::from_millis(120))
+                    .map_err(|e| e.to_string())?
+                {
                     Ok(json!({
                         "vendor": "damiao",
                         "has_value": true,
+                        "motor_id": self.target.motor_id,
+                        "feedback_id": self.target.feedback_id,
+                        "model": self.target.model,
                         "can_id": s.can_id,
                         "arbitration_id": s.arbitration_id,
                         "status_code": s.status_code,

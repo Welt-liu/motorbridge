@@ -206,7 +206,7 @@ pub struct DamiaoMotor {
     pub model: String,
     bus: Arc<dyn CanBus>,
     limits: PvTLimits,
-    state: Mutex<Option<MotorFeedbackState>>,
+    state: Mutex<Option<(MotorFeedbackState, Instant)>>,
     // Software-side guard for set-zero sequencing:
     // set_zero_position() is allowed only after disable() was issued.
     disabled_hint: AtomicBool,
@@ -500,7 +500,33 @@ impl DamiaoMotor {
     }
 
     pub fn latest_state(&self) -> Option<MotorFeedbackState> {
-        self.state.lock().ok().and_then(|s| *s)
+        self.state
+            .lock()
+            .ok()
+            .and_then(|s| s.map(|(state, _)| state))
+    }
+
+    pub fn request_fresh_state(&self, timeout: Duration) -> Result<Option<MotorFeedbackState>> {
+        let request_at = Instant::now();
+        self.request_motor_feedback()?;
+        let deadline = request_at + timeout;
+        loop {
+            if let Some((state, ts)) = self
+                .state
+                .lock()
+                .map_err(|_| MotorError::Io("state lock poisoned".to_string()))?
+                .as_ref()
+                .copied()
+            {
+                if ts >= request_at {
+                    return Ok(Some(state));
+                }
+            }
+            if Instant::now() >= deadline {
+                return Ok(None);
+            }
+            std::thread::sleep(Duration::from_millis(REGISTER_POLL_INTERVAL_MS));
+        }
     }
 
     fn process_feedback_frame_impl(&self, frame: CanFrame) -> Result<()> {
@@ -546,7 +572,7 @@ impl DamiaoMotor {
         self.state
             .lock()
             .map_err(|_| MotorError::Io("state lock poisoned".to_string()))?
-            .replace(state);
+            .replace((state, Instant::now()));
         Ok(())
     }
 }

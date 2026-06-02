@@ -20,6 +20,7 @@ pub(crate) fn handle(
         "disable" => Some(handle_disable(ctx)),
         "stop" => Some(handle_stop(ctx)),
         "state_once" => Some(handle_state_once(ctx)),
+        "damiao_state_many" => Some(handle_damiao_state_many(v, ctx)),
         "state_stream" => Some(handle_state_stream(v, state_stream_enabled)),
         "param_stream" => Some(handle_param_stream(v, ctx, param_stream, dt_ms, None)),
         "robstride_param_stream" => Some(handle_param_stream(
@@ -263,6 +264,130 @@ fn handle_state_once(ctx: &mut SessionCtx) -> Result<Value, String> {
     Ok(json!({"state": ctx.build_state_snapshot()?}))
 }
 
+fn value_as_u16(v: &Value, key: &str) -> Option<u16> {
+    v.get(key).and_then(|x| {
+        x.as_u64().and_then(|n| u16::try_from(n).ok()).or_else(|| {
+            x.as_str().and_then(|s| {
+                let text = s.trim();
+                if text.starts_with("0x") || text.starts_with("0X") {
+                    u16::from_str_radix(&text[2..], 16).ok()
+                } else {
+                    text.parse::<u16>().ok()
+                }
+            })
+        })
+    })
+}
+
+fn damiao_default_feedback_id(motor_id: u16) -> u16 {
+    0x10u16.saturating_add(motor_id & 0x0F)
+}
+
+fn handle_damiao_state_many(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
+    let vendor = parse_vendor_in_msg(v, ctx.target.vendor)?;
+    if vendor != Vendor::Damiao {
+        return Err("damiao_state_many requires vendor=damiao".to_string());
+    }
+    if ctx.target.vendor != Vendor::Damiao {
+        ctx.disconnect(false);
+        ctx.target.vendor = Vendor::Damiao;
+        ctx.motor = None;
+    }
+
+    ctx.target.transport = parse_transport_in_msg(v, ctx.target.transport)?;
+    ctx.target.channel = v
+        .get("channel")
+        .and_then(Value::as_str)
+        .unwrap_or(&ctx.target.channel)
+        .to_string();
+    ctx.target.serial_port = v
+        .get("serial_port")
+        .and_then(Value::as_str)
+        .unwrap_or(&ctx.target.serial_port)
+        .to_string();
+    ctx.target.serial_baud = as_u64(v, "serial_baud", ctx.target.serial_baud as u64) as u32;
+
+    let timeout_ms = as_u64(v, "timeout_ms", 120).max(1);
+    ctx.ensure_connected()?;
+    let ctrl = match ctx.controller.as_ref() {
+        Some(ControllerHandle::Damiao(ctrl)) => ctrl,
+        _ => return Err("damiao controller not connected".to_string()),
+    };
+
+    let default_model = if SessionCtx::model_is_auto(&ctx.target.model) {
+        "4310"
+    } else {
+        &ctx.target.model
+    };
+    let default_item = json!({
+        "motor_id": ctx.target.motor_id,
+        "feedback_id": ctx.target.feedback_id,
+        "model": default_model,
+    });
+    let items = v
+        .get("items")
+        .or_else(|| v.get("motors"))
+        .and_then(Value::as_array);
+    let fallback_items = [default_item];
+    let iter: Box<dyn Iterator<Item = &Value> + '_> = match items {
+        Some(items) => Box::new(items.iter()),
+        None => Box::new(fallback_items.iter()),
+    };
+
+    let mut states = Vec::new();
+    for item in iter {
+        let motor_id = value_as_u16(item, "motor_id")
+            .or_else(|| value_as_u16(item, "esc_id"))
+            .unwrap_or(ctx.target.motor_id);
+        let feedback_id = value_as_u16(item, "feedback_id")
+            .or_else(|| value_as_u16(item, "mst_id"))
+            .unwrap_or_else(|| damiao_default_feedback_id(motor_id));
+        let model = item
+            .get("model")
+            .and_then(Value::as_str)
+            .filter(|s| !SessionCtx::model_is_auto(s))
+            .unwrap_or(default_model);
+
+        let motor = ctrl
+            .add_motor(motor_id, feedback_id, model)
+            .map_err(|e| format!("add motor 0x{motor_id:X} failed: {e}"))?;
+        let state = motor
+            .request_fresh_state(std::time::Duration::from_millis(timeout_ms))
+            .map_err(|e| format!("request state 0x{motor_id:X} failed: {e}"))?;
+        if let Some(s) = state {
+            states.push(json!({
+                "vendor": "damiao",
+                "has_value": true,
+                "motor_id": motor_id,
+                "feedback_id": feedback_id,
+                "model": model,
+                "can_id": s.can_id,
+                "arbitration_id": s.arbitration_id,
+                "status_code": s.status_code,
+                "status_name": s.status_name,
+                "pos": s.pos,
+                "vel": s.vel,
+                "torq": s.torq,
+                "t_mos": s.t_mos,
+                "t_rotor": s.t_rotor,
+            }));
+        } else {
+            states.push(json!({
+                "vendor": "damiao",
+                "has_value": false,
+                "motor_id": motor_id,
+                "feedback_id": feedback_id,
+                "model": model,
+            }));
+        }
+    }
+
+    Ok(json!({
+        "vendor": "damiao",
+        "states": states,
+    }))
+}
+
 fn handle_state_stream(v: &Value, state_stream_enabled: &mut bool) -> Result<Value, String> {
     *state_stream_enabled = as_bool(v, "enabled", false);
     Ok(json!({"enabled": *state_stream_enabled}))
@@ -275,6 +400,18 @@ fn handle_param_stream(
     dt_ms: u64,
     required_vendor: Option<Vendor>,
 ) -> Result<Value, String> {
+    if !as_bool(v, "enabled", false) {
+        let vendor = required_vendor.unwrap_or(ctx.target.vendor);
+        stream.apply_message(v, dt_ms, vendor)?;
+        return Ok(json!({
+            "enabled": stream.enabled,
+            "vendor": vendor.as_str(),
+            "interval_ms": stream.tick_div.saturating_mul(dt_ms.max(1)),
+            "timeout_ms": stream.timeout_ms,
+            "params": stream.params,
+        }));
+    }
+
     ctx.ensure_connected()?;
     let vendor = match ctx.motor.as_ref() {
         Some(MotorHandle::Damiao(_)) => Vendor::Damiao,

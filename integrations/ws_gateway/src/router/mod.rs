@@ -123,7 +123,12 @@ pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Resul
                             && parse_vendor_in_msg(&v, ctx.target.vendor).ok()
                                 == Some(Vendor::Robstride)
                         {
-                            dispatch::release_robstride_session_before_scan(&v, &mut ctx);
+                            dispatch::release_session_before_scan(
+                                &v,
+                                &mut ctx,
+                                &mut state_stream_enabled,
+                                &mut param_stream,
+                            );
                             let target = ctx.target.clone();
                             let req = v.clone();
                             let (progress_tx, mut progress_rx) =
