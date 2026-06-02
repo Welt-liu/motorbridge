@@ -7,6 +7,32 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-06-02
+
+### Added
+
+- Added ABI metadata entrypoints `motor_abi_version()` and
+  `motor_abi_capabilities_json()` so tools, gateways, and language bindings can
+  discover the loaded ABI version and supported transports/vendors/features.
+- Added Python metadata helpers `motorbridge.abi_version()` and
+  `motorbridge.abi_capabilities()`.
+- Added C++ metadata helpers `motorbridge::abi_version()` and
+  `motorbridge::abi_capabilities_json()`.
+- Added `bindings/api_surface.json` as the canonical binding/API surface list
+  used to keep ABI, Python, C++, and documentation aligned.
+- Added API surface regression coverage for the binding parity metadata.
+
+### Changed
+
+- Completed C++ wrapper parity with Python for RobStride helper methods:
+  `robstride_ping_host_id`, `robstride_get_param_f32_host_id`,
+  `robstride_get_fault_report`, and `robstride_set_active_report`.
+- Added C++ RobStride ID range validation to match Python binding behavior.
+- Python package version advanced to `0.4.1`.
+- Rust workspace package version advanced to `0.4.1` for release/tag
+  alignment.
+- C++ package metadata advanced to `0.4.1`.
+
 ## [0.4.0] - 2026-06-02
 
 ### Added

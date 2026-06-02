@@ -16,6 +16,12 @@
 
 > English version: [README.md](README.md)
 
+## ABI 元数据 helper
+
+- `motorbridge::abi_version()` 返回当前加载的 ABI 库版本。
+- `motorbridge::abi_capabilities_json()` 返回当前加载 ABI 的能力 JSON。
+- `bindings/api_surface.json` 用于跟踪 binding 接口对齐。
+
 ## Damiao 置零规则（dm-serial）
 
 - Damiao 场景下，`set_zero_position()` 前先调用 `disable()`。
@@ -81,6 +87,17 @@ int main() {
   return static_cast<int>(ids.first == 127 && pos > -1000.0f);
 }
 ```
+
+RobStride 专用 wrapper helper 包括：
+
+- `robstride_ping()`
+- `robstride_ping_host_id(host_id, timeout_ms)`
+- `robstride_get_param_f32_host_id(param_id, host_id, timeout_ms)`
+- `robstride_get_fault_report()`
+- `robstride_set_device_id(new_device_id)`
+- `robstride_set_active_report(enabled)`
+- `robstride_get_param_i8/u8/u16/u32/f32(param_id, timeout_ms)`
+- `robstride_write_param_i8/u8/u16/u32/f32(param_id, value)`
 
 MyActuator:
 

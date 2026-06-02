@@ -1,4 +1,4 @@
-﻿# motorbridge Python SDK
+# motorbridge Python SDK
 
 <!-- channel-compat-note -->
 ## 通道兼容说明（PCAN + CANable candleLight/gs_usb + CAN-FD + Damiao 串口桥）
@@ -41,8 +41,13 @@
 
 ## 范围
 
-- 当前目标包版本：`0.4.0`。
-- `0.4.0` 修复随包 `ws_gateway` 在 Damiao `dm-serial` 整臂扫描时的会话释放
+- 当前目标包版本：`0.4.1`。
+- ABI 元数据 helper：
+  - `motorbridge.abi_version()` 返回当前加载的 ABI 库版本。
+  - `motorbridge.abi_capabilities()` 返回当前加载 ABI 的能力 JSON（Python `dict`）。
+- `0.4.1` 新增 ABI 版本/能力发现，并让 C++ RobStride wrapper 与 Python SDK
+  对齐。接口对齐清单见 `bindings/api_surface.json`。
+- `0.4.1` 包含随包 `ws_gateway` 在 Damiao `dm-serial` 整臂扫描时的会话释放
   与串口争用问题，并新增 `damiao_state_many` 用于浏览器多关节状态同步。
 - `0.3.9` 的 RobStride `request_feedback()` 语义修正和 `0.3.8` 的 PP/CSP
   专用位置控制接口继续保留，同时保持 Python binding 公开 API 向后兼容。

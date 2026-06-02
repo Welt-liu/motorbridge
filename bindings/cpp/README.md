@@ -16,6 +16,12 @@ RAII-style C++ wrapper on top of `motor_abi`.
 
 > Chinese version: [README.zh-CN.md](README.zh-CN.md)
 
+## ABI Metadata Helpers
+
+- `motorbridge::abi_version()` returns the loaded ABI library version.
+- `motorbridge::abi_capabilities_json()` returns the loaded ABI capability JSON.
+- Binding parity is tracked in `bindings/api_surface.json`.
+
 ## Damiao Set-Zero Rule (dm-serial)
 
 - For Damiao, call `disable()` before `set_zero_position()`.
@@ -81,6 +87,17 @@ int main() {
   return static_cast<int>(ids.first == 127 && pos > -1000.0f);
 }
 ```
+
+RobStride-specific wrapper helpers include:
+
+- `robstride_ping()`
+- `robstride_ping_host_id(host_id, timeout_ms)`
+- `robstride_get_param_f32_host_id(param_id, host_id, timeout_ms)`
+- `robstride_get_fault_report()`
+- `robstride_set_device_id(new_device_id)`
+- `robstride_set_active_report(enabled)`
+- `robstride_get_param_i8/u8/u16/u32/f32(param_id, timeout_ms)`
+- `robstride_write_param_i8/u8/u16/u32/f32(param_id, value)`
 
 MyActuator:
 

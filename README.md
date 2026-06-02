@@ -15,9 +15,16 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
   Standalone web control UI built on top of `ws_gateway`.
 
-## Update (2026-06): v0.4.0
+## Update (2026-06): v0.4.1
 
-- `v0.4.0` fixes Windows Damiao `dm-serial` whole-arm scans through
+- `v0.4.1` adds ABI metadata discovery through `motor_abi_version()` and
+  `motor_abi_capabilities_json()`, plus Python/C++ helpers for querying the
+  loaded ABI version and capability JSON.
+- C++ bindings now match Python for RobStride host-id probing, host-id f32
+  parameter reads, fault-report snapshots, and active-report toggling.
+- `bindings/api_surface.json` is the canonical API surface checklist used to
+  keep ABI, Python, C++, and docs aligned.
+- `v0.4.1` fixes Windows Damiao `dm-serial` whole-arm scans through
   `ws_gateway`. Active Damiao sessions and state/parameter streams are released
   before scan probes reuse the serial bridge, preventing the "only joint1
   online" failure pattern.
@@ -511,6 +518,8 @@ Interpretation:
 ## ABI and Bindings
 
 - C ABI:
+  - `motor_abi_version()`
+  - `motor_abi_capabilities_json()`
   - `motor_controller_new_socketcan(channel)`
   - `motor_controller_new_dm_serial(serial_port, baud)` (Damiao-only serial bridge; cross-platform, e.g. `/dev/ttyACM0` or `COM3`)
   - Damiao: `motor_controller_add_damiao_motor(...)`
@@ -519,6 +528,8 @@ Interpretation:
   - MyActuator: `motor_controller_add_myactuator_motor(...)`
   - HighTorque: `motor_controller_add_hightorque_motor(...)`
 - Python:
+  - `motorbridge.abi_version()`
+  - `motorbridge.abi_capabilities()`
   - `Controller(channel="can0")`
   - `Controller.from_dm_serial("/dev/ttyACM0", 921600)` (Damiao-only)
   - `Controller.add_damiao_motor(...)`
@@ -527,6 +538,8 @@ Interpretation:
   - `Controller.add_myactuator_motor(...)`
   - `Controller.add_hightorque_motor(...)`
 - C++:
+  - `motorbridge::abi_version()`
+  - `motorbridge::abi_capabilities_json()`
   - `Controller("can0")`
   - `Controller::from_dm_serial("/dev/ttyACM0", 921600)` (Damiao-only)
   - `Controller::add_damiao_motor(...)`
@@ -556,9 +569,15 @@ Vendor-specific protocol naming/mapping and unsupported operations are documente
 RobStride-specific ABI/binding helpers include:
 
 - `robstride_ping`
+- `robstride_ping_host_id`
 - `robstride_set_device_id`
+- `robstride_set_active_report`
+- `robstride_get_fault_report`
+- `robstride_get_param_f32_host_id`
 - `robstride_get_param_*`
 - `robstride_write_param_*`
+
+Binding parity is tracked in [`bindings/api_surface.json`](bindings/api_surface.json).
 
 ## Example Entry Points
 

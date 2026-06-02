@@ -1,4 +1,4 @@
-﻿# motorbridge
+# motorbridge
 
 [![Rust](https://img.shields.io/badge/Rust-2021-orange.svg)](https://www.rust-lang.org/)
 [![Python](https://img.shields.io/badge/Python-3.10--3.14-blue.svg)](https://www.python.org/)
@@ -15,9 +15,15 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
-## 更新说明（2026-06）：v0.4.0
+## 更新说明（2026-06）：v0.4.1
 
-- `v0.4.0` 修复 Windows 下 Damiao `dm-serial` 通过 `ws_gateway`
+- `v0.4.1` 新增 ABI 元数据查询：`motor_abi_version()` 和
+  `motor_abi_capabilities_json()`，并在 Python/C++ 绑定中提供对应 helper，
+  方便上位机、gateway 和 SDK 判断当前加载的 ABI 版本与能力。
+- C++ 绑定已补齐 Python 中已有的 RobStride host-id 探测、host-id f32 参数读取、
+  fault report 快照和 active-report 开关接口。
+- `bindings/api_surface.json` 作为 ABI、Python、C++ 和文档对齐的接口清单。
+- `v0.4.1` 修复 Windows 下 Damiao `dm-serial` 通过 `ws_gateway`
   扫描整机机械臂时的串口会话争用问题。扫描前会释放当前 Damiao 会话并停止
   state/parameter stream，避免只显示 joint1 online 的异常。
 - WebSocket 新增 `damiao_state_many`，浏览器上位机可以一次逻辑请求刷新所有已发现
@@ -504,6 +510,8 @@ cargo run -p motor_cli --release -- --vendor damiao \
 ## ABI 与绑定
 
 - C ABI:
+  - `motor_abi_version()`
+  - `motor_abi_capabilities_json()`
   - `motor_controller_new_socketcan(channel)`
   - `motor_controller_new_dm_serial(serial_port, baud)`（仅 Damiao 串口桥；跨平台，可用 `/dev/ttyACM0` 或 `COM3`）
   - Damiao: `motor_controller_add_damiao_motor(...)`
@@ -512,6 +520,8 @@ cargo run -p motor_cli --release -- --vendor damiao \
   - MyActuator: `motor_controller_add_myactuator_motor(...)`
   - HighTorque: `motor_controller_add_hightorque_motor(...)`
 - Python:
+  - `motorbridge.abi_version()`
+  - `motorbridge.abi_capabilities()`
   - `Controller(channel="can0")`
   - `Controller.from_dm_serial("/dev/ttyACM0", 921600)`（仅 Damiao）
   - `Controller.add_damiao_motor(...)`
@@ -520,6 +530,8 @@ cargo run -p motor_cli --release -- --vendor damiao \
   - `Controller.add_myactuator_motor(...)`
   - `Controller.add_hightorque_motor(...)`
 - C++:
+  - `motorbridge::abi_version()`
+  - `motorbridge::abi_capabilities_json()`
   - `Controller("can0")`
   - `Controller::from_dm_serial("/dev/ttyACM0", 921600)`（仅 Damiao）
   - `Controller::add_damiao_motor(...)`
@@ -549,9 +561,15 @@ ABI/绑定中的统一模式 ID（`ensure_mode`）：
 RobStride 专属 ABI / binding 能力包括:
 
 - `robstride_ping`
+- `robstride_ping_host_id`
 - `robstride_set_device_id`
+- `robstride_set_active_report`
+- `robstride_get_fault_report`
+- `robstride_get_param_f32_host_id`
 - `robstride_get_param_*`
 - `robstride_write_param_*`
+
+Binding 接口对齐清单见 [`bindings/api_surface.json`](bindings/api_surface.json)。
 
 ## 示例入口
 

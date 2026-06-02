@@ -1,4 +1,4 @@
-﻿# motorbridge Python SDK
+# motorbridge Python SDK
 
 <!-- channel-compat-note -->
 ## Channel Compatibility (PCAN + CANable candleLight/gs_usb + CAN-FD + Damiao Serial Bridge)
@@ -42,11 +42,17 @@ Notes:
 ## Scope
 Packaging note:
 
-- Current package target version: `0.4.0`.
+- Current package target version: `0.4.1`.
 - Published wheel includes `motor_abi` shared library and `ws_gateway` binary for that platform.
+- ABI metadata helpers:
+  - `motorbridge.abi_version()` returns the loaded ABI library version.
+  - `motorbridge.abi_capabilities()` returns the loaded ABI capability JSON as a Python `dict`.
+- `0.4.1` adds ABI capability/version discovery and aligns C++ RobStride
+  wrapper parity with the Python SDK. Binding parity is tracked in
+  `bindings/api_surface.json`.
 - After `pip install motorbridge`, gateway binary path is typically:
   `.../site-packages/motorbridge/bin/ws_gateway` (or `ws_gateway.exe` on Windows).
-- `0.4.0` fixes Damiao `dm-serial` whole-arm scan/session handling in the
+- `0.4.1` includes Damiao `dm-serial` whole-arm scan/session handling in the
   bundled gateway and adds `damiao_state_many` for multi-joint browser
   telemetry.
 - `0.3.9` RobStride `request_feedback()` semantics and `0.3.8` PP/CSP-specific

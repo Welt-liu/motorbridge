@@ -222,7 +222,7 @@ cargo run -p motor_cli --release -- --vendor damiao --channel can0@1000000 --mod
 
 ## Damiao dm-serial arm telemetry
 
-`v0.4.0` adds scan-safe Damiao session handling for Windows serial bridges. When
+`v0.4.1` adds scan-safe Damiao session handling for Windows serial bridges. When
 scan or batch_scan starts, the gateway stops state/parameter streams, releases
 the active Damiao session, waits for a short Windows release gap, then probes
 the serial bridge. This avoids serial-port contention during whole-arm scans.

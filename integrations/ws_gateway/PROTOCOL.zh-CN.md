@@ -442,7 +442,7 @@ RobStride：
 
 - 该 op 只支持 Damiao。当前 target 不是 Damiao 时返回 `ok:false`。
 - 不在线或没有及时返回的关节会以 `has_value:false` 留在 `states` 中，不会导致整个请求失败。
-- v0.4.0 起，扫描前 gateway 会释放 Damiao 活跃会话和 stream，避免 Windows `dm-serial` 整臂扫描时串口争用。
+- v0.4.1 起，扫描前 gateway 会释放 Damiao 活跃会话和 stream，避免 Windows `dm-serial` 整臂扫描时串口争用。
 
 ### 8.9 `param_stream` / `damiao_param_stream` / `robstride_param_stream`
 
