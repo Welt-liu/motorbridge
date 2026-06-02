@@ -6,9 +6,11 @@ import sys
 from pathlib import Path
 
 from .platform_hints import (
+    effective_transport_for_preflight,
     parse_channel_arg,
-    parse_transport_arg,
     preflight_can_runtime,
+    should_skip_runtime_preflight,
+    with_inferred_dm_serial_transport,
 )
 
 
@@ -65,11 +67,15 @@ def run_gateway(argv: list[str] | None = None) -> int:
     gateway_args = list(sys.argv[1:] if argv is None else argv)
     if gateway_args and gateway_args[0] == "--":
         gateway_args = gateway_args[1:]
-    if any(a in ("-h", "--help") for a in gateway_args):
+    if not gateway_args:
+        exe = _resolve_gateway_binary()
+        return subprocess.call([exe, "--help"])
+    if should_skip_runtime_preflight(gateway_args):
         exe = _resolve_gateway_binary()
         return subprocess.call([exe, *gateway_args])
 
-    transport = parse_transport_arg(gateway_args, default="auto")
+    gateway_args = with_inferred_dm_serial_transport(gateway_args, default="auto")
+    transport = effective_transport_for_preflight(gateway_args, default="auto")
     channel = parse_channel_arg(gateway_args, default="can0")
     hint = preflight_can_runtime("motorbridge-gateway", transport, channel)
     if hint:

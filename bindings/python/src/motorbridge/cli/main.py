@@ -161,6 +161,9 @@ def _build_parser() -> argparse.ArgumentParser:
 def _parse_with_legacy_support() -> argparse.Namespace:
     parser = _build_parser()
     provided = _provided_options(sys.argv[1:])
+    if len(sys.argv) == 1:
+        parser.print_help()
+        raise SystemExit(0)
     if len(sys.argv) > 1 and sys.argv[1].startswith("--") and sys.argv[1] not in ("-h", "--help"):
         legacy = argparse.ArgumentParser(description="motorbridge Python SDK CLI (legacy run mode)", allow_abbrev=False)
         legacy.add_argument("-v", "--version", action="version", version=f"motorbridge {get_version()}")
@@ -191,6 +194,11 @@ def main() -> None:
     args = _parse_with_legacy_support()
     try:
         transport = str(getattr(args, "transport", "auto") or "auto")
+        vendor = str(getattr(args, "vendor", "damiao") or "damiao")
+        provided = getattr(args, "_provided_options", set())
+        if transport == "auto" and vendor == "damiao" and "serial-port" in provided:
+            args.transport = "dm-serial"
+            transport = "dm-serial"
         channel = str(getattr(args, "channel", "can0") or "can0")
         hint = preflight_can_runtime("motorbridge-cli", transport, channel)
         if hint:

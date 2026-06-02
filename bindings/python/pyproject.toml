@@ -32,6 +32,7 @@ Homepage = "https://github.com/tianrking/motorbridge"
 Repository = "https://github.com/tianrking/motorbridge"
 
 [project.scripts]
+motorbridge = "motorbridge.cli:main"
 motorbridge-cli = "motorbridge.cli:main"
 motorbridge-gateway = "motorbridge.gateway:main"
 

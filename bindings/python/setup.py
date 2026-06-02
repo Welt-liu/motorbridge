@@ -122,6 +122,7 @@ setup(
     include_package_data=True,
     entry_points={
         "console_scripts": [
+            "motorbridge=motorbridge.cli:main",
             "motorbridge-cli=motorbridge.cli:main",
             "motorbridge-gateway=motorbridge.gateway:main",
         ]

@@ -8,23 +8,88 @@ from pathlib import Path
 _CAN_TRANSPORTS = {"auto", "socketcan", "socketcanfd"}
 
 
-def parse_transport_arg(argv: list[str], default: str = "auto") -> str:
-    transport = default
+def option_is_provided(argv: list[str], name: str) -> bool:
+    flag = f"--{name}"
+    return any(tok == flag or tok.startswith(f"{flag}=") for tok in argv)
+
+
+def parse_option_arg(argv: list[str], name: str, default: str = "") -> str:
+    flag = f"--{name}"
+    value = default
     i = 0
     while i < len(argv):
         tok = argv[i]
-        if tok == "--transport":
+        if tok == flag:
             if i + 1 < len(argv):
-                transport = argv[i + 1]
+                value = argv[i + 1]
                 i += 2
                 continue
             break
-        if tok.startswith("--transport="):
-            transport = tok.split("=", 1)[1]
+        if tok.startswith(f"{flag}="):
+            value = tok.split("=", 1)[1]
             i += 1
             continue
         i += 1
-    return str(transport or default).strip().lower()
+    return str(value or default).strip()
+
+
+def parse_transport_arg(argv: list[str], default: str = "auto") -> str:
+    return parse_option_arg(argv, "transport", default).lower()
+
+
+def parse_vendor_arg(argv: list[str], default: str = "damiao") -> str:
+    return parse_option_arg(argv, "vendor", default).lower()
+
+
+def should_skip_runtime_preflight(argv: list[str]) -> bool:
+    return any(a in ("-h", "--help", "-v", "--version") for a in argv)
+
+
+def effective_transport_for_preflight(argv: list[str], default: str = "auto") -> str:
+    transport = parse_transport_arg(argv, default)
+    vendor = parse_vendor_arg(argv, "damiao")
+    if (
+        transport == "auto"
+        and vendor == "damiao"
+        and option_is_provided(argv, "serial-port")
+    ):
+        return "dm-serial"
+    return transport
+
+
+def should_infer_dm_serial_transport(argv: list[str], default: str = "auto") -> bool:
+    return (
+        parse_transport_arg(argv, default) == "auto"
+        and effective_transport_for_preflight(argv, default) == "dm-serial"
+    )
+
+
+def with_inferred_dm_serial_transport(argv: list[str], default: str = "auto") -> list[str]:
+    args = list(argv)
+    if not should_infer_dm_serial_transport(args, default):
+        return args
+
+    out: list[str] = []
+    replaced = False
+    i = 0
+    while i < len(args):
+        tok = args[i]
+        if tok == "--transport":
+            out.extend(["--transport", "dm-serial"])
+            replaced = True
+            i += 2 if i + 1 < len(args) else 1
+            continue
+        if tok.startswith("--transport="):
+            out.append("--transport=dm-serial")
+            replaced = True
+            i += 1
+            continue
+        out.append(tok)
+        i += 1
+
+    if not replaced:
+        out = ["--transport", "dm-serial", *out]
+    return out
 
 
 def transport_needs_can_runtime(transport: str) -> bool:
@@ -44,22 +109,7 @@ def is_linux() -> bool:
 
 
 def parse_channel_arg(argv: list[str], default: str = "can0") -> str:
-    channel = default
-    i = 0
-    while i < len(argv):
-        tok = argv[i]
-        if tok == "--channel":
-            if i + 1 < len(argv):
-                channel = argv[i + 1]
-                i += 2
-                continue
-            break
-        if tok.startswith("--channel="):
-            channel = tok.split("=", 1)[1]
-            i += 1
-            continue
-        i += 1
-    return str(channel or default).strip()
+    return parse_option_arg(argv, "channel", default)
 
 
 def can_load_pcbusb() -> bool:
