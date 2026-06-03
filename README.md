@@ -15,8 +15,12 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
   Standalone web control UI built on top of `ws_gateway`.
 
-## Update (2026-06): v0.4.1
+## Update (2026-06): v0.4.2
 
+- `v0.4.2` optimizes Damiao `dm-serial` high-rate multi-motor control by
+  making `recv(0ms)` truly non-blocking when no serial bytes are pending and by
+  reducing the bounded serial read timeout from 2 ms to 1 ms for synchronous
+  feedback/register reads.
 - `v0.4.1` adds ABI metadata discovery through `motor_abi_version()` and
   `motor_abi_capabilities_json()`, plus Python/C++ helpers for querying the
   loaded ABI version and capability JSON.

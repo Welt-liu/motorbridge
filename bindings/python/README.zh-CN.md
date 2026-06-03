@@ -41,10 +41,12 @@
 
 ## 范围
 
-- 当前目标包版本：`0.4.1`。
+- 当前目标包版本：`0.4.2`。
 - ABI 元数据 helper：
   - `motorbridge.abi_version()` 返回当前加载的 ABI 库版本。
   - `motorbridge.abi_capabilities()` 返回当前加载 ABI 的能力 JSON（Python `dict`）。
+- `0.4.2` 优化 Damiao `dm-serial` 多电机控制：串口无待读字节时 `recv(0ms)`
+  会非阻塞返回，并将有界同步读取的串口 read timeout 降到 1 ms。
 - `0.4.1` 新增 ABI 版本/能力发现，并让 C++ RobStride wrapper 与 Python SDK
   对齐。接口对齐清单见 `bindings/api_surface.json`。
 - `0.4.1` 包含随包 `ws_gateway` 在 Damiao `dm-serial` 整臂扫描时的会话释放

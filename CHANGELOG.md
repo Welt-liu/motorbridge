@@ -7,6 +7,24 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-06-03
+
+### Fixed
+
+- Optimized Damiao `dm-serial` background polling so `recv(0ms)` performs a
+  true non-blocking drain instead of waiting on the serial-port read timeout
+  when no bytes are pending.
+- Reduced the Damiao serial bridge read timeout from 2 ms to 1 ms for bounded
+  synchronous feedback/register reads while keeping compatibility fallbacks for
+  serial backends that cannot report pending bytes.
+
+### Changed
+
+- Python package version advanced to `0.4.2`.
+- Rust workspace package version advanced to `0.4.2` for release/tag
+  alignment.
+- C++ package metadata advanced to `0.4.2`.
+
 ## [0.4.1] - 2026-06-02
 
 ### Added

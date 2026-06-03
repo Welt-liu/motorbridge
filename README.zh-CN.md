@@ -15,8 +15,11 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
-## 更新说明（2026-06）：v0.4.1
+## 更新说明（2026-06）：v0.4.2
 
+- `v0.4.2` 优化 Damiao `dm-serial` 多电机高频控制路径：`recv(0ms)` 在串口
+  没有待读字节时会真正非阻塞返回，同时把同步反馈/寄存器读取的串口 read timeout
+  从 2 ms 降到 1 ms。
 - `v0.4.1` 新增 ABI 元数据查询：`motor_abi_version()` 和
   `motor_abi_capabilities_json()`，并在 Python/C++ 绑定中提供对应 helper，
   方便上位机、gateway 和 SDK 判断当前加载的 ABI 版本与能力。

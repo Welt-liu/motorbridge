@@ -42,11 +42,14 @@ Notes:
 ## Scope
 Packaging note:
 
-- Current package target version: `0.4.1`.
+- Current package target version: `0.4.2`.
 - Published wheel includes `motor_abi` shared library and `ws_gateway` binary for that platform.
 - ABI metadata helpers:
   - `motorbridge.abi_version()` returns the loaded ABI library version.
   - `motorbridge.abi_capabilities()` returns the loaded ABI capability JSON as a Python `dict`.
+- `0.4.2` optimizes Damiao `dm-serial` multi-motor control by making
+  `recv(0ms)` non-blocking when no serial bytes are pending and by reducing the
+  bounded serial read timeout to 1 ms.
 - `0.4.1` adds ABI capability/version discovery and aligns C++ RobStride
   wrapper parity with the Python SDK. Binding parity is tracked in
   `bindings/api_surface.json`.

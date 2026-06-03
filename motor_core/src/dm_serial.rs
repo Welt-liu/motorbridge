@@ -21,7 +21,7 @@ pub struct DmSerialBus {
 impl DmSerialBus {
     pub fn open(port: &str, baud: u32) -> Result<Self> {
         let port_obj = serialport::new(port, baud)
-            .timeout(Duration::from_millis(2))
+            .timeout(Duration::from_millis(1))
             .data_bits(DataBits::Eight)
             .stop_bits(StopBits::One)
             .parity(Parity::None)
@@ -114,6 +114,30 @@ impl DmSerialBus {
         }
         None
     }
+
+    fn read_available(inner: &mut Inner, wait_for_data: bool) -> Result<bool> {
+        if !wait_for_data {
+            match inner.port.bytes_to_read() {
+                Ok(0) => return Ok(false),
+                Ok(_) => {}
+                Err(_) => {
+                    // Some serial backends may not support pending-byte queries.
+                    // Fall back to the normal timed read path for compatibility.
+                }
+            }
+        }
+
+        let mut tmp = [0u8; 256];
+        match inner.port.read(&mut tmp) {
+            Ok(n) if n > 0 => {
+                inner.rx_buf.extend(tmp[..n].iter().copied());
+                Ok(true)
+            }
+            Ok(_) => Ok(false),
+            Err(e) if e.kind() == std::io::ErrorKind::TimedOut => Ok(false),
+            Err(e) => Err(MotorError::Io(format!("dm-serial read failed: {e}"))),
+        }
+    }
 }
 
 impl CanBus for DmSerialBus {
@@ -131,6 +155,7 @@ impl CanBus for DmSerialBus {
     }
 
     fn recv(&self, timeout: Duration) -> Result<Option<CanFrame>> {
+        let wait_for_data = !timeout.is_zero();
         let deadline = Instant::now()
             .checked_add(timeout)
             .unwrap_or_else(|| Instant::now() + Duration::from_secs(3600));
@@ -144,14 +169,9 @@ impl CanBus for DmSerialBus {
                 return Ok(Some(frame));
             }
 
-            let mut tmp = [0u8; 256];
-            match inner.port.read(&mut tmp) {
-                Ok(n) if n > 0 => {
-                    inner.rx_buf.extend(tmp[..n].iter().copied());
-                }
-                Ok(_) => {}
-                Err(e) if e.kind() == std::io::ErrorKind::TimedOut => {}
-                Err(e) => return Err(MotorError::Io(format!("dm-serial read failed: {e}"))),
+            let read_any = Self::read_available(&mut inner, wait_for_data)?;
+            if !read_any && !wait_for_data {
+                return Ok(None);
             }
 
             if Instant::now() >= deadline {
