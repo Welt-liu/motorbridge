@@ -67,7 +67,7 @@ def _candidate_dm_device_paths() -> list[Path]:
 
 
 def _bundle_dm_device_runtime() -> bool:
-    raw = os.getenv("MOTOR_DM_DEVICE_BUNDLE", "1").strip().lower()
+    raw = os.getenv("MOTOR_DM_DEVICE_BUNDLE", "0").strip().lower()
     return raw not in {"0", "false", "off", "no"}
 
 
@@ -139,6 +139,8 @@ class BuildPyWithAbi(_build_py):
         super().run()
         abi_src = _resolve_abi_path()
         dst_dir = Path(self.build_lib) / "motorbridge" / "lib"
+        if dst_dir.exists():
+            shutil.rmtree(dst_dir)
         dst_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy2(abi_src, dst_dir / abi_src.name)
 
@@ -150,6 +152,8 @@ class BuildPyWithAbi(_build_py):
 
         gateway_src = _resolve_gateway_path()
         gateway_dir = Path(self.build_lib) / "motorbridge" / "bin"
+        if gateway_dir.exists():
+            shutil.rmtree(gateway_dir)
         gateway_dir.mkdir(parents=True, exist_ok=True)
         gateway_dst = gateway_dir / gateway_src.name
         shutil.copy2(gateway_src, gateway_dst)
@@ -183,6 +187,7 @@ setup(
             "motorbridge=motorbridge.cli:main",
             "motorbridge-cli=motorbridge.cli:main",
             "motorbridge-gateway=motorbridge.gateway:main",
+            "motorbridge-install-dm-device=motorbridge.dm_device_runtime:main",
         ]
     },
     distclass=BinaryDistribution,

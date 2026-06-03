@@ -22,6 +22,7 @@ from .damiao_registers import (
     RegisterSpec,
     get_damiao_register_spec,
 )
+from .dm_device_runtime import ensure_dm_device_runtime
 from .errors import AbiLoadError, CallError, MotorBridgeError
 from .models import Mode, MotorState
 from ._version import VERSION
@@ -38,6 +39,7 @@ __all__ = [
     "get_version",
     "abi_version",
     "abi_capabilities",
+    "ensure_dm_device_runtime",
     "Controller",
     "Motor",
     "Mode",

@@ -5,6 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from .dm_device_runtime import ensure_dm_device_runtime
 from .platform_hints import (
     effective_transport_for_preflight,
     parse_channel_arg,
@@ -76,6 +77,12 @@ def run_gateway(argv: list[str] | None = None) -> int:
 
     gateway_args = with_inferred_dm_serial_transport(gateway_args, default="auto")
     transport = effective_transport_for_preflight(gateway_args, default="auto")
+    if transport == "dm-device":
+        try:
+            ensure_dm_device_runtime()
+        except RuntimeError as exc:
+            print(f"motorbridge-gateway: {exc}", file=sys.stderr)
+            return 2
     channel = parse_channel_arg(gateway_args, default="can0")
     hint = preflight_can_runtime("motorbridge-gateway", transport, channel)
     if hint:

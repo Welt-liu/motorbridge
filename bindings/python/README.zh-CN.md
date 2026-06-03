@@ -46,18 +46,25 @@
 ## 范围
 
 - 当前目标包版本：`0.4.3`。
-- wheel 会随包携带当前平台对应的 `motor_abi`、`ws_gateway`，并在平台支持时携带
-  DM_Device SDK runtime（`motorbridge/lib/dm_device/`）。
-  Linux manylinux wheel 为了通过 auditwheel，不内置 DaMiao
-  `libdm_device.so`（厂商库依赖的 `GLIBCXX` 版本高于 manylinux policy）；
-  Linux wheel 使用 `Controller.from_dm_device(...)` 时请设置
-  `MOTOR_DM_DEVICE_LIB=/path/to/libdm_device.so`。
+- wheel 会随包携带当前平台对应的 `motor_abi` 和 `ws_gateway`，但不再内置
+  DaMiao DM_Device SDK runtime。真正使用 `Controller.from_dm_device(...)`、
+  Python CLI `--transport dm-device` 或
+  `motorbridge-gateway --transport dm-device` 时，motorbridge 会按当前
+  OS/架构解析并在首次使用时下载到用户 cache。这样 Linux manylinux wheel
+  能通过 `auditwheel`，各平台运行体验也保持一致。
+- DM_Device runtime 控制项：
+  - 显式预安装：`motorbridge-install-dm-device`
+  - 只打印解析路径：`motorbridge-install-dm-device --print-path`
+  - 使用手动安装的 SDK runtime：`MOTOR_DM_DEVICE_LIB=/path/to/libdm_device.so`
+  - 使用内网镜像：`MOTOR_DM_DEVICE_DOWNLOAD_BASE_URL=https://.../third_party/dm_device/v1.1.0`
+  - 禁用自动下载：`MOTOR_DM_DEVICE_AUTO_DOWNLOAD=0`
+  - 指定 cache 目录：`MOTOR_DM_DEVICE_CACHE_DIR=/path/to/cache`
 - ABI 元数据 helper：
   - `motorbridge.abi_version()` 返回当前加载的 ABI 库版本。
   - `motorbridge.abi_capabilities()` 返回当前加载 ABI 的能力 JSON（Python `dict`）。
 - `0.4.3` 新增 Damiao `dm-device` 传输、Python
-  `Controller.from_dm_device(...)`、Python CLI `--transport dm-device`，并让
-  wheel 在目标平台存在 vendored SDK runtime 时打包
+  `Controller.from_dm_device(...)`、Python CLI `--transport dm-device`，并在
+  目标平台存在 vendored SDK runtime 时按需安装
   `libdm_device.so`/`.dylib`/`.dll`。
 - Python CLI 使用 `--transport dm-device` 扫描时，不传 `--dm-channel` 会扫描
   `usb2canfd-dual` 的 CANFD1 和 CANFD2；传 `--dm-channel canfd1` 或

@@ -4,6 +4,7 @@ import ctypes
 from ctypes import c_float, c_int8, c_uint8, c_uint16, c_uint32
 
 from .abi import CState, get_abi
+from .dm_device_runtime import ensure_dm_device_runtime
 from .errors import CallError
 from .models import Mode, MotorState
 
@@ -50,6 +51,7 @@ class Controller:
         dm_channel: str = "canfd1",
     ) -> "Controller":
         self = cls.__new__(cls)
+        ensure_dm_device_runtime(quiet=True)
         self._abi = get_abi()
         self._ptr = self._abi.lib.motor_controller_new_dm_device(
             dm_device_type.encode(),

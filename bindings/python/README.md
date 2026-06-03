@@ -48,19 +48,26 @@ Packaging note:
 
 - Current package target version: `0.4.3`.
 - Published wheel includes `motor_abi` shared library and `ws_gateway` binary for that platform.
-- Published wheel also includes the platform-appropriate DM_Device SDK runtime
-  under `motorbridge/lib/dm_device/` when available for the target platform.
-  Linux manylinux wheels intentionally do not bundle DaMiao `libdm_device.so`
-  because the vendor library requires newer `GLIBCXX` symbols than the
-  manylinux policy allows; set `MOTOR_DM_DEVICE_LIB=/path/to/libdm_device.so`
-  when using `Controller.from_dm_device(...)` from a Linux wheel.
+- Published wheels do not bundle the DaMiao DM_Device SDK runtime. When
+  `Controller.from_dm_device(...)`, Python CLI `--transport dm-device`, or
+  `motorbridge-gateway --transport dm-device` is used, motorbridge resolves the
+  current OS/arch runtime and downloads it into a user cache on first use.
+  This keeps Linux manylinux wheels compatible with `auditwheel` while keeping
+  the runtime behavior consistent across platforms.
+- DM_Device runtime controls:
+  - Preinstall explicitly: `motorbridge-install-dm-device`
+  - Print the resolved path: `motorbridge-install-dm-device --print-path`
+  - Use a manually installed SDK runtime: `MOTOR_DM_DEVICE_LIB=/path/to/libdm_device.so`
+  - Use an internal mirror: `MOTOR_DM_DEVICE_DOWNLOAD_BASE_URL=https://.../third_party/dm_device/v1.1.0`
+  - Disable automatic downloads: `MOTOR_DM_DEVICE_AUTO_DOWNLOAD=0`
+  - Override the cache directory: `MOTOR_DM_DEVICE_CACHE_DIR=/path/to/cache`
 - ABI metadata helpers:
   - `motorbridge.abi_version()` returns the loaded ABI library version.
   - `motorbridge.abi_capabilities()` returns the loaded ABI capability JSON as a Python `dict`.
 - `0.4.3` adds Damiao `dm-device` transport, Python
   `Controller.from_dm_device(...)`, Python CLI `--transport dm-device`, and
-  optional wheel packaging for `libdm_device.so`/`.dylib`/`.dll` when the
-  target platform has a vendored SDK runtime.
+  on-demand runtime installation for `libdm_device.so`/`.dylib`/`.dll` when
+  the target platform has a vendored SDK runtime.
 - For Python CLI scans with `--transport dm-device`, omit `--dm-channel` to scan
   both CANFD1 and CANFD2 on `usb2canfd-dual`; pass `--dm-channel canfd1` or
   `--dm-channel canfd2` to scan one channel.

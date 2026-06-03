@@ -1,0 +1,170 @@
+from __future__ import annotations
+
+import argparse
+import os
+import platform
+import shutil
+import stat
+import sys
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.request import urlopen
+
+from ._version import VERSION
+
+SDK_VERSION = "v1.1.0"
+_REPO = "motorbridge/motorbridge"
+
+
+@dataclass(frozen=True)
+class DmDeviceRuntime:
+    relpath: str
+    lib_name: str
+
+
+def _truthy(raw: str | None, default: bool) -> bool:
+    if raw is None:
+        return default
+    return raw.strip().lower() not in {"0", "false", "off", "no"}
+
+
+def _platform_runtime() -> DmDeviceRuntime:
+    machine = platform.machine().lower()
+    if sys.platform.startswith("linux"):
+        if machine in {"x86_64", "amd64"}:
+            return DmDeviceRuntime("linux/x86_64/libdm_device.so", "libdm_device.so")
+        if machine in {"aarch64", "arm64"}:
+            return DmDeviceRuntime("linux/arm64/libdm_device.so", "libdm_device.so")
+    if sys.platform == "darwin":
+        if machine in {"arm64", "aarch64"}:
+            return DmDeviceRuntime("macos/arm64/libdm_device.dylib", "libdm_device.dylib")
+        if machine in {"x86_64", "amd64"}:
+            return DmDeviceRuntime("macos/x86_64/libdm_device.dylib", "libdm_device.dylib")
+    if sys.platform.startswith("win") and machine in {"x86_64", "amd64"}:
+        return DmDeviceRuntime("windows/msvc/dm_device.dll", "dm_device.dll")
+    raise RuntimeError(f"DM_Device runtime is not available for {sys.platform}/{machine}")
+
+
+def _cache_root() -> Path:
+    env = os.getenv("MOTOR_DM_DEVICE_CACHE_DIR")
+    if env:
+        return Path(env).expanduser()
+    xdg = os.getenv("XDG_CACHE_HOME")
+    if xdg:
+        return Path(xdg).expanduser() / "motorbridge" / "dm_device"
+    return Path.home() / ".cache" / "motorbridge" / "dm_device"
+
+
+def _packaged_runtime_path(runtime: DmDeviceRuntime) -> Path:
+    return Path(__file__).resolve().parent / "lib" / "dm_device" / runtime.lib_name
+
+
+def _cache_runtime_path(runtime: DmDeviceRuntime) -> Path:
+    return _cache_root() / SDK_VERSION / runtime.relpath
+
+
+def _download_base_urls() -> list[str]:
+    override = os.getenv("MOTOR_DM_DEVICE_DOWNLOAD_BASE_URL")
+    if override:
+        return [override.rstrip("/")]
+    return [
+        f"https://raw.githubusercontent.com/{_REPO}/v{VERSION}/third_party/dm_device/{SDK_VERSION}",
+        f"https://raw.githubusercontent.com/{_REPO}/main/third_party/dm_device/{SDK_VERSION}",
+    ]
+
+
+def _url_for(base_url: str, relpath: str) -> str:
+    return f"{base_url.rstrip('/')}/{relpath}"
+
+
+def _download_runtime(runtime: DmDeviceRuntime, dst: Path, quiet: bool) -> Path:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    errors: list[str] = []
+    for base_url in _download_base_urls():
+        url = _url_for(base_url, runtime.relpath)
+        if not quiet:
+            print(f"[motorbridge] downloading DM_Device runtime: {url}", file=sys.stderr)
+        fd, tmp_name = tempfile.mkstemp(prefix=f".{runtime.lib_name}.", dir=str(dst.parent))
+        os.close(fd)
+        tmp = Path(tmp_name)
+        try:
+            with urlopen(url, timeout=30) as resp, tmp.open("wb") as out:
+                shutil.copyfileobj(resp, out)
+            try:
+                mode = tmp.stat().st_mode
+                tmp.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+            except OSError:
+                pass
+            tmp.replace(dst)
+            return dst
+        except (HTTPError, URLError, TimeoutError, OSError) as exc:
+            errors.append(f"{url}: {exc}")
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+
+    raise RuntimeError(
+        "Failed to download DM_Device runtime for this platform.\n"
+        + "\n".join(f"- {err}" for err in errors)
+        + "\nSet MOTOR_DM_DEVICE_LIB=/path/to/libdm_device if you installed the DaMiao SDK manually, "
+        "or set MOTOR_DM_DEVICE_DOWNLOAD_BASE_URL to an internal mirror."
+    )
+
+
+def ensure_dm_device_runtime(*, auto_download: bool | None = None, quiet: bool = False, force: bool = False) -> Path:
+    env_lib = os.getenv("MOTOR_DM_DEVICE_LIB")
+    if env_lib and not force:
+        path = Path(env_lib).expanduser()
+        if path.exists():
+            return path
+        raise RuntimeError(f"MOTOR_DM_DEVICE_LIB points to a missing file: {path}")
+
+    runtime = _platform_runtime()
+
+    packaged = _packaged_runtime_path(runtime)
+    if packaged.exists() and not force:
+        os.environ["MOTOR_DM_DEVICE_LIB"] = str(packaged)
+        return packaged
+
+    cached = _cache_runtime_path(runtime)
+    if cached.exists() and not force:
+        os.environ["MOTOR_DM_DEVICE_LIB"] = str(cached)
+        return cached
+
+    if auto_download is None:
+        auto_download = _truthy(os.getenv("MOTOR_DM_DEVICE_AUTO_DOWNLOAD"), True)
+    if not auto_download:
+        raise RuntimeError(
+            "DM_Device runtime is not installed for this platform. "
+            "Run `motorbridge-install-dm-device`, set MOTOR_DM_DEVICE_LIB, "
+            "or unset MOTOR_DM_DEVICE_AUTO_DOWNLOAD to allow automatic download."
+        )
+
+    downloaded = _download_runtime(runtime, cached, quiet)
+    os.environ["MOTOR_DM_DEVICE_LIB"] = str(downloaded)
+    return downloaded
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Install the DaMiao DM_Device runtime used by motorbridge.")
+    parser.add_argument("--force", action="store_true", help="download again even if a cached runtime exists")
+    parser.add_argument("--print-path", action="store_true", help="print only the installed runtime path")
+    parser.add_argument(
+        "--no-download",
+        action="store_true",
+        help="only resolve an existing runtime; fail if one is not already installed",
+    )
+    args = parser.parse_args(argv)
+
+    path = ensure_dm_device_runtime(auto_download=not args.no_download, quiet=args.print_path, force=args.force)
+    if args.print_path:
+        print(path)
+    else:
+        print(f"DM_Device runtime ready: {path}")
+
+
+if __name__ == "__main__":
+    main()
