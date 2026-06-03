@@ -630,6 +630,20 @@ Binding 接口对齐清单见 [`bindings/api_surface.json`](bindings/api_surface
 | TestPyPI | `Actions -> Python Publish -> repository=testpypi` | 3.10 / 3.11 / 3.12 / 3.13 / 3.14 | Linux（x86_64、aarch64）、Windows（x86_64）、macOS（arm64） | wheel + sdist |
 | PyPI | 推 `vX.Y.Z` 标签或手动 `repository=pypi` | 3.10 / 3.11 / 3.12 / 3.13 / 3.14 | Linux（x86_64、aarch64）、Windows（x86_64）、macOS（arm64） | wheel + sdist |
 
+### B.1) Python DM_Device runtime 矩阵
+
+Python wheel 不内置 DaMiao DM_Device runtime。第一次真正使用 `dm-device`
+时，会在下表标记“支持”的平台按当前 OS/架构下载到用户 cache。
+
+| 平台 / 架构 | 官方 Python wheel | 按需安装 runtime | runtime 文件 | 硬件实测状态 |
+|---|---|---|---|---|
+| Linux x86_64 | 支持 | 支持 | `linux/x86_64/libdm_device.so` | 已实测 USB2CANFD_DUAL CANFD1/CANFD2 扫描 |
+| Linux aarch64 | 支持 | 支持 | `linux/arm64/libdm_device.so` | 待对应主机验证 |
+| Windows x86_64 | 支持 | 支持 | `windows/msvc/dm_device.dll` | 待对应主机验证 |
+| macOS arm64 | 支持 | 支持 | `macos/arm64/libdm_device.dylib` | 待对应主机验证 |
+| macOS x86_64 | 不发布官方 wheel | 仅源码/手动安装 | `macos/x86_64/libdm_device.dylib` | 待对应主机验证 |
+| 其他系统/架构 | 不支持 | 不支持 | 无 vendored runtime | 不支持 |
+
 从 PyPI 安装：
 
 ```bash

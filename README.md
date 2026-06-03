@@ -641,6 +641,21 @@ Binding parity is tracked in [`bindings/api_surface.json`](bindings/api_surface.
 | TestPyPI | `Actions -> Python Publish -> repository=testpypi` | 3.10 / 3.11 / 3.12 / 3.13 / 3.14 | Linux (x86_64, aarch64), Windows (x86_64), macOS (arm64) | wheel + sdist |
 | PyPI | tag `vX.Y.Z` or manual `repository=pypi` | 3.10 / 3.11 / 3.12 / 3.13 / 3.14 | Linux (x86_64, aarch64), Windows (x86_64), macOS (arm64) | wheel + sdist |
 
+### B.1) Python DM_Device Runtime Matrix
+
+Python wheels do not embed the DaMiao DM_Device runtime. The first
+`dm-device` use downloads the matching runtime into the user cache when this
+matrix says "yes".
+
+| Platform / Arch | Published Python Wheel | On-demand Runtime | Runtime File | Hardware Verified |
+|---|---|---|---|---|
+| Linux x86_64 | yes | yes | `linux/x86_64/libdm_device.so` | yes, USB2CANFD_DUAL CANFD1/CANFD2 scan |
+| Linux aarch64 | yes | yes | `linux/arm64/libdm_device.so` | pending host validation |
+| Windows x86_64 | yes | yes | `windows/msvc/dm_device.dll` | pending host validation |
+| macOS arm64 | yes | yes | `macos/arm64/libdm_device.dylib` | pending host validation |
+| macOS x86_64 | no official wheel | source/manual install only | `macos/x86_64/libdm_device.dylib` | pending host validation |
+| Other arch/OS | no | no | none vendored | unsupported |
+
 Install from PyPI:
 
 ```bash

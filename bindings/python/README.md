@@ -61,6 +61,17 @@ Packaging note:
   - Use an internal mirror: `MOTOR_DM_DEVICE_DOWNLOAD_BASE_URL=https://.../third_party/dm_device/v1.1.0`
   - Disable automatic downloads: `MOTOR_DM_DEVICE_AUTO_DOWNLOAD=0`
   - Override the cache directory: `MOTOR_DM_DEVICE_CACHE_DIR=/path/to/cache`
+- DM_Device runtime support matrix:
+
+| Platform / Arch | Published Python Wheel | On-demand DM_Device Runtime | Runtime File | Hardware Verified |
+| --- | --- | --- | --- | --- |
+| Linux x86_64 | yes | yes | `linux/x86_64/libdm_device.so` | yes, USB2CANFD_DUAL CANFD1/CANFD2 scan |
+| Linux aarch64 | yes | yes | `linux/arm64/libdm_device.so` | pending host validation |
+| Windows x86_64 | yes | yes | `windows/msvc/dm_device.dll` | pending host validation |
+| macOS arm64 | yes | yes | `macos/arm64/libdm_device.dylib` | pending host validation |
+| macOS x86_64 | no official wheel | source/manual install only | `macos/x86_64/libdm_device.dylib` | pending host validation |
+| Other arch/OS | no | no | none vendored | unsupported |
+
 - ABI metadata helpers:
   - `motorbridge.abi_version()` returns the loaded ABI library version.
   - `motorbridge.abi_capabilities()` returns the loaded ABI capability JSON as a Python `dict`.
