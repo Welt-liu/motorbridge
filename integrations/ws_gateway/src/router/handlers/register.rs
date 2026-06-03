@@ -210,11 +210,32 @@ fn handle_write_register_u32(v: &Value, ctx: &mut SessionCtx) -> Result<Value, S
     ctx.ensure_connected()?;
     let rid = as_u16(v, "rid", 0) as u8;
     let value = as_u64(v, "value", 0) as u32;
+    let verify = as_bool(v, "verify", true);
+    let verify_timeout_ms = as_u64(v, "verify_timeout_ms", as_u64(v, "timeout_ms", 1000));
+    let verify_attempts = as_u64(v, "verify_attempts", 2).clamp(1, 5);
     match ctx.motor.as_ref() {
         Some(MotorHandle::Damiao(m)) => {
             m.write_register_u32(rid, value)
                 .map_err(|e| e.to_string())?;
-            Ok(json!({"rid": rid, "value": value}))
+            if !verify {
+                return Ok(json!({"rid": rid, "value": value, "verified": false}));
+            }
+            match verify_register_u32(m, rid, value, verify_timeout_ms, verify_attempts) {
+                Ok(readback) => Ok(json!({
+                    "rid": rid,
+                    "value": value,
+                    "readback": readback,
+                    "verified": true
+                })),
+                Err(VerifyError::Timeout(warning)) => Ok(json!({
+                    "rid": rid,
+                    "value": value,
+                    "verified": false,
+                    "warning": warning,
+                    "warnings": [warning]
+                })),
+                Err(VerifyError::Mismatch(err)) => Err(err),
+            }
         }
         Some(MotorHandle::Robstride(_)) => {
             Err("write_register_u32 is damiao-only; use robstride_write_param".to_string())
@@ -228,11 +249,32 @@ fn handle_write_register_f32(v: &Value, ctx: &mut SessionCtx) -> Result<Value, S
     ctx.ensure_connected()?;
     let rid = as_u16(v, "rid", 0) as u8;
     let value = v.get("value").and_then(Value::as_f64).unwrap_or(0.0) as f32;
+    let verify = as_bool(v, "verify", true);
+    let verify_timeout_ms = as_u64(v, "verify_timeout_ms", as_u64(v, "timeout_ms", 1000));
+    let verify_attempts = as_u64(v, "verify_attempts", 2).clamp(1, 5);
     match ctx.motor.as_ref() {
         Some(MotorHandle::Damiao(m)) => {
             m.write_register_f32(rid, value)
                 .map_err(|e| e.to_string())?;
-            Ok(json!({"rid": rid, "value": value}))
+            if !verify {
+                return Ok(json!({"rid": rid, "value": value, "verified": false}));
+            }
+            match verify_register_f32(m, rid, value, verify_timeout_ms, verify_attempts) {
+                Ok(readback) => Ok(json!({
+                    "rid": rid,
+                    "value": value,
+                    "readback": readback,
+                    "verified": true
+                })),
+                Err(VerifyError::Timeout(warning)) => Ok(json!({
+                    "rid": rid,
+                    "value": value,
+                    "verified": false,
+                    "warning": warning,
+                    "warnings": [warning]
+                })),
+                Err(VerifyError::Mismatch(err)) => Err(err),
+            }
         }
         Some(MotorHandle::Robstride(_)) => {
             Err("write_register_f32 is damiao-only; use robstride_write_param".to_string())
@@ -240,6 +282,82 @@ fn handle_write_register_f32(v: &Value, ctx: &mut SessionCtx) -> Result<Value, S
         Some(_) => Err("write_register_f32 is damiao-only".to_string()),
         None => Err("motor not connected".to_string()),
     }
+}
+
+enum VerifyError {
+    Timeout(String),
+    Mismatch(String),
+}
+
+fn verify_register_u32(
+    motor: &motor_vendor_damiao::DamiaoMotor,
+    rid: u8,
+    expected: u32,
+    timeout_ms: u64,
+    attempts: u64,
+) -> Result<u32, VerifyError> {
+    let mut last_timeout = None;
+    for attempt in 0..attempts {
+        match motor.get_register_u32(rid, Duration::from_millis(timeout_ms.max(1))) {
+            Ok(readback) if readback == expected => return Ok(readback),
+            Ok(readback) => {
+                return Err(VerifyError::Mismatch(format!(
+                    "register {rid} verify failed: expected {expected}, got {readback}"
+                )));
+            }
+            Err(motor_core::error::MotorError::Timeout(err)) => {
+                last_timeout = Some(err);
+            }
+            Err(err) => return Err(VerifyError::Mismatch(err.to_string())),
+        }
+        if attempt + 1 < attempts {
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+    Err(VerifyError::Timeout(format!(
+        "register {rid} write sent but readback was not received after {attempts} attempt(s); value may still have been written{}",
+        last_timeout
+            .map(|err| format!(": {err}"))
+            .unwrap_or_default()
+    )))
+}
+
+fn verify_register_f32(
+    motor: &motor_vendor_damiao::DamiaoMotor,
+    rid: u8,
+    expected: f32,
+    timeout_ms: u64,
+    attempts: u64,
+) -> Result<f32, VerifyError> {
+    let mut last_timeout = None;
+    for attempt in 0..attempts {
+        match motor.get_register_f32(rid, Duration::from_millis(timeout_ms.max(1))) {
+            Ok(readback) if f32_close(readback, expected) => return Ok(readback),
+            Ok(readback) => {
+                return Err(VerifyError::Mismatch(format!(
+                    "register {rid} verify failed: expected {expected}, got {readback}"
+                )));
+            }
+            Err(motor_core::error::MotorError::Timeout(err)) => {
+                last_timeout = Some(err);
+            }
+            Err(err) => return Err(VerifyError::Mismatch(err.to_string())),
+        }
+        if attempt + 1 < attempts {
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+    Err(VerifyError::Timeout(format!(
+        "register {rid} write sent but readback was not received after {attempts} attempt(s); value may still have been written{}",
+        last_timeout
+            .map(|err| format!(": {err}"))
+            .unwrap_or_default()
+    )))
+}
+
+fn f32_close(a: f32, b: f32) -> bool {
+    let scale = a.abs().max(b.abs()).max(1.0);
+    (a - b).abs() <= scale * 1e-4
 }
 
 fn handle_get_register_u32(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {

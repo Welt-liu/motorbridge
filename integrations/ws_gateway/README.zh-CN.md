@@ -245,8 +245,8 @@ cargo run -p motor_cli --release -- --vendor damiao --channel can0@1000000 --mod
 {"op":"robstride_param_stream","enabled":true,"profile":"realtime","interval_ms":1000,"timeout_ms":80}
 {"op":"store_parameters"}
 {"op":"set_can_timeout_ms","timeout_ms":1000}
-{"op":"write_register_u32","rid":10,"value":1}
-{"op":"write_register_f32","rid":31,"value":5.0}
+{"op":"write_register_u32","rid":10,"value":1,"verify":true}
+{"op":"write_register_f32","rid":31,"value":5.0,"verify":true}
 {"op":"get_register_u32","rid":7,"timeout_ms":1000}
 {"op":"get_register_f32","rid":21,"timeout_ms":1000}
 {"op":"robstride_ping","timeout_ms":200}

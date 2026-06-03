@@ -995,27 +995,36 @@ RobStride 返回：
 | --- | --- | --- | --- |
 | `rid` | u8/u16/string | `0` | 寄存器 ID |
 | `value` | u32 | `0` | 写入值 |
+| `verify` | bool | `true` | 写入后回读并比较 |
+| `verify_timeout_ms` / `timeout_ms` | u64 | `1000` | 单次回读确认超时 |
+| `verify_attempts` | u64 | `2` | 回读确认次数，范围 `1..5` |
 
 请求：
 
 ```json
-{"op":"write_register_u32","rid":10,"value":2}
+{"op":"write_register_u32","rid":10,"value":2,"verify":true}
 ```
 
 返回：
 
 ```json
-{"rid":10,"value":2}
+{"rid":10,"value":2,"readback":2,"verified":true}
 ```
+
+若写入已发出但回读确认没有收到，返回 `ok:true`，并在 `data.warning` /
+`data.warnings` 中说明未完成确认；若回读值与写入值明确不一致，则返回
+`ok:false`。
 
 ### 11.2 `write_register_f32`
 
 作用：写 Damiao f32 寄存器。
 
+参数同 `write_register_u32`，但 `value` 为 f32。回读确认使用浮点容差比较。
+
 请求：
 
 ```json
-{"op":"write_register_f32","rid":31,"value":5.0}
+{"op":"write_register_f32","rid":31,"value":5.0,"verify":true}
 ```
 
 返回：
