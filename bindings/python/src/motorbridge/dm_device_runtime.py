@@ -134,6 +134,22 @@ def _install_hint(runtime: DmDeviceRuntime) -> str:
     cache_path = _cache_runtime_path(runtime)
     source_path = _source_runtime_path(runtime)
     source_line = f"\n- Source checkout path: {source_path}" if source_path is not None else ""
+    dep_note = ""
+    if runtime.relpath.startswith("linux/x86_64/"):
+        dep_note = (
+            "\nLinux x86_64 dependency note: install libusb-1.0-0 and make sure "
+            "libstdc++.so.6 provides GLIBCXX_3.4.32."
+        )
+    elif runtime.relpath.startswith("linux/arm64/"):
+        dep_note = (
+            "\nLinux arm64 dependency note: install libusb-1.0-0; this runtime "
+            "requires GLIBC_2.17 and GLIBCXX_3.4.22 or newer."
+        )
+    elif runtime.relpath.startswith("windows/"):
+        dep_note = (
+            "\nWindows dependency note: install the USB driver/libusb runtime and "
+            "the Microsoft Visual C++ runtime if the DLL loader reports missing MSVC DLLs."
+        )
     return (
         "DM_Device runtime is not installed for this platform.\n"
         f"Required runtime: {runtime.relpath}\n"
@@ -145,6 +161,7 @@ def _install_hint(runtime: DmDeviceRuntime) -> str:
         f"{source_line}\n"
         "- Or run: motorbridge-install-dm-device --download\n"
         "Reference: third_party/dm_device/README.md"
+        f"{dep_note}"
     )
 
 

@@ -648,14 +648,14 @@ Python wheels do not embed the DaMiao DM_Device runtime. The first
 `dm-device` use resolves the matching runtime. If it is missing, motorbridge
 prints the required file name, GitHub URL, and valid install paths.
 
-| Platform / Arch | Published Python Wheel | DM_Device Runtime Available | Runtime File | Hardware Verified |
-|---|---|---|---|---|
-| Linux x86_64 | yes | yes | `linux/x86_64/libdm_device.so` | yes, USB2CANFD_DUAL CANFD1/CANFD2 scan |
-| Linux aarch64 | yes | yes | `linux/arm64/libdm_device.so` | pending host validation |
-| Windows x86_64 | yes | yes | `windows/msvc/dm_device.dll` | pending host validation |
-| macOS arm64 | yes | yes | `macos/arm64/libdm_device.dylib` | pending host validation |
-| macOS x86_64 | no official wheel | source/manual install only | `macos/x86_64/libdm_device.dylib` | pending host validation |
-| Other arch/OS | no | no | none vendored | unsupported |
+| Platform / Arch | Published Python Wheel | DM_Device Runtime Available | Runtime File | OS/runtime ABI notes | Hardware Verified |
+|---|---|---|---|---|---|
+| Linux x86_64 | yes | yes | `linux/x86_64/libdm_device.so` | needs `libusb-1.0.so.0`, `libstdc++.so.6` with `GLIBCXX_3.4.32`, `GLIBC_2.14+` | yes, USB2CANFD_DUAL CANFD1/CANFD2 scan |
+| Linux aarch64 | yes | yes | `linux/arm64/libdm_device.so` | needs `libusb-1.0.so.0`, `GLIBC_2.17+`, `GLIBCXX_3.4.22+` | pending host validation |
+| Windows x86_64 | yes | yes | `windows/msvc/dm_device.dll` | needs libusb runtime/driver and Microsoft Visual C++ runtime (`MSVCP140*.dll`, `VCRUNTIME140*.dll`) | pending host validation |
+| macOS arm64 | yes | yes | `macos/arm64/libdm_device.dylib` | links system `libc++`, `libSystem`, `libobjc`; final OS floor pending macOS host validation | pending host validation |
+| macOS x86_64 | no official wheel | source/manual install only | `macos/x86_64/libdm_device.dylib` | links system `libc++`, `libSystem`, `libobjc`; final OS floor pending macOS host validation | pending host validation |
+| Other arch/OS | no | no | none vendored | unsupported | unsupported |
 
 Install from PyPI:
 

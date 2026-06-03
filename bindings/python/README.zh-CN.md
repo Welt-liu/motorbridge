@@ -63,14 +63,14 @@
   - 指定 cache 目录：`MOTOR_DM_DEVICE_CACHE_DIR=/path/to/cache`
 - DM_Device runtime 支持矩阵：
 
-| 平台 / 架构 | 官方 Python wheel | DM_Device runtime 可用 | runtime 文件 | 硬件实测状态 |
-| --- | --- | --- | --- | --- |
-| Linux x86_64 | 支持 | 支持 | `linux/x86_64/libdm_device.so` | 已实测 USB2CANFD_DUAL CANFD1/CANFD2 扫描 |
-| Linux aarch64 | 支持 | 支持 | `linux/arm64/libdm_device.so` | 待对应主机验证 |
-| Windows x86_64 | 支持 | 支持 | `windows/msvc/dm_device.dll` | 待对应主机验证 |
-| macOS arm64 | 支持 | 支持 | `macos/arm64/libdm_device.dylib` | 待对应主机验证 |
-| macOS x86_64 | 不发布官方 wheel | 仅源码/手动安装 | `macos/x86_64/libdm_device.dylib` | 待对应主机验证 |
-| 其他系统/架构 | 不支持 | 不支持 | 无 vendored runtime | 不支持 |
+| 平台 / 架构 | 官方 Python wheel | DM_Device runtime 可用 | runtime 文件 | OS/runtime ABI 依赖 | 硬件实测状态 |
+| --- | --- | --- | --- | --- | --- |
+| Linux x86_64 | 支持 | 支持 | `linux/x86_64/libdm_device.so` | 需要 `libusb-1.0.so.0`，以及带 `GLIBCXX_3.4.32` 的 `libstdc++.so.6`，`GLIBC_2.14+` | 已实测 USB2CANFD_DUAL CANFD1/CANFD2 扫描 |
+| Linux aarch64 | 支持 | 支持 | `linux/arm64/libdm_device.so` | 需要 `libusb-1.0.so.0`，`GLIBC_2.17+`，`GLIBCXX_3.4.22+` | 待对应主机验证 |
+| Windows x86_64 | 支持 | 支持 | `windows/msvc/dm_device.dll` | 需要 libusb runtime/驱动和 Microsoft Visual C++ runtime（`MSVCP140*.dll`、`VCRUNTIME140*.dll`） | 待对应主机验证 |
+| macOS arm64 | 支持 | 支持 | `macos/arm64/libdm_device.dylib` | 链接系统 `libc++`、`libSystem`、`libobjc`；最低 macOS 版本待主机验证 | 待对应主机验证 |
+| macOS x86_64 | 不发布官方 wheel | 仅源码/手动安装 | `macos/x86_64/libdm_device.dylib` | 链接系统 `libc++`、`libSystem`、`libobjc`；最低 macOS 版本待主机验证 | 待对应主机验证 |
+| 其他系统/架构 | 不支持 | 不支持 | 无 vendored runtime | 不支持 | 不支持 |
 
 - ABI 元数据 helper：
   - `motorbridge.abi_version()` 返回当前加载的 ABI 库版本。

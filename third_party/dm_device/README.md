@@ -94,15 +94,33 @@ is what controls which architectures support `dm-device`.
 
 ## Support Matrix
 
-| Platform / Architecture | Runtime Path | Python Wheel | `dm-device` Runtime | Hardware Verified |
-|---|---|---|---|---|
-| Linux x86_64 | `v1.1.0/linux/x86_64/libdm_device.so` | yes | supported | yes, USB2CANFD_DUAL CANFD1/CANFD2 scan |
-| Linux aarch64 / arm64 | `v1.1.0/linux/arm64/libdm_device.so` | yes | supported | pending host validation |
-| Windows x86_64 MSVC | `v1.1.0/windows/msvc/dm_device.dll` | yes | supported | pending host validation |
-| Windows x86_64 MinGW | `v1.1.0/windows/mingw/libdm_device.dll` | ABI/CLI build support | supported | pending host validation |
-| macOS arm64 | `v1.1.0/macos/arm64/libdm_device.dylib` | yes | supported | pending host validation |
-| macOS x86_64 | `v1.1.0/macos/x86_64/libdm_device.dylib` | no official wheel | source/manual install only | pending host validation |
-| Other OS/arch | none | no | unsupported | unsupported |
+| Platform / Architecture | Runtime Path | Python Wheel | `dm-device` Runtime | OS/runtime ABI notes | Hardware Verified |
+|---|---|---|---|---|---|
+| Linux x86_64 | `v1.1.0/linux/x86_64/libdm_device.so` | yes | supported | needs `libusb-1.0.so.0`, `libstdc++.so.6` with `GLIBCXX_3.4.32`, `GLIBC_2.14+` | yes, USB2CANFD_DUAL CANFD1/CANFD2 scan |
+| Linux aarch64 / arm64 | `v1.1.0/linux/arm64/libdm_device.so` | yes | supported | needs `libusb-1.0.so.0`, `GLIBC_2.17+`, `GLIBCXX_3.4.22+` | pending host validation |
+| Windows x86_64 MSVC | `v1.1.0/windows/msvc/dm_device.dll` | yes | supported | needs libusb runtime/driver and Microsoft Visual C++ runtime (`MSVCP140*.dll`, `VCRUNTIME140*.dll`) | pending host validation |
+| Windows x86_64 MinGW | `v1.1.0/windows/mingw/libdm_device.dll` | ABI/CLI build support | supported | needs `libusb-1.0.dll`, `libstdc++-6.dll`, `libgcc_s_seh-1.dll`, Universal CRT | pending host validation |
+| macOS arm64 | `v1.1.0/macos/arm64/libdm_device.dylib` | yes | supported | links system `libc++`, `libSystem`, `libobjc`; final OS floor pending macOS host validation | pending host validation |
+| macOS x86_64 | `v1.1.0/macos/x86_64/libdm_device.dylib` | no official wheel | source/manual install only | links system `libc++`, `libSystem`, `libobjc`; final OS floor pending macOS host validation | pending host validation |
+| Other OS/arch | none | no | unsupported | unsupported | unsupported |
+
+Linux dependency checks:
+
+```bash
+# Check the vendor library's declared dynamic dependencies.
+readelf -d third_party/dm_device/v1.1.0/linux/x86_64/libdm_device.so
+
+# Check whether the host libstdc++ provides the required GLIBCXX symbol.
+strings /usr/lib/x86_64-linux-gnu/libstdc++.so.6 | grep GLIBCXX_3.4.32
+
+# Check libusb runtime availability.
+ldconfig -p | grep libusb-1.0.so.0
+```
+
+The Linux x86_64 `GLIBCXX_3.4.32` requirement is the reason Python manylinux
+wheels do not embed `libdm_device.so`: `auditwheel` rejects wheels carrying a
+vendor library that depends on newer libstdc++ symbols than the manylinux
+policy allows.
 
 ## Relationship To Motorbridge
 
