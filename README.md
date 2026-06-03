@@ -29,9 +29,9 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
   `dm-device` is enabled only for targets that have a matching SDK runtime
   file there. Python wheels do not bundle that vendor runtime; when Python SDK,
   Python CLI, or `motorbridge-gateway` first uses `dm-device`, motorbridge
-  downloads the matching OS/arch runtime into a user cache. For offline hosts,
-  run `motorbridge-install-dm-device` ahead of time or set
-  `MOTOR_DM_DEVICE_LIB=/path/to/libdm_device`.
+  resolves the matching OS/arch runtime and, if it is missing, tells the user
+  which file to download from `third_party/dm_device` and where to place it.
+  Users can also set `MOTOR_DM_DEVICE_LIB=/path/to/libdm_device`.
 - `v0.4.3` uses a small C++ shim for the SDK boundary and reuses the already
   opened SDK handle in long-running processes, which keeps repeated WS scans
   from requiring a USB unplug/replug cycle.
@@ -84,7 +84,8 @@ Current status:
 - `[DM-DEVICE]` is integrated for Damiao and verified on Linux x86_64 with
   USB2CANFD_DUAL CANFD1/CANFD2 scans. Build/package support follows the SDK
   runtime files vendored in `third_party/dm_device/v1.1.0`; Python wheels
-  install the matching runtime on demand instead of embedding it.
+  resolve the matching runtime and print setup instructions instead of
+  embedding it.
 - No motor model is officially marked as CAN-FD validated in this repository yet.
 
 ## Current Vendor Support
@@ -644,10 +645,10 @@ Binding parity is tracked in [`bindings/api_surface.json`](bindings/api_surface.
 ### B.1) Python DM_Device Runtime Matrix
 
 Python wheels do not embed the DaMiao DM_Device runtime. The first
-`dm-device` use downloads the matching runtime into the user cache when this
-matrix says "yes".
+`dm-device` use resolves the matching runtime. If it is missing, motorbridge
+prints the required file name, GitHub URL, and valid install paths.
 
-| Platform / Arch | Published Python Wheel | On-demand Runtime | Runtime File | Hardware Verified |
+| Platform / Arch | Published Python Wheel | DM_Device Runtime Available | Runtime File | Hardware Verified |
 |---|---|---|---|---|
 | Linux x86_64 | yes | yes | `linux/x86_64/libdm_device.so` | yes, USB2CANFD_DUAL CANFD1/CANFD2 scan |
 | Linux aarch64 | yes | yes | `linux/arm64/libdm_device.so` | pending host validation |

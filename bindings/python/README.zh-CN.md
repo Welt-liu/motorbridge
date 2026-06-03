@@ -50,18 +50,20 @@
   DaMiao DM_Device SDK runtime。真正使用 `Controller.from_dm_device(...)`、
   Python CLI `--transport dm-device` 或
   `motorbridge-gateway --transport dm-device` 时，motorbridge 会按当前
-  OS/架构解析并在首次使用时下载到用户 cache。这样 Linux manylinux wheel
-  能通过 `auditwheel`，各平台运行体验也保持一致。
+  OS/架构解析 runtime。如果缺少库，会提示需要哪个文件、GitHub 下载地址以及
+  可以放到哪些路径。这样 Linux manylinux wheel 能通过 `auditwheel`，运行时
+  准备过程也保持显式可控。
 - DM_Device runtime 控制项：
-  - 显式预安装：`motorbridge-install-dm-device`
+  - 查看所需 runtime 与安装路径：`motorbridge-install-dm-device`
+  - 显式下载到用户 cache：`motorbridge-install-dm-device --download`
   - 只打印解析路径：`motorbridge-install-dm-device --print-path`
   - 使用手动安装的 SDK runtime：`MOTOR_DM_DEVICE_LIB=/path/to/libdm_device.so`
-  - 使用内网镜像：`MOTOR_DM_DEVICE_DOWNLOAD_BASE_URL=https://.../third_party/dm_device/v1.1.0`
-  - 禁用自动下载：`MOTOR_DM_DEVICE_AUTO_DOWNLOAD=0`
+  - 使用源码树位置：`third_party/dm_device/v1.1.0/<platform>/<arch>/<runtime>`
+  - 显式下载时使用内网镜像：`MOTOR_DM_DEVICE_DOWNLOAD_BASE_URL=https://.../third_party/dm_device/v1.1.0`
   - 指定 cache 目录：`MOTOR_DM_DEVICE_CACHE_DIR=/path/to/cache`
 - DM_Device runtime 支持矩阵：
 
-| 平台 / 架构 | 官方 Python wheel | 按需安装 DM_Device runtime | runtime 文件 | 硬件实测状态 |
+| 平台 / 架构 | 官方 Python wheel | DM_Device runtime 可用 | runtime 文件 | 硬件实测状态 |
 | --- | --- | --- | --- | --- |
 | Linux x86_64 | 支持 | 支持 | `linux/x86_64/libdm_device.so` | 已实测 USB2CANFD_DUAL CANFD1/CANFD2 扫描 |
 | Linux aarch64 | 支持 | 支持 | `linux/arm64/libdm_device.so` | 待对应主机验证 |
@@ -75,7 +77,7 @@
   - `motorbridge.abi_capabilities()` 返回当前加载 ABI 的能力 JSON（Python `dict`）。
 - `0.4.3` 新增 Damiao `dm-device` 传输、Python
   `Controller.from_dm_device(...)`、Python CLI `--transport dm-device`，并在
-  目标平台存在 vendored SDK runtime 时按需安装
+  目标平台存在 vendored SDK runtime 时显式解析
   `libdm_device.so`/`.dylib`/`.dll`。
 - Python CLI 使用 `--transport dm-device` 扫描时，不传 `--dm-channel` 会扫描
   `usb2canfd-dual` 的 CANFD1 和 CANFD2；传 `--dm-channel canfd1` 或

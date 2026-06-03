@@ -65,6 +65,17 @@ def _cache_runtime_path(runtime: DmDeviceRuntime) -> Path:
     return _cache_root() / SDK_VERSION / runtime.relpath
 
 
+def _source_runtime_path(runtime: DmDeviceRuntime) -> Path | None:
+    try:
+        repo_root = Path(__file__).resolve().parents[4]
+    except IndexError:
+        return None
+    third_party_root = repo_root / "third_party" / "dm_device"
+    if not third_party_root.exists():
+        return None
+    return third_party_root / SDK_VERSION / runtime.relpath
+
+
 def _download_base_urls() -> list[str]:
     override = os.getenv("MOTOR_DM_DEVICE_DOWNLOAD_BASE_URL")
     if override:
@@ -114,6 +125,29 @@ def _download_runtime(runtime: DmDeviceRuntime, dst: Path, quiet: bool) -> Path:
     )
 
 
+def _install_hint(runtime: DmDeviceRuntime) -> str:
+    repo_url = f"https://github.com/{_REPO}/tree/main/third_party/dm_device/{SDK_VERSION}"
+    raw_url = _url_for(
+        f"https://raw.githubusercontent.com/{_REPO}/main/third_party/dm_device/{SDK_VERSION}",
+        runtime.relpath,
+    )
+    cache_path = _cache_runtime_path(runtime)
+    source_path = _source_runtime_path(runtime)
+    source_line = f"\n- Source checkout path: {source_path}" if source_path is not None else ""
+    return (
+        "DM_Device runtime is not installed for this platform.\n"
+        f"Required runtime: {runtime.relpath}\n"
+        f"Download page: {repo_url}\n"
+        f"Direct file URL: {raw_url}\n"
+        "Install options:\n"
+        f"- Set MOTOR_DM_DEVICE_LIB=/absolute/path/to/{runtime.lib_name}\n"
+        f"- Or place the file at the motorbridge cache path: {cache_path}"
+        f"{source_line}\n"
+        "- Or run: motorbridge-install-dm-device --download\n"
+        "Reference: third_party/dm_device/README.md"
+    )
+
+
 def ensure_dm_device_runtime(*, auto_download: bool | None = None, quiet: bool = False, force: bool = False) -> Path:
     env_lib = os.getenv("MOTOR_DM_DEVICE_LIB")
     if env_lib and not force:
@@ -129,19 +163,20 @@ def ensure_dm_device_runtime(*, auto_download: bool | None = None, quiet: bool =
         os.environ["MOTOR_DM_DEVICE_LIB"] = str(packaged)
         return packaged
 
+    source_path = _source_runtime_path(runtime)
+    if source_path is not None and source_path.exists() and not force:
+        os.environ["MOTOR_DM_DEVICE_LIB"] = str(source_path)
+        return source_path
+
     cached = _cache_runtime_path(runtime)
     if cached.exists() and not force:
         os.environ["MOTOR_DM_DEVICE_LIB"] = str(cached)
         return cached
 
     if auto_download is None:
-        auto_download = _truthy(os.getenv("MOTOR_DM_DEVICE_AUTO_DOWNLOAD"), True)
+        auto_download = _truthy(os.getenv("MOTOR_DM_DEVICE_AUTO_DOWNLOAD"), False)
     if not auto_download:
-        raise RuntimeError(
-            "DM_Device runtime is not installed for this platform. "
-            "Run `motorbridge-install-dm-device`, set MOTOR_DM_DEVICE_LIB, "
-            "or unset MOTOR_DM_DEVICE_AUTO_DOWNLOAD to allow automatic download."
-        )
+        raise RuntimeError(_install_hint(runtime))
 
     downloaded = _download_runtime(runtime, cached, quiet)
     os.environ["MOTOR_DM_DEVICE_LIB"] = str(downloaded)
@@ -149,7 +184,8 @@ def ensure_dm_device_runtime(*, auto_download: bool | None = None, quiet: bool =
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Install the DaMiao DM_Device runtime used by motorbridge.")
+    parser = argparse.ArgumentParser(description="Inspect or install the DaMiao DM_Device runtime used by motorbridge.")
+    parser.add_argument("--download", action="store_true", help="download the matching runtime into the user cache")
     parser.add_argument("--force", action="store_true", help="download again even if a cached runtime exists")
     parser.add_argument("--print-path", action="store_true", help="print only the installed runtime path")
     parser.add_argument(
@@ -159,7 +195,15 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
 
-    path = ensure_dm_device_runtime(auto_download=not args.no_download, quiet=args.print_path, force=args.force)
+    try:
+        path = ensure_dm_device_runtime(
+            auto_download=args.download and not args.no_download,
+            quiet=args.print_path,
+            force=args.force,
+        )
+    except RuntimeError as exc:
+        print(exc, file=sys.stderr)
+        raise SystemExit(2) from None
     if args.print_path:
         print(path)
     else:

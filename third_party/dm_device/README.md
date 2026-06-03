@@ -26,6 +26,51 @@ support without depending on a developer's local copy of
 
 - Windows runtime/import libraries for MSVC and MinGW builds.
 
+## User Runtime Setup
+
+Python wheels do not embed these vendor runtime libraries. When a user runs
+`Controller.from_dm_device(...)`, `motorbridge-cli --transport dm-device`, or
+`motorbridge-gateway --transport dm-device`, motorbridge first tries to find the
+matching runtime in these places:
+
+1. `MOTOR_DM_DEVICE_LIB=/absolute/path/to/<runtime>`
+2. A source checkout path:
+   `third_party/dm_device/v1.1.0/<platform>/<arch>/<runtime>`
+3. A user cache path:
+   `~/.cache/motorbridge/dm_device/v1.1.0/<platform>/<arch>/<runtime>`
+   or `$XDG_CACHE_HOME/motorbridge/dm_device/v1.1.0/...`
+
+If the file is missing, motorbridge prints the required runtime path and a
+download URL. The canonical download page is:
+
+```text
+https://github.com/motorbridge/motorbridge/tree/main/third_party/dm_device
+```
+
+Example for Linux x86_64:
+
+```bash
+mkdir -p ~/.cache/motorbridge/dm_device/v1.1.0/linux/x86_64
+curl -L \
+  -o ~/.cache/motorbridge/dm_device/v1.1.0/linux/x86_64/libdm_device.so \
+  https://raw.githubusercontent.com/motorbridge/motorbridge/main/third_party/dm_device/v1.1.0/linux/x86_64/libdm_device.so
+
+# Or point directly at a manually downloaded SDK file:
+export MOTOR_DM_DEVICE_LIB=/absolute/path/to/libdm_device.so
+```
+
+The helper command prints the same guidance:
+
+```bash
+motorbridge-install-dm-device
+```
+
+It downloads only when explicitly requested:
+
+```bash
+motorbridge-install-dm-device --download
+```
+
 ## Platform Support Rule
 
 `dm-device` support is intentionally tied to the SDK runtime libraries that are
@@ -46,6 +91,18 @@ real `DmDeviceBus`. If the mapped file is missing, motorbridge still builds for
 that target, but `--transport dm-device` reports that DM_Device SDK is not
 bundled for the platform. In other words, adding/removing SDK runtime files here
 is what controls which architectures support `dm-device`.
+
+## Support Matrix
+
+| Platform / Architecture | Runtime Path | Python Wheel | `dm-device` Runtime | Hardware Verified |
+|---|---|---|---|---|
+| Linux x86_64 | `v1.1.0/linux/x86_64/libdm_device.so` | yes | supported | yes, USB2CANFD_DUAL CANFD1/CANFD2 scan |
+| Linux aarch64 / arm64 | `v1.1.0/linux/arm64/libdm_device.so` | yes | supported | pending host validation |
+| Windows x86_64 MSVC | `v1.1.0/windows/msvc/dm_device.dll` | yes | supported | pending host validation |
+| Windows x86_64 MinGW | `v1.1.0/windows/mingw/libdm_device.dll` | ABI/CLI build support | supported | pending host validation |
+| macOS arm64 | `v1.1.0/macos/arm64/libdm_device.dylib` | yes | supported | pending host validation |
+| macOS x86_64 | `v1.1.0/macos/x86_64/libdm_device.dylib` | no official wheel | source/manual install only | pending host validation |
+| Other OS/arch | none | no | unsupported | unsupported |
 
 ## Relationship To Motorbridge
 
@@ -133,19 +190,14 @@ Known current limits:
 
 ## Packaging
 
-Python packaging copies only the platform-appropriate DM_Device runtime into
-the wheel under:
-
-```text
-motorbridge/lib/dm_device/
-```
-
-At import time, `bindings/python/src/motorbridge/abi.py` sets
-`MOTOR_DM_DEVICE_LIB` to the packaged library when the environment variable is
-not already set.
+Python packaging intentionally does not copy `libdm_device.so`/`.dylib`/`.dll`
+into wheels. This avoids manylinux `auditwheel` failures caused by the vendor
+Linux library's newer `GLIBCXX` dependency, and keeps the vendor runtime setup
+explicit.
 
 For development or diagnostics, `MOTOR_DM_DEVICE_LIB` can be set manually to
-override the library path.
+override the library path. Source-tree runs also resolve files placed under
+`third_party/dm_device/v1.1.0/...`.
 
 ## Updating The SDK
 

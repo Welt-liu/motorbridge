@@ -28,9 +28,9 @@
 - `v0.4.3` 将 DM_Device SDK runtime 放入 `third_party/dm_device`。
   `dm-device` 只在该目录存在目标平台匹配 runtime 文件时启用。Python wheel
   不再内置厂商 runtime；Python SDK、Python CLI 或 `motorbridge-gateway`
-  首次使用 `dm-device` 时，会把当前 OS/架构对应的 runtime 下载到用户 cache。
-  离线机器可提前运行 `motorbridge-install-dm-device`，或设置
-  `MOTOR_DM_DEVICE_LIB=/path/to/libdm_device`。
+  首次使用 `dm-device` 时，会解析当前 OS/架构对应的 runtime；如果缺少库，
+  会提示用户需要从 `third_party/dm_device` 下载哪个文件以及放到哪里。
+  也可以设置 `MOTOR_DM_DEVICE_LIB=/path/to/libdm_device`。
 - `v0.4.3` 使用一个小型 C++ shim 承接 SDK 边界，并在长进程中复用已打开的
   SDK handle，避免 WS 连续扫描时每次都重新打开 USB 适配器导致需要重新插拔。
 - Linux x86_64 已完成 release build、wheel build、wheel 安装后运行、真实硬件
@@ -74,7 +74,7 @@
 - `[DM-DEVICE]` 已完成 Damiao 接入，并在 Linux x86_64 + USB2CANFD_DUAL
   的 CANFD1/CANFD2 扫描中完成验证。编译/打包支持范围跟
   `third_party/dm_device/v1.1.0` 中实际 vendored 的 SDK runtime 文件一致；
-  Python wheel 按需安装匹配 runtime，而不是把它内置进 wheel。
+  Python wheel 解析匹配 runtime 并给出缺库安装提示，而不是把它内置进 wheel。
 - 仓库内尚未声明“某个电机型号已完成 CAN-FD 量产级验证矩阵”。
 
 ## 当前支持的厂商
@@ -633,9 +633,10 @@ Binding 接口对齐清单见 [`bindings/api_surface.json`](bindings/api_surface
 ### B.1) Python DM_Device runtime 矩阵
 
 Python wheel 不内置 DaMiao DM_Device runtime。第一次真正使用 `dm-device`
-时，会在下表标记“支持”的平台按当前 OS/架构下载到用户 cache。
+时，会解析当前 OS/架构对应的 runtime；如果缺少库，会提示所需文件、GitHub
+地址和可放置路径。
 
-| 平台 / 架构 | 官方 Python wheel | 按需安装 runtime | runtime 文件 | 硬件实测状态 |
+| 平台 / 架构 | 官方 Python wheel | DM_Device runtime 可用 | runtime 文件 | 硬件实测状态 |
 |---|---|---|---|---|
 | Linux x86_64 | 支持 | 支持 | `linux/x86_64/libdm_device.so` | 已实测 USB2CANFD_DUAL CANFD1/CANFD2 扫描 |
 | Linux aarch64 | 支持 | 支持 | `linux/arm64/libdm_device.so` | 待对应主机验证 |
