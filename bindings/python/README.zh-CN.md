@@ -48,6 +48,10 @@
 - 当前目标包版本：`0.4.3`。
 - wheel 会随包携带当前平台对应的 `motor_abi`、`ws_gateway`，并在平台支持时携带
   DM_Device SDK runtime（`motorbridge/lib/dm_device/`）。
+  Linux manylinux wheel 为了通过 auditwheel，不内置 DaMiao
+  `libdm_device.so`（厂商库依赖的 `GLIBCXX` 版本高于 manylinux policy）；
+  Linux wheel 使用 `Controller.from_dm_device(...)` 时请设置
+  `MOTOR_DM_DEVICE_LIB=/path/to/libdm_device.so`。
 - ABI 元数据 helper：
   - `motorbridge.abi_version()` 返回当前加载的 ABI 库版本。
   - `motorbridge.abi_capabilities()` 返回当前加载 ABI 的能力 JSON（Python `dict`）。

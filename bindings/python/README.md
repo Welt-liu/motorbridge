@@ -50,6 +50,10 @@ Packaging note:
 - Published wheel includes `motor_abi` shared library and `ws_gateway` binary for that platform.
 - Published wheel also includes the platform-appropriate DM_Device SDK runtime
   under `motorbridge/lib/dm_device/` when available for the target platform.
+  Linux manylinux wheels intentionally do not bundle DaMiao `libdm_device.so`
+  because the vendor library requires newer `GLIBCXX` symbols than the
+  manylinux policy allows; set `MOTOR_DM_DEVICE_LIB=/path/to/libdm_device.so`
+  when using `Controller.from_dm_device(...)` from a Linux wheel.
 - ABI metadata helpers:
   - `motorbridge.abi_version()` returns the loaded ABI library version.
   - `motorbridge.abi_capabilities()` returns the loaded ABI capability JSON as a Python `dict`.

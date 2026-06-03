@@ -50,7 +50,7 @@ jobs:
           CIBW_SKIP: "*musllinux* *i686* *pp*"
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
           CIBW_BUILD_FRONTEND: pip
-          CIBW_ENVIRONMENT_LINUX: MOTORBRIDGE_LIB=/project/target/release/libmotor_abi.so MOTORBRIDGE_WS_GATEWAY_BIN=/project/target/release/ws_gateway
+          CIBW_ENVIRONMENT_LINUX: MOTORBRIDGE_LIB=/project/target/release/libmotor_abi.so MOTORBRIDGE_WS_GATEWAY_BIN=/project/target/release/ws_gateway MOTOR_DM_DEVICE_BUNDLE=0
           CIBW_BEFORE_ALL_LINUX: >
             curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal &&
             . $HOME/.cargo/env &&

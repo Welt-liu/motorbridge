@@ -66,7 +66,14 @@ def _candidate_dm_device_paths() -> list[Path]:
     return candidates
 
 
+def _bundle_dm_device_runtime() -> bool:
+    raw = os.getenv("MOTOR_DM_DEVICE_BUNDLE", "1").strip().lower()
+    return raw not in {"0", "false", "off", "no"}
+
+
 def _find_dm_device_path() -> Path | None:
+    if not _bundle_dm_device_runtime():
+        return None
     for path in _candidate_dm_device_paths():
         if path.exists():
             return path
