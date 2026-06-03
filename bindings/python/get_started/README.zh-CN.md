@@ -28,10 +28,13 @@ python3 -m pip install -i https://test.pypi.org/simple/ motorbridge==<版本号>
   使用标准 CAN 通道（`CHANNEL` 生效）。
 - `TRANSPORT = "dm-serial"`：
   走 Damiao 串口桥（`SERIAL_PORT` / `SERIAL_BAUD` 生效），只支持 Damiao。
+- `TRANSPORT = "dm-device"`：
+  走 DaMiao DM_Device SDK（`DM_DEVICE_TYPE` / `DM_CHANNEL` 生效），只支持 Damiao。
 
 快速判断：
 - 你用 CAN 设备（PCAN/CANable candleLight/gs_usb）就用 `auto/socketcan`。
 - 你用 Damiao 串口桥（如 `/dev/ttyACM0`）就用 `dm-serial`。
+- 你用 Damiao USB2CANFD_DUAL 就用 `dm-device`，并通过 `DM_CHANNEL=canfd1/canfd2` 选择物理通道。
 
 ## 3）快速命令（无需源码）
 
@@ -51,7 +54,7 @@ motorbridge-cli run --vendor damiao --channel can0 --model 4340P --motor-id 0x01
 
 ### 顶部常量参数含义（小白版）
 
-- `TRANSPORT`：链路类型（`auto/socketcan/dm-serial`）
+- `TRANSPORT`：链路类型（`auto/socketcan/socketcanfd/dm-serial/dm-device`）
 - `CHANNEL`：CAN 接口名（Linux: `can0/can1`；Windows: `can0@1000000`）
 - `VENDOR`：扫描厂商（`all` 最常用）
 - `MOTOR_ID`：电机控制 ID
@@ -62,6 +65,7 @@ motorbridge-cli run --vendor damiao --channel can0 --model 4340P --motor-id 0x01
 - `LOOP`：循环次数（越大发送越久）
 - `DT_MS`：循环周期毫秒（总线忙时增大到 30/50）
 - `SERIAL_PORT` / `SERIAL_BAUD`：仅 `dm-serial` 使用
+- `DM_DEVICE_TYPE` / `DM_CHANNEL`：仅 `dm-device` 使用
 
 ## 5）课程化系列（强烈推荐）
 

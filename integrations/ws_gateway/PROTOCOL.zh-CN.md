@@ -56,6 +56,12 @@ Damiao / 串口桥：
 cargo run -p ws_gateway --release -- --bind 127.0.0.1:9002 --vendor damiao --transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600 --model 4340P --motor-id 0x01 --feedback-id 0x11 --dt-ms 20
 ```
 
+Damiao / DM_Device SDK USB2CANFD_DUAL：
+
+```bash
+cargo run -p ws_gateway --release -- --bind 127.0.0.1:9002 --vendor damiao --transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd2 --model 4310 --motor-id 0x04 --feedback-id 0x14 --dt-ms 20
+```
+
 RobStride：
 
 ```bash
@@ -90,10 +96,12 @@ motorbridge-gateway -- --bind 127.0.0.1:9002 --vendor robstride --channel can0@1
 | --- | --- | --- | --- |
 | `--bind` | string | `127.0.0.1:9002` | WebSocket 监听地址 |
 | `--vendor` | enum | `damiao` | 默认厂商：`damiao` / `robstride` / `hexfellow` / `myactuator` / `hightorque` |
-| `--transport` | enum | `auto` | 链路：`auto` / `socketcan` / `socketcanfd` / `dm-serial` |
+| `--transport` | enum | `auto` | 链路：`auto` / `socketcan` / `socketcanfd` / `dm-serial` / `dm-device` |
 | `--channel` | string | `can0` | CAN 通道。Linux 通常 `can0`；Windows PCAN 可用 `can0@1000000` |
 | `--serial-port` | string | `/dev/ttyACM0` | Damiao `dm-serial` 串口设备 |
 | `--serial-baud` | u32 | `921600` | Damiao `dm-serial` 波特率 |
+| `--dm-device-type` | string | `usb2canfd-dual` | Damiao `dm-device` 适配器类型：`usb2canfd` / `usb2canfd-dual` / `linkx4c` |
+| `--dm-channel` | string | `canfd1` | Damiao `dm-device` 控制通道：`canfd1` / `canfd2`；scan 消息不带 `dm_channel` 时会扫描双通道适配器的 CANFD1/CANFD2 |
 | `--model` | string | 厂商默认 | 电机型号，例如 `4340P` / `rs-00` |
 | `--motor-id` | u16 | `0x01` | 电机命令 ID / device ID |
 | `--feedback-id` | u16 | 厂商默认 | 反馈 ID。RobStride 中它是 host_id，不是 motor_id |
@@ -149,6 +157,8 @@ ID 字段支持数字或十六进制字符串：
 | `vendor` | string | 当前 target vendor | 临时指定厂商 |
 | `transport` | string | 当前 target transport | 临时指定链路 |
 | `channel` | string | 当前 target channel | CAN 通道 |
+| `dm_device_type` | string | 当前 target dm_device_type | `dm-device` 适配器类型 |
+| `dm_channel` | string | 当前 target dm_channel | `dm-device` 通道 |
 | `model` | string | 当前 target model | 型号 |
 | `motor_id` | u16 | 当前 target motor_id | 电机 ID |
 | `feedback_id` | u16 | 当前 target feedback_id | 反馈 ID / RobStride host_id |
@@ -258,6 +268,8 @@ RobStride 返回：
 | `channel` | string | 当前 channel | CAN 通道 |
 | `serial_port` | string | 当前 serial_port | `dm-serial` 串口 |
 | `serial_baud` | u32 | 当前 serial_baud | `dm-serial` 波特率 |
+| `dm_device_type` | string | 当前 dm_device_type | `dm-device` 适配器类型；也接受 `dm-device-type` |
+| `dm_channel` | string | 当前 dm_channel | `dm-device` 通道；也接受 `dm-channel` |
 | `model` | string | 当前 model | 型号 |
 | `motor_id` | u16/string | 当前 motor_id | 电机 ID |
 | `feedback_id` | u16/string | 当前 feedback_id | 反馈 ID / host_id |
@@ -266,6 +278,12 @@ RobStride 返回：
 
 ```json
 {"op":"set_target","vendor":"damiao","transport":"dm-serial","serial_port":"/dev/ttyACM0","serial_baud":921600,"model":"4340P","motor_id":"0x01","feedback_id":"0x11"}
+```
+
+Damiao / DM_Device SDK：
+
+```json
+{"op":"set_target","vendor":"damiao","transport":"dm-device","dm_device_type":"usb2canfd-dual","dm_channel":"canfd2","model":"4310","motor_id":"0x04","feedback_id":"0x14"}
 ```
 
 RobStride：
@@ -400,7 +418,7 @@ RobStride：
 
 ### 8.8 `damiao_state_many`
 
-作用：Damiao 专用的多电机状态批量读取。适合 `dm-serial` 整机机械臂扫描后，
+作用：Damiao 专用的多电机状态批量读取。适合 `dm-serial` 或 `dm-device` 整机机械臂扫描后，
 浏览器上位机按扫描结果周期刷新多个关节的 `pos` / `vel` / `torq`。
 
 请求：
@@ -1256,6 +1274,11 @@ RobStride 返回：
 | --- | --- | --- | --- |
 | `vendor` | string | 当前 vendor | 扫描厂商 |
 | `transport` | string | 当前 transport | 链路 |
+| `channel` | string | 当前 channel | CAN 通道 |
+| `serial_port` | string | 当前 serial_port | `dm-serial` 串口 |
+| `serial_baud` | u32 | 当前 serial_baud | `dm-serial` 波特率 |
+| `dm_device_type` | string | 当前 dm_device_type | `dm-device` 适配器类型 |
+| `dm_channel` | string | 不传则 all | `dm-device` 扫描通道；不传会扫描双通道适配器的 CANFD1/CANFD2，传 `canfd1`/`canfd2` 则只扫指定通道 |
 | `start_id` | u16 | 厂商默认 | 起始 ID |
 | `end_id` | u16 | 厂商默认 | 结束 ID |
 | `timeout_ms` | u64 | 厂商默认 | 单 ID 超时 |
@@ -1264,6 +1287,18 @@ Damiao：
 
 ```json
 {"op":"scan","vendor":"damiao","start_id":1,"end_id":16,"timeout_ms":100}
+```
+
+Damiao / DM_Device SDK：
+
+```json
+{"op":"scan","vendor":"damiao","transport":"dm-device","dm_device_type":"usb2canfd-dual","dm_channel":"canfd2","model":"4310","start_id":1,"end_id":16,"feedback_base":16,"timeout_ms":80}
+```
+
+不带 `dm_channel` 时会同时扫描 CANFD1 和 CANFD2：
+
+```json
+{"op":"scan","vendor":"damiao","transport":"dm-device","dm_device_type":"usb2canfd-dual","model":"4310","start_id":1,"end_id":16,"feedback_base":16,"timeout_ms":80}
 ```
 
 RobStride：
@@ -1406,7 +1441,7 @@ RobStride 请求：
   "api_version":"v1",
   "default_vendor":"damiao",
   "vendors":{
-    "damiao":{"transports":["auto","socketcan","socketcanfd","dm-serial"],"modes":["mit","pos_vel","vel","force_pos"]},
+    "damiao":{"transports":["auto","socketcan","socketcanfd","dm-serial","dm-device"],"modes":["mit","pos_vel","vel","force_pos"]},
     "robstride":{"transports":["auto","socketcan","socketcanfd"],"modes":["mit","pos_vel","vel"]}
   }
 }
@@ -1456,7 +1491,7 @@ function stop() {
 5. 第一次控制建议 `continuous=false`，确认安全后再打开 continuous。
 6. 浏览器 UI 调试优先看 `state_stream` 和普通响应中的 `ok:false/error`。
 7. RobStride 的 `feedback_id` 是 host_id；常用 `0xFD`。
-8. Damiao `dm-serial` 只支持 Damiao，不支持 RobStride/MyActuator/Hexfellow/HighTorque。
+8. Damiao `dm-serial` 和 `dm-device` 只支持 Damiao，不支持 RobStride/MyActuator/Hexfellow/HighTorque。
 9. 非本机绑定必须设置 `MOTORBRIDGE_WS_TOKEN`。
 
 ## 19. 常见错误

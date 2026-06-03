@@ -1,11 +1,14 @@
 # ws_gateway
 
 <!-- channel-compat-note -->
-## 通道兼容说明（PCAN + CANable candleLight/gs_usb + Damiao 串口桥）
+## 通道兼容说明（PCAN + CANable candleLight/gs_usb + Damiao 串口桥 + DM_Device）
 
 - Linux SocketCAN 直接使用已初始化的接口名：`can0`、`can1`。CANable 请刷 candleLight/gs_usb 固件，让系统识别为 `can0` 这类 SocketCAN 接口。
 - 标准 CAN 推荐 PCAN 或 CANable candleLight/gs_usb。
-- 仅 Damiao 可选串口桥链路：`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`。
+- 仅 Damiao 可选两类适配器链路：串口桥 `--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`，以及 DM_Device SDK `--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`。
+- 仅 Damiao 可选 DM_Device SDK 链路：
+  `--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`。
+  Linux x86_64 下 USB2CANFD_DUAL 的 CANFD1/CANFD2 扫描已实测通过。
 - Damiao 串口桥完整接口与命令模板见 `motor_cli/README.zh-CN.md` 第 `3.6` 节（英文见 `motor_cli/README.md`）。
 - Linux SocketCAN 下 `--channel` 不要带 `@bitrate`（例如 `can0@1000000` 无效）。
 - Windows（PCAN 后端）中，`can0/can1` 映射 `PCAN_USBBUS1/2`，可选 `@bitrate` 后缀。
@@ -99,7 +102,7 @@ WS API 主链路已实现。
     "default_vendor": "damiao",
     "vendors": {
       "damiao": {
-        "transports": ["auto", "socketcan", "socketcanfd", "dm-serial"],
+        "transports": ["auto", "socketcan", "socketcanfd", "dm-serial", "dm-device"],
         "modes": ["mit", "pos_vel", "vel", "force_pos"],
         "ops_unified": ["scan", "set_id", "enable", "disable", "stop", "state_once", "status", "verify"],
         "ops_vendor_native": ["write_register_u32", "write_register_f32", "get_register_u32", "get_register_f32", "damiao_state_many"]
@@ -147,6 +150,21 @@ cargo run -p ws_gateway --release -- \
   --bind 127.0.0.1:9002 --vendor damiao --channel can0 --model 4340P --motor-id 0x01 --feedback-id 0x11 --dt-ms 20
 ```
 
+Damiao 通过 DM_Device SDK / USB2CANFD_DUAL：
+
+```bash
+cargo run -p ws_gateway --release -- \
+  --bind 127.0.0.1:9002 \
+  --vendor damiao \
+  --transport dm-device \
+  --dm-device-type usb2canfd-dual \
+  --dm-channel canfd2 \
+  --model 4310 \
+  --motor-id 0x04 \
+  --feedback-id 0x14 \
+  --dt-ms 20
+```
+
 ```bash
 cargo run -p ws_gateway --release -- \
   --bind 127.0.0.1:9002 --vendor robstride --channel can0 --model rs-06 --motor-id 127 --feedback-id 0xFD --dt-ms 20
@@ -157,6 +175,31 @@ cargo run -p ws_gateway --release -- \
 - 默认推荐使用 `127.0.0.1:9002`（本机回环）。
 - 若绑定到非回环地址（例如 `0.0.0.0:9002`），必须设置环境变量 `MOTORBRIDGE_WS_TOKEN`。
 - WS 客户端需在握手请求中带上 `x-motorbridge-token: <token>` 或 `Authorization: Bearer <token>`。
+
+## Damiao `dm-device` 扫描示例
+
+```json
+{
+  "op": "scan",
+  "vendor": "damiao",
+  "transport": "dm-device",
+  "dm_device_type": "usb2canfd-dual",
+  "model": "4310",
+  "start_id": 1,
+  "end_id": 16,
+  "feedback_base": 16,
+  "timeout_ms": 80
+}
+```
+
+说明：
+
+- `dm_channel=canfd1` 对应 SDK channel 0；`dm_channel=canfd2` 对应 SDK channel 1。
+- scan 请求不带 `dm_channel` 时会扫描 `usb2canfd-dual` 的 CANFD1 和
+  CANFD2；带 `dm_channel` 时只扫描指定物理通道。
+- 网关会在同一进程内复用已打开的 DM_Device SDK handle，避免 Linux 下 SDK/libusb
+  反复 reopen 造成的打开失败。
+- 同一个 USB2CANFD_DUAL 不要被两个独立进程同时打开。
 
 ## Windows 实验支持（PCAN-USB）
 

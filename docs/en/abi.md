@@ -110,6 +110,7 @@ RobStride extensions:
    - `motor_controller_new_socketcan(channel)` (general path)
    - `motor_controller_new_socketcanfd(channel)` (CAN-FD path; required by Hexfellow)
    - `motor_controller_new_dm_serial(serial_port, baud)` (Damiao-only serial bridge; cross-platform, e.g. `/dev/ttyACM0` or `COM3`)
+   - `motor_controller_new_dm_device(dm_device_type, dm_channel)` (Damiao-only DM_Device SDK path; e.g. `usb2canfd-dual` + `canfd1|canfd2`)
 2. `motor_controller_add_<vendor>_motor`
 3. optional: `motor_controller_enable_all`
 4. optional: `motor_handle_ensure_mode`

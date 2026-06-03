@@ -1,12 +1,12 @@
 # Python 实用示例（中文）
 
 <!-- channel-compat-note -->
-## 通道兼容说明（PCAN + CANable candleLight/gs_usb + CAN-FD + Damiao 串口桥）
+## 通道兼容说明（PCAN + CANable candleLight/gs_usb + CAN-FD + Damiao 串口桥 + DM_Device）
 
 - Linux SocketCAN 直接使用已初始化的接口名：`can0`、`can1`。CANable 请刷 candleLight/gs_usb 固件，让系统识别为 `can0` 这类 SocketCAN 接口。
 - 标准 CAN 推荐 PCAN 或 CANable candleLight/gs_usb。
 - Hexfellow 示例必须使用 CAN-FD 链路（`Controller.from_socketcanfd(...)` / CLI `--transport socketcanfd`）。
-- Damiao 可选串口桥链路（CLI）：`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`。
+- Damiao 可选两类适配器链路（CLI）：串口桥 `--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`，以及 DM_Device SDK `--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`。
 - Damiao 串口桥完整命令模板见 `motor_cli/README.md`（中文见 `motor_cli/README.zh-CN.md` 第 `3.6` 节）。
 - Linux SocketCAN 下 `--channel` 不要附加 `@bitrate`（例如 `can0@1000000` 无效）。
 - Windows（PCAN 后端）里，`can0/can1` 映射到 `PCAN_USBBUS1/2`，支持可选 `@bitrate` 后缀。
@@ -376,7 +376,7 @@ PYTHONPATH=bindings/python/src python3 bindings/python/examples/mit_pos_switch_d
 Damiao 示例已经覆盖高层 SDK 的完整常用面：
 
 - 控制模式：`mit` / `pos-vel` / `vel` / `force-pos`
-- 传输路径：`Controller(channel)` + `Controller.from_dm_serial(...)`
+- 传输路径：`Controller(channel)` + `Controller.from_socketcanfd(...)` + `Controller.from_dm_serial(...)` + `Controller.from_dm_device(...)`
 - 维护接口：`clear_error`、`set_zero_position`、`set_can_timeout_ms`、`request_feedback`
 - 寄存器接口：`get/write f32`、`get/write u32`、`store_parameters`
 - 扫描与调参流程

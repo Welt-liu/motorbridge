@@ -11,13 +11,15 @@ from argparse import Namespace
 from motorbridge.cli import _scan_command
 
 # ===== USER CONFIG =====
-TRANSPORT = "auto"  # auto/socketcan/dm-serial
+TRANSPORT = "auto"  # auto/socketcan/socketcanfd/dm-serial/dm-device
 CHANNEL = "can0"
 VENDOR = "all"  # all/damiao/myactuator/robstride/hightorque/hexfellow
 START_ID = "1"
 END_ID = "255"
 SERIAL_PORT = "/dev/ttyACM0"
 SERIAL_BAUD = 921600
+DM_DEVICE_TYPE = "usb2canfd-dual"
+DM_CHANNEL = None  # None scans both CANFD1/CANFD2 for dm-device; use "canfd1" or "canfd2" for one channel.
 # RobStride tip:
 # - keep VENDOR="robstride" for focused scan
 # - common device id seen in field: 127
@@ -25,8 +27,8 @@ SERIAL_BAUD = 921600
 
 
 def main() -> int:
-    if TRANSPORT == "dm-serial" and VENDOR != "damiao":
-        raise ValueError("dm-serial only supports damiao")
+    if TRANSPORT in ("dm-serial", "dm-device") and VENDOR != "damiao":
+        raise ValueError("dm-serial/dm-device only support damiao")
 
     args = Namespace(
         vendor=VENDOR,
@@ -34,6 +36,8 @@ def main() -> int:
         transport=TRANSPORT,
         serial_port=SERIAL_PORT,
         serial_baud=SERIAL_BAUD,
+        dm_device_type=DM_DEVICE_TYPE,
+        dm_channel=DM_CHANNEL,
         model="4340P",
         start_id=START_ID,
         end_id=END_ID,

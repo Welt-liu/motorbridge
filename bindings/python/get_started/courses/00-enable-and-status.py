@@ -15,10 +15,12 @@ import time
 from motorbridge import Controller
 
 # ===== USER CONFIG =====
-TRANSPORT = "socketcan"  # socketcan / dm-serial / socketcanfd
+TRANSPORT = "socketcan"  # socketcan / socketcanfd / dm-serial / dm-device
 CHANNEL = "can0"
 SERIAL_PORT = "/dev/ttyACM0"
 SERIAL_BAUD = 921600
+DM_DEVICE_TYPE = "usb2canfd-dual"
+DM_CHANNEL = "canfd1"
 
 VENDOR = "damiao"  # damiao/myactuator/robstride/hightorque/hexfellow
 MODEL = "4310"
@@ -34,6 +36,8 @@ RETRY_DT_MS = 50
 def new_controller() -> Controller:
     if TRANSPORT == "dm-serial":
         return Controller.from_dm_serial(SERIAL_PORT, SERIAL_BAUD)
+    if TRANSPORT == "dm-device":
+        return Controller.from_dm_device(DM_DEVICE_TYPE, DM_CHANNEL)
     if TRANSPORT == "socketcanfd":
         return Controller.from_socketcanfd(CHANNEL)
     return Controller(CHANNEL)

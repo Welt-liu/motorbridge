@@ -15,8 +15,23 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
   Standalone web control UI built on top of `ws_gateway`.
 
-## Update (2026-06): v0.4.2
+## Update (2026-06): v0.4.3
 
+- `v0.4.3` adds the Damiao-only `dm-device` transport for DaMiao
+  `USB2CANFD_DUAL` adapters through the DM_Device SDK. Rust CLI, Python SDK,
+  Python CLI, Python wheels, C ABI, and `ws_gateway` now share the same
+  `--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`
+  path.
+- `v0.4.3` vendors the DM_Device SDK runtime under `third_party/dm_device` and
+  packages the platform-appropriate runtime library in Python wheels under
+  `motorbridge/lib/dm_device/`.
+- `v0.4.3` uses a small C++ shim for the SDK boundary and reuses the already
+  opened SDK handle in long-running processes, which keeps repeated WS scans
+  from requiring a USB unplug/replug cycle.
+- Linux x86_64 has been release-build, wheel-build, installed-wheel, hardware
+  scan, and WebSocket-scan verified for USB2CANFD_DUAL CANFD1 and CANFD2.
+  Windows/macOS SDK runtimes are vendored and path-selected, but final runtime
+  validation still requires those hosts.
 - `v0.4.2` optimizes Damiao `dm-serial` high-rate multi-motor control by
   making `recv(0ms)` truly non-blocking when no serial bytes are pending and by
   reducing the bounded serial read timeout from 2 ms to 1 ms for synchronous
@@ -54,9 +69,13 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `[STD-CAN]`: classic CAN path (`socketcan`/`pcan`)
 - `[CAN-FD]`: dedicated FD path (`socketcanfd`)
 - `[DM-SERIAL]`: Damiao serial-bridge path (`dm-serial`)
+- `[DM-DEVICE]`: Damiao DM_Device SDK path (`dm-device`, for example
+  `USB2CANFD_DUAL` with `canfd1`/`canfd2`)
 
 Current status:
 - `[CAN-FD]` has been integrated as an independent transport path.
+- `[DM-DEVICE]` is integrated for Damiao and verified on Linux x86_64 with
+  USB2CANFD_DUAL CANFD1/CANFD2 scans.
 - No motor model is officially marked as CAN-FD validated in this repository yet.
 
 ## Current Vendor Support
@@ -142,7 +161,7 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-  PYAPP["Python App"] --> CTL["Controller(...) / from_dm_serial(...) / from_socketcanfd(...)"]
+  PYAPP["Python App"] --> CTL["Controller(...) / from_socketcanfd(...) / from_dm_serial(...) / from_dm_device(...)"]
   CTL --> ADD["add_damiao_motor / add_robstride_motor / add_myactuator_motor / add_hightorque_motor / add_hexfellow_motor"]
   ADD --> MOTOR["MotorHandle"]
   MOTOR --> CTRL1["send_mit / send_pos_vel / send_vel / send_force_pos"]
@@ -526,6 +545,7 @@ Interpretation:
   - `motor_abi_capabilities_json()`
   - `motor_controller_new_socketcan(channel)`
   - `motor_controller_new_dm_serial(serial_port, baud)` (Damiao-only serial bridge; cross-platform, e.g. `/dev/ttyACM0` or `COM3`)
+  - `motor_controller_new_dm_device(dm_device_type, dm_channel)` (Damiao-only DM_Device SDK path; e.g. `usb2canfd-dual` + `canfd1|canfd2`)
   - Damiao: `motor_controller_add_damiao_motor(...)`
   - Hexfellow: `motor_controller_add_hexfellow_motor(...)` (CAN-FD path via `socketcanfd`)
   - RobStride: `motor_controller_add_robstride_motor(...)`
@@ -536,6 +556,7 @@ Interpretation:
   - `motorbridge.abi_capabilities()`
   - `Controller(channel="can0")`
   - `Controller.from_dm_serial("/dev/ttyACM0", 921600)` (Damiao-only)
+  - `Controller.from_dm_device("usb2canfd-dual", "canfd1")` (Damiao-only DM_Device SDK path)
   - `Controller.add_damiao_motor(...)`
   - `Controller.add_hexfellow_motor(...)`
   - `Controller.add_robstride_motor(...)`

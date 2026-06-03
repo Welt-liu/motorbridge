@@ -52,11 +52,14 @@ motor_cli -h
 - `[STD-CAN]` => `--transport auto|socketcan`
 - `[CAN-FD]` => `--transport socketcanfd`（仅 Linux；Hexfellow 必须使用）
 - `[DM-SERIAL]` => `--transport dm-serial`（仅 Damiao）
+- `[DM-DEVICE]` => `--transport dm-device`（仅 Damiao，走 DM_Device SDK；
+  `usb2canfd-dual` 的 `canfd1`/`canfd2` 已在 Linux x86_64 实测）
 
 当前状态：
 - Hexfellow：`socketcanfd` 路径已实测，统一 `mit` / `pos-vel` 可用。
 - HighTorque：标准 CAN 下统一 `mit` / `vel` 已实测可用（协议层忽略 `kp/kd`）。
-- Damiao：统一 `mit` / `pos-vel` / `vel` / `force-pos` 的基线实现。
+- Damiao：统一 `mit` / `pos-vel` / `vel` / `force-pos` 的基线实现；
+  `dm-device` 已在 USB2CANFD_DUAL 的 CANFD1/CANFD2 扫描中验证。
 
 ## 1. 参数解析规则
 
@@ -73,7 +76,7 @@ motor_cli -h
 ```bash
 motor_cli \
   --vendor <damiao|robstride|hightorque|myactuator|all> \
-  --transport <auto|socketcan|socketcanfd|dm-serial> \
+  --transport <auto|socketcan|socketcanfd|dm-serial|dm-device> \
   --channel <can0|can1|can0@1000000...> \
   --model <model-name> \
   --motor-id <id> --feedback-id <id> \
@@ -83,7 +86,7 @@ motor_cli \
 ```
 
 说明：
-- `socketcanfd` 为 Hexfellow 必需链路；Damiao 可按型号做 CAN-FD 验证；`dm-serial` 仅 Damiao 可用。
+- `socketcanfd` 为 Hexfellow 必需链路；Damiao 可按型号做 CAN-FD 验证；`dm-serial` 和 `dm-device` 仅 Damiao 可用。
 - `vendor=all` 当前仅用于统一扫描（`--mode scan`）。
 
 ### 1.2 通用参数语义（先理解这些）
@@ -91,7 +94,7 @@ motor_cli \
 | 参数 | 语义 |
 |---|---|
 | `--vendor` | 选择品牌驱动实现（统一入口下发到不同 vendor backend） |
-| `--transport` | 选择传输层（标准 CAN 或 Damiao 串口桥） |
+| `--transport` | 选择传输层（标准 CAN、Damiao 串口桥或 DM_Device SDK） |
 | `--channel` | CAN 通道名（Linux 为网卡名；Windows 可带 `@bitrate`） |
 | `--model` | 型号名称，用于该品牌下的限值/能力边界与编码映射 |
 | `--motor-id` | 目标电机 ID（发送命令目标） |
@@ -116,10 +119,12 @@ motor_cli \
 |---|---|---|---|
 | `--help` | flag | 关闭 | 输出帮助并退出 |
 | `--vendor` | string | `damiao` | `damiao` / `robstride` / `hightorque` / `myactuator` / `hexfellow` / `all` |
-| `--transport` | string | `auto` | `auto` / `socketcan` / `socketcanfd` / `dm-serial`（`socketcanfd` 为 Hexfellow 必需；`dm-serial` 仅 Damiao） |
+| `--transport` | string | `auto` | `auto` / `socketcan` / `socketcanfd` / `dm-serial` / `dm-device`（`socketcanfd` 为 Hexfellow 必需；`dm-serial`/`dm-device` 仅 Damiao） |
 | `--channel` | string | `can0` | Linux：SocketCAN 网卡名（`can0`）；Windows（PCAN 后端）：`can0`/`can1`，可加 `@bitrate`（如 `can0@1000000`）；macOS（PCBUSB 后端）：`can0`/`can1` |
 | `--serial-port` | string | `/dev/ttyACM0` | `--transport dm-serial` 时使用 |
 | `--serial-baud` | u64 | `921600` | `--transport dm-serial` 时使用 |
+| `--dm-device-type` | string | `usb2canfd-dual` | `--transport dm-device` 时使用；可选 `usb2canfd` / `usb2canfd-dual` / `linkx4c` |
+| `--dm-channel` | string | 控制默认 `canfd1`；扫描不传则 all | `--transport dm-device` 时使用；可选 `canfd1` / `canfd2`。`--mode scan` 时不传会扫描双通道适配器的 CANFD1 和 CANFD2。 |
 | `--model` | string | 按 vendor 决定 | Damiao 默认 `4340`；RobStride 默认 `rs-00`；HighTorque 默认 `hightorque`；MyActuator 默认 `X8` |
 | `--motor-id` | u16(hex/dec) | `0x01` | 电机 CAN ID |
 | `--feedback-id` | u16(hex/dec) | 按 vendor 决定 | Damiao 默认 `0x11`；RobStride 默认 `0xFD`；HighTorque 默认 `0x01`；MyActuator 默认 `0x241`（motor-id=1） |
@@ -149,7 +154,30 @@ motor_cli \
 - `dm-serial` 模式下，传输层创建会忽略 `--channel`。
 - `dm-serial` 仅改变“传输层”（走串口桥），Damiao 的业务参数与模式接口保持一致（`--mode`、`--motor-id`、`--feedback-id`、`--verify-model`、`--ensure-mode` 等）。
 
-### 2.3 Damiao 独立 CAN-FD 链路速查（`--transport socketcanfd`）
+### 2.3 Damiao DM_Device SDK 速查（`--transport dm-device`）
+
+- 该链路通过 DaMiao `libdm_device` 接入 USB2CANFD/USB2CANFD_DUAL 等适配器。
+- USB2CANFD_DUAL 扫描示例：
+
+```bash
+motor_cli \
+  --vendor damiao \
+  --transport dm-device \
+  --dm-device-type usb2canfd-dual \
+  --model 4310 \
+  --mode scan \
+  --start-id 1 \
+  --end-id 16
+```
+
+- `canfd1` 对应 SDK channel 0；`canfd2` 对应 SDK channel 1。
+- 扫描模式下不传 `--dm-channel` 会同时扫描 `usb2canfd-dual` 的 CANFD1 和
+  CANFD2；如果只想扫一路，再显式加 `--dm-channel canfd1` 或
+  `--dm-channel canfd2`。
+- Linux x86_64 下 USB2CANFD_DUAL 的 CANFD1/CANFD2 扫描已实测通过。
+- 同一个 USB2CANFD_DUAL 不要被两个进程同时打开。
+
+### 2.4 Damiao 独立 CAN-FD 链路速查（`--transport socketcanfd`）
 
 - 该链路为 Linux 专用，并与经典 `socketcan` 链路并存。
 - 常用参数：`--transport socketcanfd --channel can0`。
@@ -540,5 +568,3 @@ motor_cli \
 - RobStride 默认 `--feedback-id` 为 `0xFD`，内部会回退探测 `0xFF/0xFE`。
 - RobStride 的 `pos-vel` 下 `--vel/--kd/--tau` 为无效参数，仅告警不报错。
 - MyActuator 若 `0x9A` 返回错误码 `0x0004`（欠压），电机会在线但不转，需要先恢复供电电压。
-
-

@@ -1,11 +1,14 @@
 # ws_gateway
 
 <!-- channel-compat-note -->
-## Channel Compatibility (PCAN + CANable candleLight/gs_usb + Damiao Serial Bridge)
+## Channel Compatibility (PCAN + CANable candleLight/gs_usb + Damiao Serial Bridge + DM_Device)
 
 - Linux SocketCAN uses prepared interfaces directly: `can0`, `can1`. For CANable, use candleLight/gs_usb firmware so it appears as a SocketCAN interface such as `can0`.
 - Use PCAN or CANable candleLight/gs_usb for standard CAN.
-- Damiao-only serial bridge transport is also available in CLI (`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`).
+- Damiao-only adapter transports are available in CLI: serial bridge (`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`) and DM_Device SDK (`--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`).
+- Damiao-only DM_Device SDK transport is available through
+  `--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`.
+  Linux x86_64 USB2CANFD_DUAL CANFD1/CANFD2 scans are verified.
 - Full Damiao serial-bridge interface list and command patterns are documented in `motor_cli/README.md` (section `3.6` in `motor_cli/README.zh-CN.md`).
 - On Linux SocketCAN, do not append bitrate in `--channel` (for example `can0@1000000` is invalid).
 - On Windows (PCAN backend), `can0/can1` map to `PCAN_USBBUS1/2`; optional `@bitrate` suffix is supported.
@@ -96,7 +99,7 @@ Recommended: client calls `{"op":"capabilities"}` on connect and adapts UI/flows
     "default_vendor": "damiao",
     "vendors": {
       "damiao": {
-        "transports": ["auto", "socketcan", "socketcanfd", "dm-serial"],
+        "transports": ["auto", "socketcan", "socketcanfd", "dm-serial", "dm-device"],
         "modes": ["mit", "pos_vel", "vel", "force_pos"],
         "ops_unified": ["scan", "set_id", "enable", "disable", "stop", "state_once", "status", "verify"],
         "ops_vendor_native": ["write_register_u32", "write_register_f32", "get_register_u32", "get_register_f32", "damiao_state_many"]
@@ -144,6 +147,21 @@ cargo run -p ws_gateway --release -- \
   --bind 127.0.0.1:9002 --vendor damiao --channel can0 --model 4340P --motor-id 0x01 --feedback-id 0x11 --dt-ms 20
 ```
 
+Damiao over DM_Device SDK / USB2CANFD_DUAL:
+
+```bash
+cargo run -p ws_gateway --release -- \
+  --bind 127.0.0.1:9002 \
+  --vendor damiao \
+  --transport dm-device \
+  --dm-device-type usb2canfd-dual \
+  --dm-channel canfd2 \
+  --model 4310 \
+  --motor-id 0x04 \
+  --feedback-id 0x14 \
+  --dt-ms 20
+```
+
 ```bash
 cargo run -p ws_gateway --release -- \
   --bind 127.0.0.1:9002 --vendor robstride --channel can0 --model rs-06 --motor-id 127 --feedback-id 0xFD --dt-ms 20
@@ -154,6 +172,31 @@ Security note:
 - `127.0.0.1:9002` is the default and recommended bind for local use.
 - If you bind to non-loopback addresses (for example `0.0.0.0:9002`), you must set `MOTORBRIDGE_WS_TOKEN`.
 - WebSocket clients must provide this token via header `x-motorbridge-token: <token>` or `Authorization: Bearer <token>`.
+
+## Damiao `dm-device` Scan Example
+
+```json
+{
+  "op": "scan",
+  "vendor": "damiao",
+  "transport": "dm-device",
+  "dm_device_type": "usb2canfd-dual",
+  "model": "4310",
+  "start_id": 1,
+  "end_id": 16,
+  "feedback_base": 16,
+  "timeout_ms": 80
+}
+```
+
+Notes:
+
+- `dm_channel=canfd1` maps to SDK channel 0; `dm_channel=canfd2` maps to SDK channel 1.
+- Omit `dm_channel` in a scan request to scan both CANFD1 and CANFD2 on
+  `usb2canfd-dual`; include `dm_channel` to scan only one physical channel.
+- The gateway keeps the DM_Device SDK handle open and reuses it across scans in
+  the same process, avoiding the SDK/libusb reopen issue observed on Linux.
+- Do not open the same USB2CANFD_DUAL from two separate processes at the same time.
 
 ## Experimental Windows Support (PCAN-USB)
 

@@ -7,6 +7,54 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-06-03
+
+### Added
+
+- Added Damiao `dm-device` transport backed by DaMiao DM_Device SDK
+  (`USB2CANFD`, `USB2CANFD_DUAL`, and `LINKX4C` device-type parsing).
+- Added vendored DM_Device SDK runtime files under `third_party/dm_device`
+  with platform-specific Linux/macOS/Windows libraries.
+- Added `DmDeviceBus` in `motor_core` and a C++ SDK shim that exposes a stable
+  C ABI for Rust while preserving the SDK's native frame/callback layout.
+- Added Rust CLI flags `--transport dm-device`, `--dm-device-type`, and
+  `--dm-channel canfd1|canfd2`.
+- Added ABI constructor `motor_controller_new_dm_device(...)`.
+- Added Python `Controller.from_dm_device(...)` and Python CLI
+  `--transport dm-device` support.
+- Added Python wheel packaging for the platform-appropriate DM_Device runtime
+  library under `motorbridge/lib/dm_device/`.
+- Added WebSocket gateway `dm-device` support for Damiao, including
+  `dm_device_type` and `dm_channel` target fields.
+
+### Fixed
+
+- Fixed repeated open behavior for long-running `dm-device` processes by
+  reusing the already-open SDK handle inside the C++ shim instead of reopening
+  the same USB adapter.
+- Aligned Damiao `dm-device` scans in Rust CLI, Python CLI, and WebSocket
+  gateway to use the stable feedback request path.
+
+### Verified
+
+- Verified Linux x86_64 wheel build includes `libmotor_abi.so`,
+  `libdm_device.so`, and `ws_gateway`.
+- Verified installed wheel can scan USB2CANFD_DUAL CANFD1 and CANFD2 Damiao
+  motors on Linux x86_64.
+- Verified a single WebSocket gateway process can scan CANFD2 and then CANFD1
+  through `dm-device`.
+- Verified Windows GNU Rust `motor_core` cross-check. macOS runtime libraries
+  are included and format-checked, but macOS runtime/build validation still
+  requires a macOS host or CI runner.
+
+### Changed
+
+- Python package version advanced to `0.4.3`.
+- Rust workspace package version advanced to `0.4.3` for release/tag
+  alignment.
+- C++ package metadata advanced to `0.4.3`.
+- Documentation and API surface metadata updated for `dm-device`.
+
 ## [0.4.2] - 2026-06-03
 
 ### Fixed

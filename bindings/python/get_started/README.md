@@ -28,6 +28,8 @@ python3 -m pip install -i https://test.pypi.org/simple/ motorbridge==<version>
   use normal CAN path (`CHANNEL` is used).
 - `TRANSPORT = "dm-serial"`:
   use Damiao serial bridge (`SERIAL_PORT` / `SERIAL_BAUD` are used), Damiao only.
+- `TRANSPORT = "dm-device"`:
+  use DaMiao DM_Device SDK (`DM_DEVICE_TYPE` / `DM_CHANNEL` are used), Damiao only.
 
 ## 3) Quick Commands (no source checkout required)
 
@@ -47,7 +49,7 @@ For beginners, this is easier to follow and avoids duplicate entry points.
 
 ### Config constants (simple meaning)
 
-- `TRANSPORT`: `auto/socketcan/dm-serial`
+- `TRANSPORT`: `auto/socketcan/socketcanfd/dm-serial/dm-device`
 - `CHANNEL`: CAN interface name (`can0`, `can1`, `can0@1000000`, ...)
 - `VENDOR`: scan target vendor (`all` is most common)
 - `MOTOR_ID` / `FEEDBACK_ID`: motor command/feedback IDs
@@ -57,6 +59,7 @@ For beginners, this is easier to follow and avoids duplicate entry points.
 - `LOOP`: send loop count
 - `DT_MS`: control period in ms
 - `SERIAL_PORT` / `SERIAL_BAUD`: used only for `dm-serial`
+- `DM_DEVICE_TYPE` / `DM_CHANNEL`: used only for `dm-device`
 
 ## 5) Course Series (workflow-first)
 

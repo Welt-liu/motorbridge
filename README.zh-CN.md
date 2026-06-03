@@ -15,8 +15,21 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
-## 更新说明（2026-06）：v0.4.2
+## 更新说明（2026-06）：v0.4.3
 
+- `v0.4.3` 新增 Damiao 专用 `dm-device` 传输链路，通过 DaMiao
+  DM_Device SDK 支持 `USB2CANFD_DUAL` 等适配器。Rust CLI、Python SDK、
+  Python CLI、Python wheel、C ABI 和 `ws_gateway` 已统一到同一套
+  `--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`
+  参数路径。
+- `v0.4.3` 将 DM_Device SDK runtime 放入 `third_party/dm_device`，Python
+  wheel 会把当前平台对应的 runtime 库打包到 `motorbridge/lib/dm_device/`。
+- `v0.4.3` 使用一个小型 C++ shim 承接 SDK 边界，并在长进程中复用已打开的
+  SDK handle，避免 WS 连续扫描时每次都重新打开 USB 适配器导致需要重新插拔。
+- Linux x86_64 已完成 release build、wheel build、wheel 安装后运行、真实硬件
+  scan 和 WebSocket scan 验证；USB2CANFD_DUAL 的 CANFD1/CANFD2 均已扫到
+  Damiao 电机。Windows/macOS 的 SDK runtime 与路径选择已就位，但最终运行验证
+  仍需要对应系统主机。
 - `v0.4.2` 优化 Damiao `dm-serial` 多电机高频控制路径：`recv(0ms)` 在串口
   没有待读字节时会真正非阻塞返回，同时把同步反馈/寄存器读取的串口 read timeout
   从 2 ms 降到 1 ms。
@@ -46,9 +59,13 @@
 - `[STD-CAN]`：标准 CAN 路径（`socketcan` / `pcan`）
 - `[CAN-FD]`：独立 CAN-FD 路径（`socketcanfd`）
 - `[DM-SERIAL]`：Damiao 串口桥路径（`dm-serial`）
+- `[DM-DEVICE]`：Damiao DM_Device SDK 路径（`dm-device`，例如
+  `USB2CANFD_DUAL` 的 `canfd1`/`canfd2`）
 
 当前状态：
 - `[CAN-FD]` 已完成独立链路接入。
+- `[DM-DEVICE]` 已完成 Damiao 接入，并在 Linux x86_64 + USB2CANFD_DUAL
+  的 CANFD1/CANFD2 扫描中完成验证。
 - 仓库内尚未声明“某个电机型号已完成 CAN-FD 量产级验证矩阵”。
 
 ## 当前支持的厂商
@@ -133,7 +150,7 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-  PYAPP["Python 应用"] --> CTL["Controller(...) / from_dm_serial(...) / from_socketcanfd(...)"]
+  PYAPP["Python 应用"] --> CTL["Controller(...) / from_socketcanfd(...) / from_dm_serial(...) / from_dm_device(...)"]
   CTL --> ADD["add_damiao_motor / add_robstride_motor / add_myactuator_motor / add_hightorque_motor / add_hexfellow_motor"]
   ADD --> MOTOR["MotorHandle"]
   MOTOR --> CTRL1["send_mit / send_pos_vel / send_vel / send_force_pos"]
@@ -517,6 +534,7 @@ cargo run -p motor_cli --release -- --vendor damiao \
   - `motor_abi_capabilities_json()`
   - `motor_controller_new_socketcan(channel)`
   - `motor_controller_new_dm_serial(serial_port, baud)`（仅 Damiao 串口桥；跨平台，可用 `/dev/ttyACM0` 或 `COM3`）
+  - `motor_controller_new_dm_device(dm_device_type, dm_channel)`（仅 Damiao DM_Device SDK 链路，例如 `usb2canfd-dual` + `canfd1|canfd2`）
   - Damiao: `motor_controller_add_damiao_motor(...)`
   - Hexfellow: `motor_controller_add_hexfellow_motor(...)`（通过 `socketcanfd` 走 CAN-FD）
   - RobStride: `motor_controller_add_robstride_motor(...)`
@@ -527,6 +545,7 @@ cargo run -p motor_cli --release -- --vendor damiao \
   - `motorbridge.abi_capabilities()`
   - `Controller(channel="can0")`
   - `Controller.from_dm_serial("/dev/ttyACM0", 921600)`（仅 Damiao）
+  - `Controller.from_dm_device("usb2canfd-dual", "canfd1")`（仅 Damiao DM_Device SDK 链路）
   - `Controller.add_damiao_motor(...)`
   - `Controller.add_hexfellow_motor(...)`
   - `Controller.add_robstride_motor(...)`

@@ -13,7 +13,7 @@
 
 真实项目里建议始终按这条链路理解：
 
-1. 选链路（`Controller(...)` / `from_socketcanfd(...)` / `from_dm_serial(...)`）
+1. 选链路（`Controller(...)` / `from_socketcanfd(...)` / `from_dm_serial(...)` / `from_dm_device(...)`）
 2. 加电机（`add_*_motor(...)`）
 3. 使能（`enable_all()`）
 4. 模式（`ensure_mode(...)`）
@@ -121,6 +121,7 @@
 - `Controller(channel="can0")`
 - `Controller.from_socketcanfd(channel="can0")`
 - `Controller.from_dm_serial(serial_port, baud)`
+- `Controller.from_dm_device(dm_device_type="usb2canfd-dual", dm_channel="canfd1")`
 
 生命周期：
 
@@ -185,7 +186,7 @@ RobStride 专属：
 2. 同时只保留一个发送程序，避免 `os error 105`。
 3. 控制周期先保守：`DT_MS=20~50`。
 4. 先 `enable + status`，再进入控制模式。
-5. 报错先查三件事：ID、波特率、链路类型（socketcan/socketcanfd/dm-serial）。
+5. 报错先查三件事：ID、波特率、链路类型（socketcan/socketcanfd/dm-serial/dm-device）。
 
 ---
 

@@ -1,12 +1,16 @@
 # motorbridge Python SDK
 
 <!-- channel-compat-note -->
-## Channel Compatibility (PCAN + CANable candleLight/gs_usb + CAN-FD + Damiao Serial Bridge)
+## Channel Compatibility (PCAN + CANable candleLight/gs_usb + CAN-FD + Damiao Serial Bridge + DM_Device)
 
 - Linux SocketCAN uses prepared interfaces directly: `can0`, `can1`. For CANable, use candleLight/gs_usb firmware so it appears as a SocketCAN interface such as `can0`.
 - Use PCAN or CANable candleLight/gs_usb for standard CAN.
 - CAN-FD transport is available both in CLI (`--transport socketcanfd`) and Python SDK (`Controller.from_socketcanfd(...)`), and is required for Hexfellow.
-- Damiao-only serial bridge transport is also available in CLI (`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`).
+- Damiao-only adapter transports are available in CLI: serial bridge (`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`) and DM_Device SDK (`--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`).
+- Damiao-only DM_Device SDK transport is available in CLI
+  (`--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`)
+  and Python SDK (`Controller.from_dm_device(...)`). Linux x86_64
+  USB2CANFD_DUAL CANFD1/CANFD2 scans are verified.
 - Full Damiao serial-bridge interface list and command patterns are documented in `motor_cli/README.md` (section `3.6` in `motor_cli/README.zh-CN.md`).
 - On Linux SocketCAN, do not append bitrate in `--channel` (for example `can0@1000000` is invalid).
 - On Windows (PCAN backend), `can0/can1` map to `PCAN_USBBUS1/2`; optional `@bitrate` suffix is supported.
@@ -42,11 +46,16 @@ Notes:
 ## Scope
 Packaging note:
 
-- Current package target version: `0.4.2`.
+- Current package target version: `0.4.3`.
 - Published wheel includes `motor_abi` shared library and `ws_gateway` binary for that platform.
+- Published wheel also includes the platform-appropriate DM_Device SDK runtime
+  under `motorbridge/lib/dm_device/` when available for the target platform.
 - ABI metadata helpers:
   - `motorbridge.abi_version()` returns the loaded ABI library version.
   - `motorbridge.abi_capabilities()` returns the loaded ABI capability JSON as a Python `dict`.
+- `0.4.3` adds Damiao `dm-device` transport, Python
+  `Controller.from_dm_device(...)`, Python CLI `--transport dm-device`, and
+  wheel packaging for `libdm_device.so`/`.dylib`/`.dll`.
 - `0.4.2` optimizes Damiao `dm-serial` multi-motor control by making
   `recv(0ms)` non-blocking when no serial bytes are pending and by reducing the
   bounded serial read timeout to 1 ms.
@@ -92,6 +101,7 @@ Packaging note:
   - `Controller(channel="can0")` (SocketCAN/PCAN path)
   - `Controller.from_socketcanfd(channel="can0")` (CAN-FD path, required by Hexfellow)
   - `Controller.from_dm_serial(serial_port="/dev/ttyACM0", baud=921600)` (Damiao-only serial bridge)
+  - `Controller.from_dm_device(dm_device_type="usb2canfd-dual", dm_channel="canfd1")` (Damiao-only DM_Device SDK transport)
 - Vendors:
   - Damiao: `add_damiao_motor(...)`
   - Hexfellow: `add_hexfellow_motor(...)`
@@ -348,7 +358,7 @@ See [examples/README.md](examples/README.md) (English) or [examples/READMEzh_cn.
 Damiao usage in Python examples is now covered end-to-end:
 
 - control modes: `mit` / `pos-vel` / `vel` / `force-pos`
-- transport paths: SocketCAN/PCAN constructor + `from_dm_serial(...)`
+- transport paths: SocketCAN/PCAN constructor + `from_socketcanfd(...)` + `from_dm_serial(...)` + `from_dm_device(...)`
 - maintenance ops: `clear_error`, `set_zero_position`, `set_can_timeout_ms`, `request_feedback`
   - project guard for Damiao set-zero: call `disable()` before `set_zero_position()`
   - no user-facing `ms` parameter for set-zero; core applies fixed `20ms` settle

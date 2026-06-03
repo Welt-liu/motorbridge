@@ -262,7 +262,7 @@ export LD_LIBRARY_PATH=$PWD/target/release:${LD_LIBRARY_PATH}
 
 ### C) 标准联动顺序（建议）
 
-1. `Controller.from_dm_serial(...)`
+1. `Controller.from_dm_serial(...)` 或 `Controller.from_dm_device(...)`
 2. `add_damiao_motor(...)`
 3. 维护预处理：`clear_error()`（可选 `set_zero_position()`）
 4. `enable_all()`（或 `enable()`）

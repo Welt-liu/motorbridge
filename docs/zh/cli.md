@@ -1,12 +1,12 @@
 # CLI 指南（`motor_cli`）
 
 <!-- channel-compat-note -->
-## 通道兼容说明（PCAN + CANable candleLight/gs_usb + Damiao 串口桥）
+## 通道兼容说明（PCAN + CANable candleLight/gs_usb + Damiao 串口桥 + DM_Device）
 
 - Linux SocketCAN 直接使用已初始化的接口名：`can0`、`can1`。CANable 请刷 candleLight/gs_usb 固件，让系统识别为 `can0` 这类 SocketCAN 接口。
 - 标准 CAN 推荐 PCAN 或 CANable candleLight/gs_usb。
 - 仅 Damiao 可选独立 CAN-FD 链路：`--transport socketcanfd`（与经典 `socketcan` 并存）。
-- 仅 Damiao 可选串口桥链路：`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`。
+- 仅 Damiao 可选两类适配器链路：串口桥 `--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`，以及 DM_Device SDK `--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`。
 - Linux SocketCAN 下 `--channel` 不要带 `@bitrate`（例如 `can0@1000000` 无效）。
 - Windows（PCAN 后端）中，`can0/can1` 映射 `PCAN_USBBUS1/2`，可选 `@bitrate` 后缀。
 
@@ -14,6 +14,7 @@
 - `[STD-CAN]` => `--transport auto|socketcan`
 - `[CAN-FD]` => `--transport socketcanfd`
 - `[DM-SERIAL]` => `--transport dm-serial`
+- `[DM-DEVICE]` => `--transport dm-device`
 
 `[CAN-FD]` 说明：目前是“链路已接入”，电机验证矩阵尚未声明完成。
 
@@ -30,9 +31,10 @@ cargo build -p motor_cli --release
 ## 通用参数
 
 - `--vendor damiao|robstride|hightorque|myactuator|hexfellow|all`
-- `--transport auto|socketcan|socketcanfd|dm-serial`（`dm-serial` 仅 Damiao；`socketcanfd` 用于 Hexfellow）
+- `--transport auto|socketcan|socketcanfd|dm-serial|dm-device`（`dm-serial`/`dm-device` 仅 Damiao；`socketcanfd` 用于 Hexfellow）
 - `--channel can0`
 - `--serial-port /dev/ttyACM0 --serial-baud 921600`（配合 `--transport dm-serial`）
+- `--dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`（配合 `--transport dm-device`；扫描模式不传 `--dm-channel` 会扫描双通道适配器的 CANFD1/CANFD2）
 - `--motor-id <id>`
 - `--loop <n> --dt-ms <ms>`
 
