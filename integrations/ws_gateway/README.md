@@ -262,6 +262,11 @@ cargo run -p motor_cli --release -- --vendor damiao --channel can0@1000000 --mod
 {"op":"verify","vendor":"robstride","motor_id":127,"feedback_id":255,"timeout_ms":500}
 ```
 
+For Damiao, `ensure_mode` and control ops verify `RID 10` (`CTRL_MODE`). A pure
+verify-read timeout is returned as `ok:true` with `data.warning`/`data.warnings`
+because the mode write may already have succeeded; an explicit mismatched mode
+value remains `ok:false`.
+
 ## Damiao `dm-serial` Arm Telemetry
 
 `v0.4.1` adds scan-safe Damiao session handling for Windows serial bridges. If a

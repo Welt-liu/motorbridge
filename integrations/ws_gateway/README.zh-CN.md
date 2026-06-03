@@ -263,6 +263,11 @@ cargo run -p motor_cli --release -- --vendor damiao --channel can0@1000000 --mod
 {"op":"verify","vendor":"robstride","motor_id":127,"feedback_id":255,"timeout_ms":500}
 ```
 
+Damiao 的 `ensure_mode` 和控制类 op 会回读 `RID 10`（`CTRL_MODE`）确认模式。
+如果只是确认回读超时，WS 会返回 `ok:true`，并在 `data.warning` /
+`data.warnings` 里说明“确认超时但命令已继续”；如果读到明确不匹配的模式值，
+仍返回 `ok:false`。
+
 ## Damiao dm-serial arm telemetry
 
 `v0.4.1` adds scan-safe Damiao session handling for Windows serial bridges. When

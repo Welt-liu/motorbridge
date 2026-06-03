@@ -1,6 +1,7 @@
 use crate::commands::{as_bool, as_f32, as_u64};
 use crate::model::{ActiveCommand, ControllerHandle, MotorHandle};
 use crate::session::SessionCtx;
+use crate::vendors::damiao_ws::ensure_control_mode_soft;
 use crate::vendors::hightorque_ws::{
     pos_raw_from_rad, send_hightorque_ext, tqe_raw_from_tau, vel_raw_from_rad_s, TWO_PI,
 };
@@ -26,6 +27,7 @@ pub(crate) fn handle(op: &str, v: &Value, ctx: &mut SessionCtx) -> Option<Result
 
 fn handle_mit(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
     ctx.ensure_connected()?;
+    let mut warnings = Vec::new();
     let cmd = ActiveCommand::Mit {
         pos: as_f32(v, "pos", 0.0),
         vel: as_f32(v, "vel", 0.0),
@@ -35,11 +37,13 @@ fn handle_mit(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
     };
     match ctx.motor.as_ref() {
         Some(MotorHandle::Damiao(m)) => {
-            m.ensure_control_mode(
+            if let Some(warning) = ensure_control_mode_soft(
+                m,
                 DamiaoControlMode::Mit,
                 Duration::from_millis(as_u64(v, "ensure_timeout_ms", 1000)),
-            )
-            .map_err(|e| e.to_string())?;
+            )? {
+                warnings.push(warning);
+            }
             if let ActiveCommand::Mit {
                 pos,
                 vel,
@@ -113,7 +117,9 @@ fn handle_mit(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
     } else {
         None
     };
-    Ok(json!({"op":"mit","continuous": as_bool(v, "continuous", false)}))
+    let mut out = json!({"op":"mit","continuous": as_bool(v, "continuous", false)});
+    add_warnings(&mut out, warnings);
+    Ok(out)
 }
 
 fn handle_pos_vel(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
@@ -124,11 +130,11 @@ fn handle_pos_vel(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
     };
     match ctx.motor.as_ref() {
         Some(MotorHandle::Damiao(m)) => {
-            m.ensure_control_mode(
+            let warning = ensure_control_mode_soft(
+                m,
                 DamiaoControlMode::PosVel,
                 Duration::from_millis(as_u64(v, "ensure_timeout_ms", 1000)),
-            )
-            .map_err(|e| e.to_string())?;
+            )?;
             if let ActiveCommand::PosVel { pos, vlim } = cmd {
                 m.send_cmd_pos_vel(pos, vlim).map_err(|e| e.to_string())?;
             }
@@ -137,7 +143,11 @@ fn handle_pos_vel(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
             } else {
                 None
             };
-            Ok(json!({"op":"pos_vel","continuous": as_bool(v, "continuous", false)}))
+            let mut out = json!({"op":"pos_vel","continuous": as_bool(v, "continuous", false)});
+            if let Some(warning) = warning {
+                add_warnings(&mut out, vec![warning]);
+            }
+            Ok(out)
         }
         Some(MotorHandle::Hexfellow(m)) => {
             if let ActiveCommand::PosVel { pos, vlim } = cmd {
@@ -215,16 +225,19 @@ fn ensure_robstride_mode(
 
 fn handle_vel(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
     ctx.ensure_connected()?;
+    let mut warnings = Vec::new();
     let cmd = ActiveCommand::Vel {
         vel: as_f32(v, "vel", 0.0),
     };
     match ctx.motor.as_ref() {
         Some(MotorHandle::Damiao(m)) => {
-            m.ensure_control_mode(
+            if let Some(warning) = ensure_control_mode_soft(
+                m,
                 DamiaoControlMode::Vel,
                 Duration::from_millis(as_u64(v, "ensure_timeout_ms", 1000)),
-            )
-            .map_err(|e| e.to_string())?;
+            )? {
+                warnings.push(warning);
+            }
             if let ActiveCommand::Vel { vel } = cmd {
                 m.send_cmd_vel(vel).map_err(|e| e.to_string())?;
             }
@@ -263,7 +276,9 @@ fn handle_vel(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
     } else {
         None
     };
-    Ok(json!({"op":"vel","continuous": as_bool(v, "continuous", false)}))
+    let mut out = json!({"op":"vel","continuous": as_bool(v, "continuous", false)});
+    add_warnings(&mut out, warnings);
+    Ok(out)
 }
 
 fn handle_force_pos(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
@@ -275,11 +290,11 @@ fn handle_force_pos(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
     };
     match ctx.motor.as_ref() {
         Some(MotorHandle::Damiao(m)) => {
-            m.ensure_control_mode(
+            let warning = ensure_control_mode_soft(
+                m,
                 DamiaoControlMode::ForcePos,
                 Duration::from_millis(as_u64(v, "ensure_timeout_ms", 1000)),
-            )
-            .map_err(|e| e.to_string())?;
+            )?;
             if let ActiveCommand::ForcePos { pos, vlim, ratio } = cmd {
                 m.send_cmd_force_pos(pos, vlim, ratio)
                     .map_err(|e| e.to_string())?;
@@ -289,7 +304,11 @@ fn handle_force_pos(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
             } else {
                 None
             };
-            Ok(json!({"op":"force_pos","continuous": as_bool(v, "continuous", false)}))
+            let mut out = json!({"op":"force_pos","continuous": as_bool(v, "continuous", false)});
+            if let Some(warning) = warning {
+                add_warnings(&mut out, vec![warning]);
+            }
+            Ok(out)
         }
         Some(MotorHandle::Robstride(_)) => {
             Err("force_pos is not supported for robstride".to_string())
@@ -304,5 +323,15 @@ fn handle_force_pos(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
             Err("force_pos is not supported for myactuator".to_string())
         }
         None => Err("motor not connected".to_string()),
+    }
+}
+
+fn add_warnings(out: &mut Value, warnings: Vec<String>) {
+    if warnings.is_empty() {
+        return;
+    }
+    if let Some(obj) = out.as_object_mut() {
+        obj.insert("warning".to_string(), json!(warnings[0]));
+        obj.insert("warnings".to_string(), json!(warnings));
     }
 }

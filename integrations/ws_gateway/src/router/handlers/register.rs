@@ -4,6 +4,7 @@ use crate::commands::{
 };
 use crate::model::{ControllerHandle, MotorHandle};
 use crate::session::SessionCtx;
+use crate::vendors::damiao_ws::ensure_control_mode_soft;
 use crate::vendors::hightorque_ws::send_hightorque_ext;
 use motor_vendor_robstride::ParameterValue as RobstrideParameterValue;
 use serde_json::{json, Value};
@@ -73,8 +74,10 @@ fn handle_ensure_mode(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> 
     match ctx.motor.as_ref() {
         Some(MotorHandle::Damiao(m)) => {
             let mode = parse_damiao_mode(v)?;
-            m.ensure_control_mode(mode, Duration::from_millis(timeout_ms))
-                .map_err(|e| e.to_string())?;
+            let warning = ensure_control_mode_soft(m, mode, Duration::from_millis(timeout_ms))?;
+            if let Some(warning) = warning {
+                return Ok(json!({"ensured": true, "warning": warning, "warnings": [warning]}));
+            }
         }
         Some(MotorHandle::Robstride(m)) => {
             let mode = parse_robstride_mode(v)?;

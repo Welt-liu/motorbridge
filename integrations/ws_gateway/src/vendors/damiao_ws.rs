@@ -1,5 +1,6 @@
 use crate::model::{Target, Transport};
-use motor_vendor_damiao::match_models_by_limits;
+use motor_core::error::MotorError;
+use motor_vendor_damiao::{match_models_by_limits, ControlMode, DamiaoMotor};
 use serde_json::{json, Value};
 use std::time::Duration;
 
@@ -7,6 +8,21 @@ use crate::commands::{
     as_u16, as_u64, build_scan_feedback_hints, build_scan_model_hints, parse_transport_in_msg,
 };
 use crate::vendors::transport_ws::open_damiao_controller;
+
+pub(crate) fn ensure_control_mode_soft(
+    motor: &DamiaoMotor,
+    mode: ControlMode,
+    timeout: Duration,
+) -> Result<Option<String>, String> {
+    match motor.ensure_control_mode(mode, timeout) {
+        Ok(()) => Ok(None),
+        Err(MotorError::Timeout(err)) => Ok(Some(format!(
+            "Damiao CTRL_MODE register 10 verify timed out after requesting mode {}; command continued: {err}",
+            mode as u32
+        ))),
+        Err(err) => Err(err.to_string()),
+    }
+}
 
 pub(crate) fn cmd_scan_damiao(v: &Value, base: &Target) -> Result<Value, String> {
     let transport = parse_transport_in_msg(v, base.transport)?;
@@ -187,4 +203,42 @@ pub(crate) fn cmd_scan_damiao(v: &Value, base: &Target) -> Result<Value, String>
         "fallback_hits": fallback_hits,
         "hits": hits,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use motor_core::bus::{CanBus, CanFrame};
+    use motor_core::error::Result;
+    use std::sync::Arc;
+
+    struct SilentBus;
+
+    impl CanBus for SilentBus {
+        fn send(&self, _frame: CanFrame) -> Result<()> {
+            Ok(())
+        }
+
+        fn recv(&self, _timeout: Duration) -> Result<Option<CanFrame>> {
+            Ok(None)
+        }
+
+        fn shutdown(&self) -> Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn soft_mode_verify_returns_warning_on_ctrl_mode_timeout() {
+        let motor =
+            DamiaoMotor::new(0x01, 0x11, "4340P", Arc::new(SilentBus)).expect("create motor");
+
+        let warning =
+            ensure_control_mode_soft(&motor, ControlMode::PosVel, Duration::from_millis(1))
+                .expect("timeout should be downgraded to warning")
+                .expect("warning should be present");
+
+        assert!(warning.contains("CTRL_MODE register 10 verify timed out"));
+        assert!(warning.contains("command continued"));
+    }
 }

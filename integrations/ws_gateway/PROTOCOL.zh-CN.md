@@ -872,6 +872,11 @@ Hexfellow mode：
 {"ensured":true}
 ```
 
+说明：Damiao 的 `ensure_mode` 以及 `mit` / `pos_vel` / `vel` / `force_pos`
+会写入并回读 `RID 10`（`CTRL_MODE`）确认模式。若仅回读确认超时，WS 会返回
+`ok:true`，并在 `data.warning` / `data.warnings` 中说明“确认超时但命令已继续”；
+若读到明确不匹配的模式值，仍返回 `ok:false`。
+
 ### 10.4 `request_feedback`
 
 作用：主动请求或轮询一次反馈。
