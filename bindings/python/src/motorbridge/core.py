@@ -43,6 +43,22 @@ class Controller:
             raise CallError(f"new_dm_serial failed: {_err_text()}")
         return self
 
+    @classmethod
+    def from_dm_device(
+        cls,
+        dm_device_type: str = "usb2canfd-dual",
+        dm_channel: str = "canfd1",
+    ) -> "Controller":
+        self = cls.__new__(cls)
+        self._abi = get_abi()
+        self._ptr = self._abi.lib.motor_controller_new_dm_device(
+            dm_device_type.encode(),
+            dm_channel.encode(),
+        )
+        if not self._ptr:
+            raise CallError(f"new_dm_device failed: {_err_text()}")
+        return self
+
     def close(self) -> None:
         if self._ptr:
             self._abi.lib.motor_controller_free(self._ptr)

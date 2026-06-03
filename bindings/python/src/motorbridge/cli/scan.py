@@ -2,10 +2,73 @@ from __future__ import annotations
 
 import argparse
 import time
+from copy import copy
 
 from ..core import Controller
 from .common import _open_controller, _parse_id, _parse_rids, _vendor_defaults
 from .robstride import _robstride_host_id
+
+def _dm_device_scan_channels(args: argparse.Namespace) -> list[str]:
+    explicit = getattr(args, "dm_channel", None)
+    if explicit:
+        return [explicit]
+    if getattr(args, "dm_device_type", "usb2canfd-dual") == "usb2canfd":
+        return ["canfd1"]
+    return ["canfd1", "canfd2"]
+
+
+def _scan_damiao_dm_device_channel(
+    args: argparse.Namespace,
+    start_id: int,
+    end_id: int,
+    dm_channel: str,
+) -> list[tuple[int, str]]:
+    ch_args = copy(args)
+    ch_args.dm_channel = dm_channel
+    found: list[tuple[int, str]] = []
+    print(
+        f"[scan:damiao] transport=dm-device dm_channel={dm_channel} model={args.model} "
+        f"id_range=[0x{start_id:X},0x{end_id:X}] timeout_ms={args.timeout_ms}"
+    )
+    ctrl = _open_controller(ch_args, "damiao")
+    try:
+        for mid in range(start_id, end_id + 1):
+            fid = mid + 0x10
+            motor = ctrl.add_damiao_motor(mid, fid, args.model)
+            try:
+                try:
+                    motor.request_feedback()
+                    hit = None
+                    for _ in range(20):
+                        ctrl.poll_feedback_once()
+                        st = motor.get_state()
+                        if st is not None:
+                            hit = st
+                            break
+                        time.sleep(0.008)
+                    if hit is None:
+                        raise RuntimeError("no feedback")
+                    meta = (
+                        f"vendor=damiao dm_channel={dm_channel} feedback_id=0x{fid:X} "
+                        f"detected_by=dm-device-feedback status={hit.status_code} "
+                        f"pos={hit.pos:+.3f}rad vel={hit.vel:+.3f}rad/s "
+                        f"torq={hit.torq:+.3f}Nm"
+                    )
+                    found.append((mid, meta))
+                    print(f"[hit] vendor=damiao probe=0x{mid:02X} {meta}")
+                except Exception:
+                    print(f"[.. ] vendor=damiao dm_channel={dm_channel} probe=0x{mid:02X} no reply")
+            finally:
+                motor.close()
+                time.sleep(0.002)
+        for _ in range(10):
+            ctrl.poll_feedback_once()
+            time.sleep(0.01)
+    finally:
+        ctrl.close_bus()
+        ctrl.close()
+    return found
+
 
 def _scan_damiao(args: argparse.Namespace, start_id: int, end_id: int) -> list[tuple[int, str]]:
     feedback_base = _parse_id(args.feedback_base)
@@ -14,6 +77,13 @@ def _scan_damiao(args: argparse.Namespace, start_id: int, end_id: int) -> list[t
         f"[scan:damiao] channel={args.channel} model={args.model} "
         f"id_range=[0x{start_id:X},0x{end_id:X}] timeout_ms={args.timeout_ms}"
     )
+    if getattr(args, "transport", "auto") == "dm-device":
+        channels = _dm_device_scan_channels(args)
+        print(f"[scan:damiao] dm-device channel target={getattr(args, 'dm_channel', None) or 'all'}")
+        for dm_channel in channels:
+            found.extend(_scan_damiao_dm_device_channel(args, start_id, end_id, dm_channel))
+        return found
+
     ctrl = _open_controller(args, "damiao")
     try:
         for mid in range(start_id, end_id + 1):
@@ -175,8 +245,8 @@ def _scan_command(args: argparse.Namespace) -> None:
     end_id = _parse_id(args.end_id)
     if end_id < start_id:
         raise ValueError("end-id must be >= start-id")
-    if args.transport == "dm-serial" and args.vendor != "damiao":
-        raise ValueError("scan with transport=dm-serial currently supports --vendor damiao only")
+    if args.transport in ("dm-serial", "dm-device") and args.vendor != "damiao":
+        raise ValueError(f"scan with transport={args.transport} currently supports --vendor damiao only")
     resolved_model, _ = _vendor_defaults(args.vendor if args.vendor != "all" else "damiao", args.model, "0x11")
     args.model = resolved_model
     print(

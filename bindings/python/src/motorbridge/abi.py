@@ -2,6 +2,7 @@ import ctypes
 import ctypes.util
 import json
 import os
+import sys
 from ctypes import POINTER, Structure, c_char_p, c_float, c_int8, c_int32, c_uint8, c_uint16, c_uint32, c_void_p
 from pathlib import Path
 
@@ -59,7 +60,25 @@ def _candidate_lib_paths() -> list[Path]:
     return candidates
 
 
+def _platform_dm_device_lib_name() -> str:
+    if sys.platform.startswith("win"):
+        return "dm_device.dll"
+    if sys.platform == "darwin":
+        return "libdm_device.dylib"
+    return "libdm_device.so"
+
+
+def _configure_packaged_dm_device_runtime() -> None:
+    if os.getenv("MOTOR_DM_DEVICE_LIB"):
+        return
+
+    pkg_dm_lib = Path(__file__).resolve().parent / "lib" / "dm_device" / _platform_dm_device_lib_name()
+    if pkg_dm_lib.exists():
+        os.environ["MOTOR_DM_DEVICE_LIB"] = str(pkg_dm_lib)
+
+
 def _load_library() -> ctypes.CDLL:
+    _configure_packaged_dm_device_runtime()
     tried: list[str] = []
     for p in _candidate_lib_paths():
         tried.append(str(p))
@@ -95,6 +114,8 @@ class Abi:
         lib.motor_controller_new_socketcanfd.restype = c_void_p
         lib.motor_controller_new_dm_serial.argtypes = [c_char_p, c_uint32]
         lib.motor_controller_new_dm_serial.restype = c_void_p
+        lib.motor_controller_new_dm_device.argtypes = [c_char_p, c_char_p]
+        lib.motor_controller_new_dm_device.restype = c_void_p
         lib.motor_controller_free.argtypes = [c_void_p]
         lib.motor_controller_poll_feedback_once.argtypes = [c_void_p]
         lib.motor_controller_poll_feedback_once.restype = c_int32

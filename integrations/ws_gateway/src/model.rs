@@ -43,6 +43,7 @@ pub(crate) enum Transport {
     SocketCan,
     SocketCanFd,
     DmSerial,
+    DmDevice,
 }
 
 impl Transport {
@@ -52,6 +53,7 @@ impl Transport {
             "socketcan" => Ok(Self::SocketCan),
             "socketcanfd" => Ok(Self::SocketCanFd),
             "dm-serial" => Ok(Self::DmSerial),
+            "dm-device" => Ok(Self::DmDevice),
             _ => Err(format!("unsupported transport: {s}")),
         }
     }
@@ -62,6 +64,7 @@ impl Transport {
             Self::SocketCan => "socketcan",
             Self::SocketCanFd => "socketcanfd",
             Self::DmSerial => "dm-serial",
+            Self::DmDevice => "dm-device",
         }
     }
 }
@@ -73,6 +76,8 @@ pub(crate) struct Target {
     pub(crate) channel: String,
     pub(crate) serial_port: String,
     pub(crate) serial_baud: u32,
+    pub(crate) dm_device_type: String,
+    pub(crate) dm_channel: String,
     pub(crate) model: String,
     pub(crate) motor_id: u16,
     pub(crate) feedback_id: u16,

@@ -32,11 +32,17 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--transport",
         default="auto",
-        choices=["auto", "socketcan", "socketcanfd", "dm-serial"],
-        help="transport backend; dm-serial is Damiao-only",
+        choices=["auto", "socketcan", "socketcanfd", "dm-serial", "dm-device"],
+        help="transport backend; dm-serial/dm-device are Damiao-only",
     )
     p.add_argument("--serial-port", default="/dev/ttyACM0", help="serial port for dm-serial")
     p.add_argument("--serial-baud", type=int, default=921600, help="baud rate for dm-serial")
+    p.add_argument(
+        "--dm-device-type",
+        default="usb2canfd-dual",
+        help="DM_Device SDK adapter type for dm-device, e.g. usb2canfd-dual",
+    )
+    p.add_argument("--dm-channel", default="canfd1", help="DM_Device physical channel: canfd1 or canfd2")
     p.add_argument("--model", default="4340", help="model name/hint, e.g. 4340P or rs-00")
     p.add_argument("--motor-id", default="0x01", help="command/device ID, hex or decimal")
     p.add_argument(
@@ -152,6 +158,10 @@ def _open_controller(args: argparse.Namespace, vendor: str) -> Controller:
         if vendor != "damiao":
             raise ValueError("transport=dm-serial is supported only for --vendor damiao")
         return Controller.from_dm_serial(args.serial_port, int(args.serial_baud))
+    if transport == "dm-device":
+        if vendor != "damiao":
+            raise ValueError("transport=dm-device is supported only for --vendor damiao")
+        return Controller.from_dm_device(args.dm_device_type, args.dm_channel)
     if vendor == "hexfellow":
         if transport == "socketcan":
             raise ValueError("vendor=hexfellow requires --transport socketcanfd (or auto)")

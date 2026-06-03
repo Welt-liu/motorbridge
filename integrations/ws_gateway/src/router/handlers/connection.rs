@@ -54,6 +54,8 @@ fn handle_capabilities(ctx: &SessionCtx) -> Result<Value, String> {
             "vendor": ctx.target.vendor.as_str(),
             "transport": ctx.target.transport.as_str(),
             "channel": ctx.target.channel,
+            "dm_device_type": ctx.target.dm_device_type,
+            "dm_channel": ctx.target.dm_channel,
             "model": ctx.target.model,
             "motor_id": ctx.target.motor_id,
             "feedback_id": ctx.target.feedback_id,
@@ -68,7 +70,7 @@ fn handle_capabilities(ctx: &SessionCtx) -> Result<Value, String> {
         ],
         "vendors": {
             "damiao": {
-                "transports": ["auto", "socketcan", "socketcanfd", "dm-serial"],
+                "transports": ["auto", "socketcan", "socketcanfd", "dm-serial", "dm-device"],
                 "modes": ["mit", "pos_vel", "vel", "force_pos"],
                 "ops_unified": ["scan", "set_id", "enable", "disable", "stop", "state_once", "status", "verify"],
                 "ops_vendor_native": ["write_register_u32", "write_register_f32", "get_register_u32", "get_register_f32", "damiao_state_many"]
@@ -143,6 +145,18 @@ fn handle_set_target(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
         .unwrap_or(&next.serial_port)
         .to_string();
     next.serial_baud = as_u64(v, "serial_baud", next.serial_baud as u64) as u32;
+    next.dm_device_type = v
+        .get("dm_device_type")
+        .or_else(|| v.get("dm-device-type"))
+        .and_then(Value::as_str)
+        .unwrap_or(&next.dm_device_type)
+        .to_string();
+    next.dm_channel = v
+        .get("dm_channel")
+        .or_else(|| v.get("dm-channel"))
+        .and_then(Value::as_str)
+        .unwrap_or(&next.dm_channel)
+        .to_string();
     next.model = v
         .get("model")
         .and_then(Value::as_str)
@@ -190,6 +204,8 @@ fn handle_set_target(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
         "channel": ctx.target.channel,
         "serial_port": ctx.target.serial_port,
         "serial_baud": ctx.target.serial_baud,
+        "dm_device_type": ctx.target.dm_device_type,
+        "dm_channel": ctx.target.dm_channel,
         "model": ctx.target.model,
         "motor_id": ctx.target.motor_id,
         "feedback_id": ctx.target.feedback_id,
@@ -307,6 +323,18 @@ fn handle_damiao_state_many(v: &Value, ctx: &mut SessionCtx) -> Result<Value, St
         .unwrap_or(&ctx.target.serial_port)
         .to_string();
     ctx.target.serial_baud = as_u64(v, "serial_baud", ctx.target.serial_baud as u64) as u32;
+    ctx.target.dm_device_type = v
+        .get("dm_device_type")
+        .or_else(|| v.get("dm-device-type"))
+        .and_then(Value::as_str)
+        .unwrap_or(&ctx.target.dm_device_type)
+        .to_string();
+    ctx.target.dm_channel = v
+        .get("dm_channel")
+        .or_else(|| v.get("dm-channel"))
+        .and_then(Value::as_str)
+        .unwrap_or(&ctx.target.dm_channel)
+        .to_string();
 
     let timeout_ms = as_u64(v, "timeout_ms", 120).max(1);
     ctx.ensure_connected()?;

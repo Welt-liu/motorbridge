@@ -43,4 +43,4 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-motorbridge = ["lib/*", "bin/*"]
+motorbridge = ["lib/*", "lib/dm_device/*", "bin/*"]

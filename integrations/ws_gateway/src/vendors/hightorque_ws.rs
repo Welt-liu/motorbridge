@@ -133,5 +133,6 @@ pub(crate) fn open_hightorque_bus(target: &Target) -> Result<Box<dyn CanBus>, St
             Err("hightorque currently uses standard CAN transport only".to_string())
         }
         Transport::DmSerial => Err("dm-serial transport is damiao-only".to_string()),
+        Transport::DmDevice => Err("dm-device transport is damiao-only".to_string()),
     }
 }

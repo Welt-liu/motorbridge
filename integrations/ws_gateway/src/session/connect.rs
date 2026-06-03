@@ -1,5 +1,6 @@
 use crate::model::{ControllerHandle, MotorHandle, Transport, Vendor};
 use crate::vendors::hightorque_ws::open_hightorque_bus;
+use motor_core::dm_device::DmDeviceType;
 use motor_vendor_damiao::DamiaoController;
 use motor_vendor_hexfellow::HexfellowController;
 use motor_vendor_myactuator::MyActuatorController;
@@ -22,6 +23,11 @@ impl SessionCtx {
                     Transport::DmSerial => DamiaoController::new_dm_serial(
                         &self.target.serial_port,
                         self.target.serial_baud,
+                    ),
+                    Transport::DmDevice => DamiaoController::new_dm_device(
+                        DmDeviceType::parse(&self.target.dm_device_type)
+                            .map_err(|e| e.to_string())?,
+                        &self.target.dm_channel,
                     ),
                 }
                 .map_err(|e| format!("open bus failed: {e}"))?;
@@ -77,6 +83,9 @@ impl SessionCtx {
                     Transport::DmSerial => Err(motor_core::error::MotorError::InvalidArgument(
                         "dm-serial transport is damiao-only".to_string(),
                     )),
+                    Transport::DmDevice => Err(motor_core::error::MotorError::InvalidArgument(
+                        "dm-device transport is damiao-only".to_string(),
+                    )),
                 }
                 .map_err(|e| format!("open bus failed: {e}"))?;
                 let fid = if self.target.feedback_id == 0 {
@@ -100,6 +109,9 @@ impl SessionCtx {
                     }
                     Transport::DmSerial => Err(motor_core::error::MotorError::InvalidArgument(
                         "dm-serial transport is damiao-only".to_string(),
+                    )),
+                    Transport::DmDevice => Err(motor_core::error::MotorError::InvalidArgument(
+                        "dm-device transport is damiao-only".to_string(),
                     )),
                 }
                 .map_err(|e| format!("open bus failed: {e}"))?;

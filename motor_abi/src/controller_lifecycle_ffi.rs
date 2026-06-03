@@ -81,6 +81,44 @@ pub extern "C" fn motor_controller_new_dm_serial(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn motor_controller_new_dm_device(
+    dm_device_type: *const c_char,
+    dm_channel: *const c_char,
+) -> *mut MotorController {
+    let dm_device_type = match parse_cstr(dm_device_type, "dm_device_type") {
+        Ok(v) => v,
+        Err(e) => {
+            set_last_error(e);
+            return ptr::null_mut();
+        }
+    };
+    let dm_channel = match parse_cstr(dm_channel, "dm_channel") {
+        Ok(v) => v,
+        Err(e) => {
+            set_last_error(e);
+            return ptr::null_mut();
+        }
+    };
+    let device_type = match DmDeviceType::parse(&dm_device_type) {
+        Ok(v) => v,
+        Err(e) => {
+            set_last_error(e.to_string());
+            return ptr::null_mut();
+        }
+    };
+    let controller = match DamiaoController::new_dm_device(device_type, &dm_channel) {
+        Ok(c) => c,
+        Err(e) => {
+            set_last_error(e.to_string());
+            return ptr::null_mut();
+        }
+    };
+    Box::into_raw(Box::new(MotorController {
+        inner: Mutex::new(ControllerInner::Damiao(controller)),
+    }))
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn motor_controller_free(controller: *mut MotorController) {
     if controller.is_null() {
         return;

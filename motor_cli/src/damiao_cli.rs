@@ -1,4 +1,5 @@
 use crate::args::{get_f32, get_opt_u16_hex_or_dec, get_str, get_u16_hex_or_dec, get_u64};
+use motor_core::dm_device::DmDeviceType;
 use motor_vendor_damiao::{
     match_models_by_limits, model_limits as damiao_model_limits, suggest_models_by_limits,
     ControlMode as DamiaoControlMode, DamiaoController, DamiaoMotor,
@@ -80,17 +81,110 @@ fn open_damiao_controller(
     channel: &str,
     serial_port: &str,
     serial_baud: u32,
+    dm_device_type: &str,
+    dm_channel: &str,
 ) -> Result<DamiaoController, Box<dyn std::error::Error>> {
     match transport {
         "auto" | "socketcan" => Ok(DamiaoController::new_socketcan(channel)?),
         "socketcanfd" => Ok(DamiaoController::new_socketcanfd(channel)?),
         "dm-serial" => Ok(DamiaoController::new_dm_serial(serial_port, serial_baud)?),
+        "dm-device" => Ok(DamiaoController::new_dm_device(
+            DmDeviceType::parse(dm_device_type)?,
+            dm_channel,
+        )?),
         _ => Err(format!(
-            "unknown Damiao transport: {} (expected auto|socketcan|socketcanfd|dm-serial)",
+            "unknown Damiao transport: {} (expected auto|socketcan|socketcanfd|dm-serial|dm-device)",
             transport
         )
         .into()),
     }
+}
+
+fn dm_device_scan_channels(
+    args: &HashMap<String, String>,
+    dm_device_type: &str,
+) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    if let Some(explicit) = args.get("dm-channel") {
+        return Ok(vec![explicit.clone()]);
+    }
+    let device_type = DmDeviceType::parse(dm_device_type)?;
+    if matches!(device_type, DmDeviceType::Usb2CanFd) {
+        Ok(vec!["canfd1".to_string()])
+    } else {
+        Ok(vec!["canfd1".to_string(), "canfd2".to_string()])
+    }
+}
+
+fn scan_damiao_dm_device_channel(
+    dm_device_type: &str,
+    dm_channel: &str,
+    model: &str,
+    start_id: u16,
+    end_id: u16,
+    close_after_scan: bool,
+) -> Result<usize, Box<dyn std::error::Error>> {
+    let controller = open_damiao_controller(
+        "dm-device",
+        "can0",
+        "/dev/ttyACM0",
+        921600,
+        dm_device_type,
+        dm_channel,
+    )?;
+    println!(
+        "[scan] probing Damiao IDs {}..{} on dm-device:{} using feedback request",
+        start_id, end_id, dm_channel
+    );
+    let mut motors = Vec::new();
+    for id in start_id..=end_id {
+        let fid = id.saturating_add(0x10);
+        if let Ok(motor) = controller.add_motor(id, fid, model) {
+            motors.push((id, fid, motor));
+        }
+    }
+
+    let mut hits = 0usize;
+    for (id, fid, motor) in motors {
+        let _ = motor.request_motor_feedback();
+        for _ in 0..20 {
+            let _ = controller.poll_feedback_once();
+            if let Some(s) = motor.latest_state() {
+                println!(
+                    "[hit] vendor=damiao dm_channel={} id={} feedback_id=0x{:X} detected_by=dm-device-feedback status={} pos={:+.3} vel={:+.3} torq={:+.3}",
+                    dm_channel, id, fid, s.status_code, s.pos, s.vel, s.torq
+                );
+                hits += 1;
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(8));
+        }
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    for _ in 0..50 {
+        let _ = controller.poll_feedback_once();
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    println!(
+        "[scan] done vendor=damiao dm_channel={} hits={hits}",
+        dm_channel
+    );
+    if close_after_scan {
+        controller.close_bus()?;
+    }
+    Ok(hits)
+}
+
+#[cfg(unix)]
+fn hard_exit(code: i32) -> ! {
+    unsafe extern "C" {
+        fn _exit(status: i32) -> !;
+    }
+    unsafe { _exit(code) }
+}
+
+#[cfg(not(unix))]
+fn hard_exit(code: i32) -> ! {
+    std::process::exit(code)
 }
 
 fn damiao_param_type(args: &HashMap<String, String>) -> String {
@@ -120,6 +214,8 @@ pub fn run_damiao(
     let serial_baud_u64 = get_u64(args, "serial-baud", 921600)?;
     let serial_baud = u32::try_from(serial_baud_u64)
         .map_err(|_| format!("invalid --serial-baud (too large): {serial_baud_u64}"))?;
+    let dm_device_type = get_str(args, "dm-device-type", "usb2canfd-dual");
+    let dm_channel = get_str(args, "dm-channel", "canfd1");
 
     if transport == "dm-serial" {
         println!(
@@ -130,14 +226,67 @@ pub fn run_damiao(
             serial_port, serial_baud
         );
     }
+    if transport == "dm-device" {
+        let note_dm_channel = if mode == "scan" && !args.contains_key("dm-channel") {
+            "all".to_string()
+        } else {
+            dm_channel.clone()
+        };
+        println!(
+            "[note] transport=dm-device uses DM_Device_SDK/libdm_device.so; device_type={} dm_channel={}",
+            dm_device_type, note_dm_channel
+        );
+    }
 
-    let controller = open_damiao_controller(&transport, channel, &serial_port, serial_baud)?;
     if mode == "scan" {
         let start_id = get_u16_hex_or_dec(args, "start-id", 1)?;
         let end_id = get_u16_hex_or_dec(args, "end-id", 255)?;
         if start_id == 0 || end_id == 0 || start_id > 255 || end_id > 255 || start_id > end_id {
             return Err("invalid scan range: expected 1..255 and start<=end".into());
         }
+        if transport == "dm-device" {
+            let scan_channels = dm_device_scan_channels(args, &dm_device_type)?;
+            let channel_label = if args.contains_key("dm-channel") {
+                dm_channel.clone()
+            } else {
+                "all".to_string()
+            };
+            println!(
+                "[scan] dm-device channel target: {}",
+                if channel_label == "all" {
+                    "all (canfd1,canfd2)".to_string()
+                } else {
+                    channel_label.clone()
+                }
+            );
+            let hard_exit_after_scan = get_u64(args, "dm-device-hard-exit", 1)? != 0;
+            let mut total_hits = 0usize;
+            for scan_channel in scan_channels {
+                total_hits += scan_damiao_dm_device_channel(
+                    &dm_device_type,
+                    &scan_channel,
+                    model,
+                    start_id,
+                    end_id,
+                    !hard_exit_after_scan,
+                )?;
+            }
+            println!(
+                "[scan] done vendor=damiao dm_channel={channel_label} total_hits={total_hits}"
+            );
+            if hard_exit_after_scan {
+                hard_exit(0);
+            }
+            return Ok(());
+        }
+        let controller = open_damiao_controller(
+            &transport,
+            channel,
+            &serial_port,
+            serial_baud,
+            &dm_device_type,
+            &dm_channel,
+        )?;
         let model_hints = build_scan_model_hints();
         println!(
             "[scan] probing Damiao IDs {}..{} on {}",
@@ -253,6 +402,14 @@ pub fn run_damiao(
         return Ok(());
     }
 
+    let controller = open_damiao_controller(
+        &transport,
+        channel,
+        &serial_port,
+        serial_baud,
+        &dm_device_type,
+        &dm_channel,
+    )?;
     let motor = controller.add_motor(motor_id, feedback_id, model)?;
 
     if set_motor_id.is_some() || set_feedback_id.is_some() {
@@ -277,8 +434,14 @@ pub fn run_damiao(
         // Otherwise a store sent via an old-ID handle may be lost.
         if store_after_set || verify_id {
             std::thread::sleep(Duration::from_millis(120));
-            let verify_ctrl =
-                open_damiao_controller(&transport, channel, &serial_port, serial_baud)?;
+            let verify_ctrl = open_damiao_controller(
+                &transport,
+                channel,
+                &serial_port,
+                serial_baud,
+                &dm_device_type,
+                &dm_channel,
+            )?;
             let verify_motor = verify_ctrl.add_motor(new_motor_id, new_feedback_id, model)?;
 
             if store_after_set {

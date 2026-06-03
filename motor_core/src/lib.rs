@@ -1,6 +1,7 @@
 pub mod bus;
 pub mod controller;
 pub mod device;
+pub mod dm_device;
 pub mod dm_serial;
 pub mod error;
 pub mod model;

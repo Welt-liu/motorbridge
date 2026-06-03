@@ -26,6 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let vendor = get_str(&args, "vendor", "damiao");
     let channel = get_str(&args, "channel", "can0");
     let transport = get_str(&args, "transport", "auto");
+    let dm_device_type = get_str(&args, "dm-device-type", "usb2canfd-dual");
     let default_model = if vendor == "robstride" {
         "rs-00"
     } else if vendor == "hightorque" {
@@ -66,6 +67,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "mit"
         },
     );
+    let dm_channel = if mode == "scan" && transport == "dm-device" {
+        args.get("dm-channel")
+            .cloned()
+            .unwrap_or_else(|| "all".to_string())
+    } else {
+        get_str(&args, "dm-channel", "canfd1")
+    };
 
     let model_is_default = !args.contains_key("model");
     let motor_id_is_default = !args.contains_key("motor-id");
@@ -78,10 +86,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let scan_start = get_u16_hex_or_dec(&args, "start-id", 1)?;
         let scan_end = get_u16_hex_or_dec(&args, "end-id", 255)?;
         println!(
-            "vendor={} transport={} channel={} mode=scan model_hint={}{} base_feedback_id=0x{:X}{} scan_range={}{}..{}{}",
+            "vendor={} transport={} channel={}{} mode=scan model_hint={}{} base_feedback_id=0x{:X}{} scan_range={}{}..{}{}",
             vendor,
             transport,
             channel,
+            if transport == "dm-device" {
+                format!(" dm_device_type={} dm_channel={}", dm_device_type, dm_channel)
+            } else {
+                String::new()
+            },
             model,
             default_tag(model_is_default),
             feedback_id,
@@ -93,10 +106,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     } else {
         println!(
-            "vendor={} transport={} channel={} model={}{} motor_id=0x{:X}{} feedback_id=0x{:X}{} mode={}",
+            "vendor={} transport={} channel={}{} model={}{} motor_id=0x{:X}{} feedback_id=0x{:X}{} mode={}",
             vendor,
             transport,
             channel,
+            if transport == "dm-device" {
+                format!(" dm_device_type={} dm_channel={}", dm_device_type, dm_channel)
+            } else {
+                String::new()
+            },
             model,
             default_tag(model_is_default),
             motor_id,
@@ -109,6 +127,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if transport == "dm-serial" && vendor != "damiao" {
         return Err("transport=dm-serial is currently supported only for --vendor damiao".into());
+    }
+    if transport == "dm-device" && vendor != "damiao" {
+        return Err("transport=dm-device is currently supported only for --vendor damiao".into());
     }
     if vendor == "hexfellow" && transport != "auto" && transport != "socketcanfd" {
         return Err("vendor=hexfellow supports only --transport auto|socketcanfd".into());

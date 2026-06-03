@@ -1,5 +1,6 @@
 use crate::model::{Target, Transport};
 use motor_core::bus::CanBus;
+use motor_core::dm_device::DmDeviceType;
 #[cfg(target_os = "windows")]
 use motor_core::pcan::PcanBus;
 #[cfg(target_os = "linux")]
@@ -26,6 +27,11 @@ pub(crate) fn open_damiao_controller(
         }
         Transport::DmSerial => DamiaoController::new_dm_serial(&base.serial_port, base.serial_baud)
             .map_err(|e| e.to_string()),
+        Transport::DmDevice => DamiaoController::new_dm_device(
+            DmDeviceType::parse(&base.dm_device_type).map_err(|e| e.to_string())?,
+            &base.dm_channel,
+        )
+        .map_err(|e| e.to_string()),
     }
 }
 
@@ -41,6 +47,7 @@ pub(crate) fn open_robstride_controller(
             RobstrideController::new_socketcanfd(&base.channel).map_err(|e| e.to_string())
         }
         Transport::DmSerial => Err("transport dm-serial is damiao-only".to_string()),
+        Transport::DmDevice => Err("transport dm-device is damiao-only".to_string()),
     }
 }
 
@@ -56,6 +63,7 @@ pub(crate) fn open_myactuator_controller(
             MyActuatorController::new_socketcanfd(&base.channel).map_err(|e| e.to_string())
         }
         Transport::DmSerial => Err("transport dm-serial is damiao-only".to_string()),
+        Transport::DmDevice => Err("transport dm-device is damiao-only".to_string()),
     }
 }
 
@@ -71,6 +79,7 @@ pub(crate) fn open_hexfellow_controller(
             Err("hexfellow requires transport socketcanfd (or auto)".to_string())
         }
         Transport::DmSerial => Err("transport dm-serial is damiao-only".to_string()),
+        Transport::DmDevice => Err("transport dm-device is damiao-only".to_string()),
     }
 }
 
@@ -101,5 +110,6 @@ pub(crate) fn open_hightorque_bus(
             Err("hightorque currently uses standard CAN transport only".to_string())
         }
         Transport::DmSerial => Err("transport dm-serial is damiao-only".to_string()),
+        Transport::DmDevice => Err("transport dm-device is damiao-only".to_string()),
     }
 }

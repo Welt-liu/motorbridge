@@ -93,11 +93,21 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument(
         "--transport",
         default="auto",
-        choices=["auto", "socketcan", "socketcanfd", "dm-serial"],
-        help="transport backend; dm-serial is Damiao-only",
+        choices=["auto", "socketcan", "socketcanfd", "dm-serial", "dm-device"],
+        help="transport backend; dm-serial/dm-device are Damiao-only",
     )
     scan.add_argument("--serial-port", default="/dev/ttyACM0", help="serial port for dm-serial")
     scan.add_argument("--serial-baud", type=int, default=921600, help="baud rate for dm-serial")
+    scan.add_argument(
+        "--dm-device-type",
+        default="usb2canfd-dual",
+        help="DM_Device SDK adapter type for dm-device, e.g. usb2canfd-dual",
+    )
+    scan.add_argument(
+        "--dm-channel",
+        default=None,
+        help="DM_Device physical channel: canfd1 or canfd2; omitted scans both on dual-channel adapters",
+    )
     scan.add_argument("--model", default="4340", help="model hint used by vendor scanner")
     scan.add_argument("--start-id", default="0x01", help="first motor/device ID to probe")
     scan.add_argument("--end-id", default="0x10", help="last motor/device ID to probe")

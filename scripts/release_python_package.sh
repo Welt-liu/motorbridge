@@ -8,14 +8,39 @@ case "$(uname -s)" in
   Linux*)
     ABI_LIB="${ROOT_DIR}/target/release/libmotor_abi.so"
     GW_BIN="${ROOT_DIR}/target/release/ws_gateway"
+    case "$(uname -m)" in
+      x86_64|amd64)
+        DM_DEVICE_LIB="${ROOT_DIR}/third_party/dm_device/v1.1.0/linux/x86_64/libdm_device.so"
+        ;;
+      aarch64|arm64)
+        DM_DEVICE_LIB="${ROOT_DIR}/third_party/dm_device/v1.1.0/linux/arm64/libdm_device.so"
+        ;;
+      *)
+        echo "Unsupported Linux arch for DM_Device SDK: $(uname -m)" >&2
+        exit 1
+        ;;
+    esac
     ;;
   Darwin*)
     ABI_LIB="${ROOT_DIR}/target/release/libmotor_abi.dylib"
     GW_BIN="${ROOT_DIR}/target/release/ws_gateway"
+    case "$(uname -m)" in
+      arm64|aarch64)
+        DM_DEVICE_LIB="${ROOT_DIR}/third_party/dm_device/v1.1.0/macos/arm64/libdm_device.dylib"
+        ;;
+      x86_64|amd64)
+        DM_DEVICE_LIB="${ROOT_DIR}/third_party/dm_device/v1.1.0/macos/x86_64/libdm_device.dylib"
+        ;;
+      *)
+        echo "Unsupported macOS arch for DM_Device SDK: $(uname -m)" >&2
+        exit 1
+        ;;
+    esac
     ;;
   MINGW*|MSYS*|CYGWIN*)
     ABI_LIB="${ROOT_DIR}/target/release/motor_abi.dll"
     GW_BIN="${ROOT_DIR}/target/release/ws_gateway.exe"
+    DM_DEVICE_LIB="${ROOT_DIR}/third_party/dm_device/v1.1.0/windows/msvc/dm_device.dll"
     ;;
   *)
     echo "Unsupported platform: $(uname -s)" >&2
@@ -35,12 +60,17 @@ if [[ ! -f "${GW_BIN}" ]]; then
   echo "Gateway binary not found: ${GW_BIN}" >&2
   exit 1
 fi
+if [[ ! -f "${DM_DEVICE_LIB}" ]]; then
+  echo "DM_Device SDK library not found: ${DM_DEVICE_LIB}" >&2
+  exit 1
+fi
 
 echo "[2/6] Build Python sdist + wheel with explicit artifact env"
 cd "${PY_BINDING_DIR}"
 rm -rf dist build src/motorbridge.egg-info
 MOTORBRIDGE_LIB="${ABI_LIB}" \
 MOTORBRIDGE_WS_GATEWAY_BIN="${GW_BIN}" \
+MOTOR_DM_DEVICE_LIB="${DM_DEVICE_LIB}" \
 python3 -m build
 
 echo "[3/6] Validate built packages"

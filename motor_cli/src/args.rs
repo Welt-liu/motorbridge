@@ -200,10 +200,12 @@ Hexfellow modes:\n\
   --mode scan | status | enable | disable | pos-vel | mit\n\n\
 \n\
 Common args:\n\
-  --transport   auto|socketcan|socketcanfd|dm-serial (default auto; hexfellow uses auto/socketcanfd only, dm-serial is Damiao-only)\n\
+  --transport   auto|socketcan|socketcanfd|dm-serial|dm-device (default auto; dm-serial/dm-device are Damiao-only)\n\
   --channel      default can0\n\
   --serial-port  default /dev/ttyACM0 (used when --transport dm-serial)\n\
   --serial-baud  default 921600 (used when --transport dm-serial)\n\
+  --dm-device-type  usb2canfd|usb2canfd-dual|linkx4c, default usb2canfd-dual (used when --transport dm-device)\n\
+  --dm-channel      canfd1|canfd2 (dm-device control default canfd1; scan omitted scans both on dual-channel adapters)\n\
   --model        default depends on vendor (damiao=4340, robstride=rs-00, hightorque=hightorque[hint only], myactuator=X8)\n\
   --motor-id     default 0x01\n\
   --feedback-id  default 0x11 for Damiao, 0xFD for RobStride, 0x01 for HighTorque, 0x241 for MyActuator\n\

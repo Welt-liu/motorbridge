@@ -1,4 +1,5 @@
 import os
+import platform
 import shutil
 import sys
 from pathlib import Path
@@ -26,6 +27,52 @@ def _platform_gateway_name() -> str:
     if sys.platform.startswith("win"):
         return "ws_gateway.exe"
     return "ws_gateway"
+
+
+def _dm_device_platform_relpath() -> Path:
+    machine = platform.machine().lower()
+    if sys.platform.startswith("linux"):
+        if machine in {"x86_64", "amd64"}:
+            return Path("linux/x86_64/libdm_device.so")
+        if machine in {"aarch64", "arm64"}:
+            return Path("linux/arm64/libdm_device.so")
+    if sys.platform == "darwin":
+        if machine in {"arm64", "aarch64"}:
+            return Path("macos/arm64/libdm_device.dylib")
+        if machine in {"x86_64", "amd64"}:
+            return Path("macos/x86_64/libdm_device.dylib")
+    if sys.platform.startswith("win"):
+        return Path("windows/msvc/dm_device.dll")
+    raise RuntimeError(f"Unsupported DM_Device SDK wheel platform: {sys.platform}/{machine}")
+
+
+def _candidate_dm_device_paths() -> list[Path]:
+    here = Path(__file__).resolve()
+    repo_root = here.parents[2]
+    rel = _dm_device_platform_relpath()
+    candidates: list[Path] = []
+
+    env = os.getenv("MOTOR_DM_DEVICE_LIB")
+    if env:
+        candidates.append(Path(env).expanduser())
+
+    candidates.append(repo_root / "third_party" / "dm_device" / "v1.1.0" / rel)
+    candidates.append(repo_root / "dm-device-sdk" / "C&C++" / "lib" / "v1.1.0" / rel)
+    candidates.append(repo_root.parent / "dm-device-sdk" / "C&C++" / "lib" / "v1.1.0" / rel)
+    candidates.append(here.parent / "src" / "motorbridge" / "lib" / "dm_device" / rel.name)
+    return candidates
+
+
+def _resolve_dm_device_path() -> Path:
+    for path in _candidate_dm_device_paths():
+        if path.exists():
+            return path
+    tried = "\n".join(f"- {path}" for path in _candidate_dm_device_paths())
+    raise RuntimeError(
+        "Cannot locate DM_Device SDK shared library for wheel build.\n"
+        f"Tried:\n{tried}\n"
+        "Copy SDK libraries into third_party/dm_device/v1.1.0 or set MOTOR_DM_DEVICE_LIB."
+    )
 
 
 def _candidate_gateway_paths() -> list[Path]:
@@ -90,6 +137,11 @@ class BuildPyWithAbi(_build_py):
         dst_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy2(abi_src, dst_dir / abi_src.name)
 
+        dm_src = _resolve_dm_device_path()
+        dm_dst_dir = dst_dir / "dm_device"
+        dm_dst_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(dm_src, dm_dst_dir / dm_src.name)
+
         gateway_src = _resolve_gateway_path()
         gateway_dir = Path(self.build_lib) / "motorbridge" / "bin"
         gateway_dir.mkdir(parents=True, exist_ok=True)
@@ -118,7 +170,7 @@ setup(
     python_requires=">=3.10",
     package_dir={"": "src"},
     packages=find_packages(where="src"),
-    package_data={"motorbridge": ["lib/*", "bin/*"]},
+    package_data={"motorbridge": ["lib/*", "lib/dm_device/*", "bin/*"]},
     include_package_data=True,
     entry_points={
         "console_scripts": [

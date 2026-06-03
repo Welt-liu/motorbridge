@@ -9,6 +9,8 @@ pub(crate) fn parse_args() -> Result<ServerConfig, String> {
     let mut channel = "can0".to_string();
     let mut serial_port = "/dev/ttyACM0".to_string();
     let mut serial_baud = 921600u32;
+    let mut dm_device_type = "usb2canfd-dual".to_string();
+    let mut dm_channel = "canfd1".to_string();
     let mut model = "auto".to_string();
     let mut motor_id = 0x01u16;
     let mut feedback_id = 0x11u16;
@@ -43,10 +45,12 @@ Examples:\n\
 \n\
 Optional defaults (only used when WS message omits target fields):\n\
   --vendor damiao|robstride|hexfellow|myactuator|hightorque\n\
-  --transport auto|socketcan|socketcanfd|dm-serial\n\
+  --transport auto|socketcan|socketcanfd|dm-serial|dm-device\n\
   --channel can0                SocketCAN/CAN-FD interface, for example can0/can1\n\
   --serial-port /dev/ttyACM0    used only by --transport dm-serial\n\
   --serial-baud 921600          used only by --transport dm-serial\n\
+  --dm-device-type usb2canfd-dual  used only by --transport dm-device\n\
+  --dm-channel canfd1           dm-device control default; scan JSON omitted dm_channel scans both channels\n\
   --model auto                  default model hint when WS message omits model\n\
   --motor-id 0x01               default command/device ID when WS message omits motor_id\n\
   --feedback-id 0x11            default feedback/host ID; RobStride defaults to 0xFD if omitted\n\
@@ -56,6 +60,7 @@ Transport notes:\n\
   socketcan:   classic Linux SocketCAN, usually can0/can1 after adapter setup\n\
   socketcanfd: CAN-FD path, required for Hexfellow\n\
   dm-serial:   Damiao serial bridge only; does not support RobStride/MyActuator/Hexfellow\n\
+  dm-device:   DaMiao DM_Device SDK USB2CANFD/USB2CANFD_DUAL transport, Damiao only\n\
 \n\
 Platform hints:\n\
   Linux SocketCAN: use --channel can0 after bringing the CAN interface UP.\n\
@@ -89,6 +94,8 @@ After startup:\n\
                     .parse::<u32>()
                     .map_err(|e| format!("invalid --serial-baud: {e}"))?;
             }
+            "--dm-device-type" => dm_device_type = next.clone(),
+            "--dm-channel" => dm_channel = next.clone(),
             "--model" => model = next.clone(),
             "--motor-id" => motor_id = parse_hex_or_dec(next)?,
             "--feedback-id" => feedback_id = parse_hex_or_dec(next)?,
@@ -140,6 +147,8 @@ After startup:\n\
             channel,
             serial_port,
             serial_baud,
+            dm_device_type,
+            dm_channel,
             model,
             motor_id,
             feedback_id,

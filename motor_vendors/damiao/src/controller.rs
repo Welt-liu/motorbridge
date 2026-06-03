@@ -1,5 +1,6 @@
 use crate::motor::DamiaoMotor;
 use motor_core::bus::{open_can_bus, open_socketcanfd, CanBus};
+use motor_core::dm_device::{DmDeviceBus, DmDeviceType};
 use motor_core::dm_serial::DmSerialBus;
 use motor_core::error::Result;
 use motor_core::vendor_controller::VendorController;
@@ -26,6 +27,11 @@ impl DamiaoController {
 
     pub fn new_dm_serial(port: &str, baud: u32) -> Result<Self> {
         let bus: Arc<dyn CanBus> = Arc::new(DmSerialBus::open(port, baud)?);
+        Ok(Self::new(bus))
+    }
+
+    pub fn new_dm_device(device_type: DmDeviceType, dm_channel: &str) -> Result<Self> {
+        let bus: Arc<dyn CanBus> = Arc::new(DmDeviceBus::open(device_type, dm_channel)?);
         Ok(Self::new(bus))
     }
 
