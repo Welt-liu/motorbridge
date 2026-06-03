@@ -54,6 +54,9 @@
 - `0.4.3` 新增 Damiao `dm-device` 传输、Python
   `Controller.from_dm_device(...)`、Python CLI `--transport dm-device`，并让
   wheel 打包 `libdm_device.so`/`.dylib`/`.dll`。
+- Python CLI 使用 `--transport dm-device` 扫描时，不传 `--dm-channel` 会扫描
+  `usb2canfd-dual` 的 CANFD1 和 CANFD2；传 `--dm-channel canfd1` 或
+  `--dm-channel canfd2` 则只扫一路。
 - `0.4.2` 优化 Damiao `dm-serial` 多电机控制：串口无待读字节时 `recv(0ms)`
   会非阻塞返回，并将有界同步读取的串口 read timeout 降到 1 ms。
 - `0.4.1` 新增 ABI 版本/能力发现，并让 C++ RobStride wrapper 与 Python SDK

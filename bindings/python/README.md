@@ -56,6 +56,9 @@ Packaging note:
 - `0.4.3` adds Damiao `dm-device` transport, Python
   `Controller.from_dm_device(...)`, Python CLI `--transport dm-device`, and
   wheel packaging for `libdm_device.so`/`.dylib`/`.dll`.
+- For Python CLI scans with `--transport dm-device`, omit `--dm-channel` to scan
+  both CANFD1 and CANFD2 on `usb2canfd-dual`; pass `--dm-channel canfd1` or
+  `--dm-channel canfd2` to scan one channel.
 - `0.4.2` optimizes Damiao `dm-serial` multi-motor control by making
   `recv(0ms)` non-blocking when no serial bytes are pending and by reducing the
   bounded serial read timeout to 1 ms.

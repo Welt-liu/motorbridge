@@ -30,6 +30,8 @@ python3 -m pip install -i https://test.pypi.org/simple/ motorbridge==<版本号>
   走 Damiao 串口桥（`SERIAL_PORT` / `SERIAL_BAUD` 生效），只支持 Damiao。
 - `TRANSPORT = "dm-device"`：
   走 DaMiao DM_Device SDK（`DM_DEVICE_TYPE` / `DM_CHANNEL` 生效），只支持 Damiao。
+  扫描脚本中 `DM_CHANNEL = None` 表示扫描 `usb2canfd-dual` 的 CANFD1 和
+  CANFD2；设置 `"canfd1"` / `"canfd2"` 时只扫一路。
 
 快速判断：
 - 你用 CAN 设备（PCAN/CANable candleLight/gs_usb）就用 `auto/socketcan`。
@@ -66,6 +68,7 @@ motorbridge-cli run --vendor damiao --channel can0 --model 4340P --motor-id 0x01
 - `DT_MS`：循环周期毫秒（总线忙时增大到 30/50）
 - `SERIAL_PORT` / `SERIAL_BAUD`：仅 `dm-serial` 使用
 - `DM_DEVICE_TYPE` / `DM_CHANNEL`：仅 `dm-device` 使用
+  （扫描脚本里 `DM_CHANNEL=None` 表示双路扫描）
 
 ## 5）课程化系列（强烈推荐）
 

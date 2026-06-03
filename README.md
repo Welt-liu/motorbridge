@@ -22,6 +22,9 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
   Python CLI, Python wheels, C ABI, and `ws_gateway` now share the same
   `--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`
   path.
+- In `dm-device` scan mode, omit `--dm-channel` / `dm_channel` to scan both
+  CANFD1 and CANFD2 on dual-channel adapters; pass `canfd1` or `canfd2` only
+  when you want one physical channel.
 - `v0.4.3` vendors the DM_Device SDK runtime under `third_party/dm_device` and
   packages the platform-appropriate runtime library in Python wheels under
   `motorbridge/lib/dm_device/`.

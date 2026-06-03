@@ -22,6 +22,9 @@
   Python CLI、Python wheel、C ABI 和 `ws_gateway` 已统一到同一套
   `--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`
   参数路径。
+- `dm-device` 扫描模式下，不传 `--dm-channel` / `dm_channel` 会同时扫描双通道
+  适配器的 CANFD1 和 CANFD2；只有想限制到单一路物理通道时才传
+  `canfd1` 或 `canfd2`。
 - `v0.4.3` 将 DM_Device SDK runtime 放入 `third_party/dm_device`，Python
   wheel 会把当前平台对应的 runtime 库打包到 `motorbridge/lib/dm_device/`。
 - `v0.4.3` 使用一个小型 C++ shim 承接 SDK 边界，并在长进程中复用已打开的

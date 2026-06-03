@@ -34,6 +34,9 @@ Versioning.
   the same USB adapter.
 - Aligned Damiao `dm-device` scans in Rust CLI, Python CLI, and WebSocket
   gateway to use the stable feedback request path.
+- Updated `dm-device` scan semantics so omitting `--dm-channel` / `dm_channel`
+  scans both CANFD1 and CANFD2 on dual-channel adapters; specifying
+  `canfd1` or `canfd2` restricts the scan to one physical channel.
 
 ### Verified
 
