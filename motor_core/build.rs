@@ -49,8 +49,8 @@ fn platform_library_relative_path(os: &str, arch: &str, env: &str) -> Option<&'s
         ("linux", "aarch64", _) => Some("linux/arm64/libdm_device.so"),
         ("macos", "aarch64", _) => Some("macos/arm64/libdm_device.dylib"),
         ("macos", "x86_64", _) => Some("macos/x86_64/libdm_device.dylib"),
-        ("windows", _, "gnu") => Some("windows/mingw/libdm_device.dll"),
-        ("windows", _, _) => Some("windows/msvc/dm_device.dll"),
+        ("windows", "x86_64", "gnu") => Some("windows/mingw/libdm_device.dll"),
+        ("windows", "x86_64", "msvc") => Some("windows/msvc/dm_device.dll"),
         _ => None,
     }
 }

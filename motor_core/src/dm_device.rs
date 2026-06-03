@@ -371,7 +371,8 @@ fn platform_library_relative_path() -> Result<&'static str> {
         ("linux", "aarch64") => Ok("linux/arm64/libdm_device.so"),
         ("macos", "aarch64") => Ok("macos/arm64/libdm_device.dylib"),
         ("macos", "x86_64") => Ok("macos/x86_64/libdm_device.dylib"),
-        ("windows", _) => Ok("windows/msvc/dm_device.dll"),
+        ("windows", "x86_64") if cfg!(target_env = "gnu") => Ok("windows/mingw/libdm_device.dll"),
+        ("windows", "x86_64") if cfg!(target_env = "msvc") => Ok("windows/msvc/dm_device.dll"),
         (os, arch) => Err(MotorError::Unsupported(format!(
             "DM_Device SDK is not bundled for platform {os}/{arch}"
         ))),

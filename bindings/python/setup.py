@@ -41,7 +41,7 @@ def _dm_device_platform_relpath() -> Path | None:
             return Path("macos/arm64/libdm_device.dylib")
         if machine in {"x86_64", "amd64"}:
             return Path("macos/x86_64/libdm_device.dylib")
-    if sys.platform.startswith("win"):
+    if sys.platform.startswith("win") and machine in {"x86_64", "amd64"}:
         return Path("windows/msvc/dm_device.dll")
     return None
 

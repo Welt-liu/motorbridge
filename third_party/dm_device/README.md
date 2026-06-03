@@ -38,8 +38,8 @@ the Rust target platform to one expected SDK runtime path:
 | `aarch64-unknown-linux-*` | `linux/arm64/libdm_device.so` |
 | `aarch64-apple-darwin` | `macos/arm64/libdm_device.dylib` |
 | `x86_64-apple-darwin` | `macos/x86_64/libdm_device.dylib` |
-| `*-pc-windows-msvc` | `windows/msvc/dm_device.dll` |
-| `*-pc-windows-gnu` | `windows/mingw/libdm_device.dll` |
+| `x86_64-pc-windows-msvc` | `windows/msvc/dm_device.dll` |
+| `x86_64-pc-windows-gnu` | `windows/mingw/libdm_device.dll` |
 
 If the mapped file exists, motorbridge compiles the C++ shim and enables the
 real `DmDeviceBus`. If the mapped file is missing, motorbridge still builds for
