@@ -35,6 +35,7 @@ Repository = "https://github.com/tianrking/motorbridge"
 motorbridge = "motorbridge.cli:main"
 motorbridge-cli = "motorbridge.cli:main"
 motorbridge-gateway = "motorbridge.gateway:main"
+motorbridge-install-dm-device = "motorbridge.dm_device_runtime:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

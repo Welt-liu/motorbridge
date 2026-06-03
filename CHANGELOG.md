@@ -22,8 +22,11 @@ Versioning.
 - Added ABI constructor `motor_controller_new_dm_device(...)`.
 - Added Python `Controller.from_dm_device(...)` and Python CLI
   `--transport dm-device` support.
-- Added Python wheel packaging for the platform-appropriate DM_Device runtime
-  library under `motorbridge/lib/dm_device/`.
+- Added Python DM_Device runtime resolver and
+  `motorbridge-install-dm-device` helper. Python wheels do not embed the
+  vendor runtime; if it is missing, the resolver prints the required file,
+  GitHub download URL, cache/source-tree placement paths, and platform ABI
+  requirements.
 - Added WebSocket gateway `dm-device` support for Damiao, including
   `dm_device_type` and `dm_channel` target fields.
 
@@ -37,18 +40,34 @@ Versioning.
 - Updated `dm-device` scan semantics so omitting `--dm-channel` / `dm_channel`
   scans both CANFD1 and CANFD2 on dual-channel adapters; specifying
   `canfd1` or `canfd2` restricts the scan to one physical channel.
+- Changed Python wheel packaging to omit `libdm_device.so`/`.dylib`/`.dll` by
+  default. This avoids Linux manylinux `auditwheel` failures caused by the
+  vendor x86_64 library requiring `GLIBCXX_3.4.32`.
+- Added readback verification for WebSocket Damiao register writes. Confirmed
+  readback returns `verified=true`; mismatches are hard errors; missing
+  readback after a sent write returns `ok=true` with a warning instead of a
+  misleading red failure.
+- Softened Damiao WebSocket mode/register confirmation timeouts when the write
+  was sent but no confirmation frame arrived within the timeout.
+- Fixed Linux aarch64 CI builds by installing and selecting the matching C++
+  cross compiler for the DM_Device C++ shim.
+- Restricted Windows DM_Device runtime selection to supported x86_64 targets.
 
 ### Verified
 
-- Verified Linux x86_64 wheel build includes `libmotor_abi.so`,
-  `libdm_device.so`, and `ws_gateway`.
+- Verified Linux x86_64 wheel build includes `libmotor_abi.so` and
+  `ws_gateway`, and does not embed `libdm_device.so`.
 - Verified installed wheel can scan USB2CANFD_DUAL CANFD1 and CANFD2 Damiao
-  motors on Linux x86_64.
+  motors on Linux x86_64 when the matching DM_Device runtime is available.
 - Verified a single WebSocket gateway process can scan CANFD2 and then CANFD1
   through `dm-device`.
-- Verified Windows GNU Rust `motor_core` cross-check. macOS runtime libraries
-  are included and format-checked, but macOS runtime/build validation still
-  requires a macOS host or CI runner.
+- Documented runtime ABI requirements: Linux x86_64 requires
+  `libusb-1.0.so.0`, `GLIBC_2.14+`, and `libstdc++.so.6` with
+  `GLIBCXX_3.4.32`; Linux aarch64 requires `GLIBC_2.17+` and
+  `GLIBCXX_3.4.22+`.
+- Verified Windows GNU Rust `motor_core` cross-check. Windows/macOS runtime
+  libraries are included and path-selected, but final runtime validation still
+  requires those hosts.
 
 ### Changed
 
