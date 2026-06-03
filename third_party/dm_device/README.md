@@ -26,6 +26,27 @@ support without depending on a developer's local copy of
 
 - Windows runtime/import libraries for MSVC and MinGW builds.
 
+## Platform Support Rule
+
+`dm-device` support is intentionally tied to the SDK runtime libraries that are
+actually present in this directory. During `motor_core` build, `build.rs` maps
+the Rust target platform to one expected SDK runtime path:
+
+| Rust target | SDK runtime path |
+|---|---|
+| `x86_64-unknown-linux-*` | `linux/x86_64/libdm_device.so` |
+| `aarch64-unknown-linux-*` | `linux/arm64/libdm_device.so` |
+| `aarch64-apple-darwin` | `macos/arm64/libdm_device.dylib` |
+| `x86_64-apple-darwin` | `macos/x86_64/libdm_device.dylib` |
+| `*-pc-windows-msvc` | `windows/msvc/dm_device.dll` |
+| `*-pc-windows-gnu` | `windows/mingw/libdm_device.dll` |
+
+If the mapped file exists, motorbridge compiles the C++ shim and enables the
+real `DmDeviceBus`. If the mapped file is missing, motorbridge still builds for
+that target, but `--transport dm-device` reports that DM_Device SDK is not
+bundled for the platform. In other words, adding/removing SDK runtime files here
+is what controls which architectures support `dm-device`.
+
 ## Relationship To Motorbridge
 
 The integration has three layers:

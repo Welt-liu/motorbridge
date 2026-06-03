@@ -53,7 +53,8 @@
   - `motorbridge.abi_capabilities()` 返回当前加载 ABI 的能力 JSON（Python `dict`）。
 - `0.4.3` 新增 Damiao `dm-device` 传输、Python
   `Controller.from_dm_device(...)`、Python CLI `--transport dm-device`，并让
-  wheel 打包 `libdm_device.so`/`.dylib`/`.dll`。
+  wheel 在目标平台存在 vendored SDK runtime 时打包
+  `libdm_device.so`/`.dylib`/`.dll`。
 - Python CLI 使用 `--transport dm-device` 扫描时，不传 `--dm-channel` 会扫描
   `usb2canfd-dual` 的 CANFD1 和 CANFD2；传 `--dm-channel canfd1` 或
   `--dm-channel canfd2` 则只扫一路。

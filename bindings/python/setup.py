@@ -29,7 +29,7 @@ def _platform_gateway_name() -> str:
     return "ws_gateway"
 
 
-def _dm_device_platform_relpath() -> Path:
+def _dm_device_platform_relpath() -> Path | None:
     machine = platform.machine().lower()
     if sys.platform.startswith("linux"):
         if machine in {"x86_64", "amd64"}:
@@ -43,7 +43,7 @@ def _dm_device_platform_relpath() -> Path:
             return Path("macos/x86_64/libdm_device.dylib")
     if sys.platform.startswith("win"):
         return Path("windows/msvc/dm_device.dll")
-    raise RuntimeError(f"Unsupported DM_Device SDK wheel platform: {sys.platform}/{machine}")
+    return None
 
 
 def _candidate_dm_device_paths() -> list[Path]:
@@ -56,6 +56,9 @@ def _candidate_dm_device_paths() -> list[Path]:
     if env:
         candidates.append(Path(env).expanduser())
 
+    if rel is None:
+        return candidates
+
     candidates.append(repo_root / "third_party" / "dm_device" / "v1.1.0" / rel)
     candidates.append(repo_root / "dm-device-sdk" / "C&C++" / "lib" / "v1.1.0" / rel)
     candidates.append(repo_root.parent / "dm-device-sdk" / "C&C++" / "lib" / "v1.1.0" / rel)
@@ -63,16 +66,11 @@ def _candidate_dm_device_paths() -> list[Path]:
     return candidates
 
 
-def _resolve_dm_device_path() -> Path:
+def _find_dm_device_path() -> Path | None:
     for path in _candidate_dm_device_paths():
         if path.exists():
             return path
-    tried = "\n".join(f"- {path}" for path in _candidate_dm_device_paths())
-    raise RuntimeError(
-        "Cannot locate DM_Device SDK shared library for wheel build.\n"
-        f"Tried:\n{tried}\n"
-        "Copy SDK libraries into third_party/dm_device/v1.1.0 or set MOTOR_DM_DEVICE_LIB."
-    )
+    return None
 
 
 def _candidate_gateway_paths() -> list[Path]:
@@ -137,10 +135,11 @@ class BuildPyWithAbi(_build_py):
         dst_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy2(abi_src, dst_dir / abi_src.name)
 
-        dm_src = _resolve_dm_device_path()
-        dm_dst_dir = dst_dir / "dm_device"
-        dm_dst_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(dm_src, dm_dst_dir / dm_src.name)
+        dm_src = _find_dm_device_path()
+        if dm_src is not None:
+            dm_dst_dir = dst_dir / "dm_device"
+            dm_dst_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(dm_src, dm_dst_dir / dm_src.name)
 
         gateway_src = _resolve_gateway_path()
         gateway_dir = Path(self.build_lib) / "motorbridge" / "bin"

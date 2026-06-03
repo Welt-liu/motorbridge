@@ -25,8 +25,9 @@
 - `dm-device` 扫描模式下，不传 `--dm-channel` / `dm_channel` 会同时扫描双通道
   适配器的 CANFD1 和 CANFD2；只有想限制到单一路物理通道时才传
   `canfd1` 或 `canfd2`。
-- `v0.4.3` 将 DM_Device SDK runtime 放入 `third_party/dm_device`，Python
-  wheel 会把当前平台对应的 runtime 库打包到 `motorbridge/lib/dm_device/`。
+- `v0.4.3` 将 DM_Device SDK runtime 放入 `third_party/dm_device`。
+  `dm-device` 只在该目录存在目标平台匹配 runtime 文件时启用；Python wheel
+  也只会在目标平台 runtime 存在时把它打包到 `motorbridge/lib/dm_device/`。
 - `v0.4.3` 使用一个小型 C++ shim 承接 SDK 边界，并在长进程中复用已打开的
   SDK handle，避免 WS 连续扫描时每次都重新打开 USB 适配器导致需要重新插拔。
 - Linux x86_64 已完成 release build、wheel build、wheel 安装后运行、真实硬件
@@ -68,7 +69,8 @@
 当前状态：
 - `[CAN-FD]` 已完成独立链路接入。
 - `[DM-DEVICE]` 已完成 Damiao 接入，并在 Linux x86_64 + USB2CANFD_DUAL
-  的 CANFD1/CANFD2 扫描中完成验证。
+  的 CANFD1/CANFD2 扫描中完成验证。编译/打包支持范围跟
+  `third_party/dm_device/v1.1.0` 中实际 vendored 的 SDK runtime 文件一致。
 - 仓库内尚未声明“某个电机型号已完成 CAN-FD 量产级验证矩阵”。
 
 ## 当前支持的厂商

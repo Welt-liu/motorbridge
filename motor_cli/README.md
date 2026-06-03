@@ -53,6 +53,7 @@ motor_cli -h
 - `[CAN-FD]` => `--transport socketcanfd` (Linux-only; required by Hexfellow)
 - `[DM-SERIAL]` => `--transport dm-serial` (Damiao-only)
 - `[DM-DEVICE]` => `--transport dm-device` (Damiao-only DM_Device SDK path;
+  enabled only on targets with a matching SDK runtime in `third_party/dm_device`;
   `usb2canfd-dual` with `canfd1`/`canfd2` is Linux x86_64 verified)
 
 Current status:
@@ -156,6 +157,9 @@ motor_cli \
 - In scan mode, omitting `--dm-channel` scans both CANFD1 and CANFD2 on
   `usb2canfd-dual`; add `--dm-channel canfd1` or `--dm-channel canfd2` to scan
   only one physical channel.
+- Build support follows the vendored SDK runtime files under
+  `third_party/dm_device/v1.1.0`; unsupported target architectures still build,
+  but `--transport dm-device` returns an unsupported-platform error.
 - Linux x86_64 USB2CANFD_DUAL CANFD1/CANFD2 scans are verified.
 - Do not open the same USB2CANFD_DUAL from two processes at the same time.
 

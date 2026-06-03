@@ -53,6 +53,7 @@ motor_cli -h
 - `[CAN-FD]` => `--transport socketcanfd`（仅 Linux；Hexfellow 必须使用）
 - `[DM-SERIAL]` => `--transport dm-serial`（仅 Damiao）
 - `[DM-DEVICE]` => `--transport dm-device`（仅 Damiao，走 DM_Device SDK；
+  只有 `third_party/dm_device` 中存在目标平台 SDK runtime 时才启用；
   `usb2canfd-dual` 的 `canfd1`/`canfd2` 已在 Linux x86_64 实测）
 
 当前状态：
@@ -174,6 +175,9 @@ motor_cli \
 - 扫描模式下不传 `--dm-channel` 会同时扫描 `usb2canfd-dual` 的 CANFD1 和
   CANFD2；如果只想扫一路，再显式加 `--dm-channel canfd1` 或
   `--dm-channel canfd2`。
+- 编译支持范围跟 `third_party/dm_device/v1.1.0` 中实际 vendored 的 SDK
+  runtime 文件一致；没有对应 runtime 的目标架构仍可编译，但
+  `--transport dm-device` 会返回 unsupported-platform 错误。
 - Linux x86_64 下 USB2CANFD_DUAL 的 CANFD1/CANFD2 扫描已实测通过。
 - 同一个 USB2CANFD_DUAL 不要被两个进程同时打开。
 

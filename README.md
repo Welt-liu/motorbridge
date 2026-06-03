@@ -25,9 +25,10 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - In `dm-device` scan mode, omit `--dm-channel` / `dm_channel` to scan both
   CANFD1 and CANFD2 on dual-channel adapters; pass `canfd1` or `canfd2` only
   when you want one physical channel.
-- `v0.4.3` vendors the DM_Device SDK runtime under `third_party/dm_device` and
-  packages the platform-appropriate runtime library in Python wheels under
-  `motorbridge/lib/dm_device/`.
+- `v0.4.3` vendors the DM_Device SDK runtime under `third_party/dm_device`.
+  `dm-device` is enabled only for targets that have a matching SDK runtime
+  file there; Python wheels package that runtime under
+  `motorbridge/lib/dm_device/` when it is available for the target platform.
 - `v0.4.3` uses a small C++ shim for the SDK boundary and reuses the already
   opened SDK handle in long-running processes, which keeps repeated WS scans
   from requiring a USB unplug/replug cycle.
@@ -78,7 +79,8 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 Current status:
 - `[CAN-FD]` has been integrated as an independent transport path.
 - `[DM-DEVICE]` is integrated for Damiao and verified on Linux x86_64 with
-  USB2CANFD_DUAL CANFD1/CANFD2 scans.
+  USB2CANFD_DUAL CANFD1/CANFD2 scans. Build/package support follows the SDK
+  runtime files vendored in `third_party/dm_device/v1.1.0`.
 - No motor model is officially marked as CAN-FD validated in this repository yet.
 
 ## Current Vendor Support

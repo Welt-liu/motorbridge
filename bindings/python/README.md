@@ -55,7 +55,8 @@ Packaging note:
   - `motorbridge.abi_capabilities()` returns the loaded ABI capability JSON as a Python `dict`.
 - `0.4.3` adds Damiao `dm-device` transport, Python
   `Controller.from_dm_device(...)`, Python CLI `--transport dm-device`, and
-  wheel packaging for `libdm_device.so`/`.dylib`/`.dll`.
+  optional wheel packaging for `libdm_device.so`/`.dylib`/`.dll` when the
+  target platform has a vendored SDK runtime.
 - For Python CLI scans with `--transport dm-device`, omit `--dm-channel` to scan
   both CANFD1 and CANFD2 on `usb2canfd-dual`; pass `--dm-channel canfd1` or
   `--dm-channel canfd2` to scan one channel.

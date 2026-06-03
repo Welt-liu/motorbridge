@@ -1,7 +1,11 @@
 use crate::bus::{CanBus, CanFrame};
 use crate::error::{MotorError, Result};
-use std::ffi::{c_char, c_int, c_void, CString};
+use std::ffi::c_int;
+#[cfg(motorbridge_dm_device_supported)]
+use std::ffi::{c_char, c_void, CString};
+#[cfg(motorbridge_dm_device_supported)]
 use std::path::{Path, PathBuf};
+#[cfg(motorbridge_dm_device_supported)]
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -11,6 +15,7 @@ const LINKX4C: c_int = 2;
 const CAN_EFF_MASK: u32 = 0x1FFF_FFFF;
 const CAN_SFF_MASK: u32 = 0x0000_07FF;
 
+#[cfg(motorbridge_dm_device_supported)]
 #[repr(C)]
 struct MbDmFrame {
     can_id: u32,
@@ -21,6 +26,7 @@ struct MbDmFrame {
     canfd: u8,
 }
 
+#[cfg(motorbridge_dm_device_supported)]
 unsafe extern "C" {
     fn mb_dm_open(
         library_path: *const c_char,
@@ -90,6 +96,7 @@ pub fn parse_dm_channel(raw: &str) -> Result<u8> {
 }
 
 pub struct DmDeviceBus {
+    #[cfg(motorbridge_dm_device_supported)]
     handle: Mutex<usize>,
     channel: u8,
 }
@@ -112,147 +119,185 @@ impl DmDeviceBus {
             ));
         }
 
-        let library_path = CString::new(resolve_library_path()?.to_string_lossy().as_bytes())
-            .map_err(|_| MotorError::InvalidArgument("DM_Device SDK path contains NUL".into()))?;
-        let mut err = ErrorBuf::new();
-        let mut raw: *mut c_void = std::ptr::null_mut();
-        let rc = unsafe {
-            mb_dm_open(
-                library_path.as_ptr(),
-                device_type.sdk_value(),
-                channel,
-                can_baudrate,
-                canfd_baudrate,
-                &mut raw as *mut *mut c_void,
-                err.as_mut_ptr(),
-                err.len(),
-            )
-        };
-        if rc != 0 || raw.is_null() {
-            return Err(MotorError::Io(err.message_or("mb_dm_open failed")));
+        #[cfg(not(motorbridge_dm_device_supported))]
+        {
+            let _ = (device_type, can_baudrate, canfd_baudrate);
+            return Err(unsupported_platform_error());
         }
 
-        Ok(Self {
-            handle: Mutex::new(raw as usize),
-            channel,
-        })
+        #[cfg(motorbridge_dm_device_supported)]
+        {
+            let library_path = CString::new(resolve_library_path()?.to_string_lossy().as_bytes())
+                .map_err(|_| {
+                MotorError::InvalidArgument("DM_Device SDK path contains NUL".into())
+            })?;
+            let mut err = ErrorBuf::new();
+            let mut raw: *mut c_void = std::ptr::null_mut();
+            let rc = unsafe {
+                mb_dm_open(
+                    library_path.as_ptr(),
+                    device_type.sdk_value(),
+                    channel,
+                    can_baudrate,
+                    canfd_baudrate,
+                    &mut raw as *mut *mut c_void,
+                    err.as_mut_ptr(),
+                    err.len(),
+                )
+            };
+            if rc != 0 || raw.is_null() {
+                return Err(MotorError::Io(err.message_or("mb_dm_open failed")));
+            }
+
+            Ok(Self {
+                handle: Mutex::new(raw as usize),
+                channel,
+            })
+        }
     }
 }
 
 impl CanBus for DmDeviceBus {
     fn send(&self, frame: CanFrame) -> Result<()> {
-        if frame.dlc > 8 {
-            return Err(MotorError::InvalidArgument(format!(
-                "invalid DLC {}, expected <= 8",
-                frame.dlc
-            )));
-        }
-        if !frame.is_extended && frame.arbitration_id > CAN_SFF_MASK {
-            return Err(MotorError::InvalidArgument(format!(
-                "invalid arbitration_id {:X}, expected 11-bit std id",
-                frame.arbitration_id
-            )));
-        }
-        if frame.is_extended && frame.arbitration_id > CAN_EFF_MASK {
-            return Err(MotorError::InvalidArgument(format!(
-                "invalid arbitration_id {:X}, expected 29-bit ext id",
-                frame.arbitration_id
-            )));
+        #[cfg(not(motorbridge_dm_device_supported))]
+        {
+            let _ = frame;
+            return Err(unsupported_platform_error());
         }
 
-        if debug_enabled() {
-            eprintln!(
-                "[DM-DEVICE TX] CANFD{} sdk_ch={} CAN {} can_id=0x{:X} dlc={} data=[{}]",
-                self.channel + 1,
-                self.channel,
-                if frame.is_extended { "EXT" } else { "STD" },
-                frame.arbitration_id,
-                frame.dlc,
-                format_payload(&frame.data[..frame.dlc as usize])
-            );
-        }
+        #[cfg(motorbridge_dm_device_supported)]
+        {
+            if frame.dlc > 8 {
+                return Err(MotorError::InvalidArgument(format!(
+                    "invalid DLC {}, expected <= 8",
+                    frame.dlc
+                )));
+            }
+            if !frame.is_extended && frame.arbitration_id > CAN_SFF_MASK {
+                return Err(MotorError::InvalidArgument(format!(
+                    "invalid arbitration_id {:X}, expected 11-bit std id",
+                    frame.arbitration_id
+                )));
+            }
+            if frame.is_extended && frame.arbitration_id > CAN_EFF_MASK {
+                return Err(MotorError::InvalidArgument(format!(
+                    "invalid arbitration_id {:X}, expected 29-bit ext id",
+                    frame.arbitration_id
+                )));
+            }
 
-        let handle = self.handle_ptr()?;
-        let mut err = ErrorBuf::new();
-        let rc = unsafe {
-            mb_dm_send(
-                handle,
-                frame.arbitration_id,
-                u8::from(frame.is_extended),
-                frame.dlc,
-                frame.data.as_ptr(),
-                err.as_mut_ptr(),
-                err.len(),
-            )
-        };
-        if rc != 0 {
-            return Err(MotorError::Io(err.message_or("mb_dm_send failed")));
+            if debug_enabled() {
+                eprintln!(
+                    "[DM-DEVICE TX] CANFD{} sdk_ch={} CAN {} can_id=0x{:X} dlc={} data=[{}]",
+                    self.channel + 1,
+                    self.channel,
+                    if frame.is_extended { "EXT" } else { "STD" },
+                    frame.arbitration_id,
+                    frame.dlc,
+                    format_payload(&frame.data[..frame.dlc as usize])
+                );
+            }
+
+            let handle = self.handle_ptr()?;
+            let mut err = ErrorBuf::new();
+            let rc = unsafe {
+                mb_dm_send(
+                    handle,
+                    frame.arbitration_id,
+                    u8::from(frame.is_extended),
+                    frame.dlc,
+                    frame.data.as_ptr(),
+                    err.as_mut_ptr(),
+                    err.len(),
+                )
+            };
+            if rc != 0 {
+                return Err(MotorError::Io(err.message_or("mb_dm_send failed")));
+            }
+            Ok(())
         }
-        Ok(())
     }
 
     fn recv(&self, timeout: Duration) -> Result<Option<CanFrame>> {
-        let handle = self.handle_ptr()?;
-        let timeout_ms = timeout.as_millis().min(u32::MAX as u128) as u32;
-        let mut frame = MbDmFrame {
-            can_id: 0,
-            data: [0; 8],
-            dlc: 0,
-            channel: 0,
-            ext: 0,
-            canfd: 0,
-        };
-        let mut err = ErrorBuf::new();
-        let rc = unsafe {
-            mb_dm_recv(
-                handle,
-                &mut frame as *mut MbDmFrame,
-                timeout_ms,
-                err.as_mut_ptr(),
-                err.len(),
-            )
-        };
-        if rc < 0 {
-            return Err(MotorError::Io(err.message_or("mb_dm_recv failed")));
-        }
-        if rc == 0 {
-            return Ok(None);
+        #[cfg(not(motorbridge_dm_device_supported))]
+        {
+            let _ = timeout;
+            return Err(unsupported_platform_error());
         }
 
-        let out = CanFrame {
-            arbitration_id: frame.can_id,
-            data: frame.data,
-            dlc: frame.dlc.min(8),
-            is_extended: frame.ext != 0,
-            is_rx: true,
-        };
-        if debug_enabled() {
-            eprintln!(
-                "[DM-DEVICE RX] CANFD{} sdk_ch={} CAN {} can_id=0x{:X} dlc={} data=[{}]",
-                frame.channel + 1,
-                frame.channel,
-                if out.is_extended { "EXT" } else { "STD" },
-                out.arbitration_id,
-                out.dlc,
-                format_payload(&out.data[..out.dlc as usize])
-            );
+        #[cfg(motorbridge_dm_device_supported)]
+        {
+            let handle = self.handle_ptr()?;
+            let timeout_ms = timeout.as_millis().min(u32::MAX as u128) as u32;
+            let mut frame = MbDmFrame {
+                can_id: 0,
+                data: [0; 8],
+                dlc: 0,
+                channel: 0,
+                ext: 0,
+                canfd: 0,
+            };
+            let mut err = ErrorBuf::new();
+            let rc = unsafe {
+                mb_dm_recv(
+                    handle,
+                    &mut frame as *mut MbDmFrame,
+                    timeout_ms,
+                    err.as_mut_ptr(),
+                    err.len(),
+                )
+            };
+            if rc < 0 {
+                return Err(MotorError::Io(err.message_or("mb_dm_recv failed")));
+            }
+            if rc == 0 {
+                return Ok(None);
+            }
+
+            let out = CanFrame {
+                arbitration_id: frame.can_id,
+                data: frame.data,
+                dlc: frame.dlc.min(8),
+                is_extended: frame.ext != 0,
+                is_rx: true,
+            };
+            if debug_enabled() {
+                eprintln!(
+                    "[DM-DEVICE RX] CANFD{} sdk_ch={} CAN {} can_id=0x{:X} dlc={} data=[{}]",
+                    frame.channel + 1,
+                    frame.channel,
+                    if out.is_extended { "EXT" } else { "STD" },
+                    out.arbitration_id,
+                    out.dlc,
+                    format_payload(&out.data[..out.dlc as usize])
+                );
+            }
+            Ok(Some(out))
         }
-        Ok(Some(out))
     }
 
     fn shutdown(&self) -> Result<()> {
-        let mut guard = self
-            .handle
-            .lock()
-            .map_err(|_| MotorError::Io("dm-device handle lock poisoned".to_string()))?;
-        if *guard != 0 {
-            unsafe { mb_dm_shutdown(*guard as *mut c_void) };
-            *guard = 0;
+        #[cfg(not(motorbridge_dm_device_supported))]
+        {
+            return Ok(());
         }
-        Ok(())
+
+        #[cfg(motorbridge_dm_device_supported)]
+        {
+            let mut guard = self
+                .handle
+                .lock()
+                .map_err(|_| MotorError::Io("dm-device handle lock poisoned".to_string()))?;
+            if *guard != 0 {
+                unsafe { mb_dm_shutdown(*guard as *mut c_void) };
+                *guard = 0;
+            }
+            Ok(())
+        }
     }
 }
 
+#[cfg(motorbridge_dm_device_supported)]
 impl DmDeviceBus {
     fn handle_ptr(&self) -> Result<*mut c_void> {
         let handle = *self
@@ -270,15 +315,19 @@ impl DmDeviceBus {
 
 impl Drop for DmDeviceBus {
     fn drop(&mut self) {
-        if let Ok(mut guard) = self.handle.lock() {
-            if *guard != 0 {
-                unsafe { mb_dm_shutdown(*guard as *mut c_void) };
-                *guard = 0;
+        #[cfg(motorbridge_dm_device_supported)]
+        {
+            if let Ok(mut guard) = self.handle.lock() {
+                if *guard != 0 {
+                    unsafe { mb_dm_shutdown(*guard as *mut c_void) };
+                    *guard = 0;
+                }
             }
         }
     }
 }
 
+#[cfg(motorbridge_dm_device_supported)]
 fn resolve_library_path() -> Result<PathBuf> {
     if let Ok(path) = std::env::var("MOTOR_DM_DEVICE_LIB") {
         let path = PathBuf::from(path);
@@ -315,6 +364,7 @@ fn resolve_library_path() -> Result<PathBuf> {
     Ok(PathBuf::from(dm_device_library_name()))
 }
 
+#[cfg(motorbridge_dm_device_supported)]
 fn platform_library_relative_path() -> Result<&'static str> {
     match (std::env::consts::OS, std::env::consts::ARCH) {
         ("linux", "x86_64") => Ok("linux/x86_64/libdm_device.so"),
@@ -328,6 +378,7 @@ fn platform_library_relative_path() -> Result<&'static str> {
     }
 }
 
+#[cfg(motorbridge_dm_device_supported)]
 fn dm_device_library_name() -> &'static str {
     match std::env::consts::OS {
         "windows" => "dm_device.dll",
@@ -336,6 +387,7 @@ fn dm_device_library_name() -> &'static str {
     }
 }
 
+#[cfg(motorbridge_dm_device_supported)]
 fn debug_enabled() -> bool {
     std::env::var("MOTOR_DM_DEVICE_DEBUG")
         .ok()
@@ -343,6 +395,7 @@ fn debug_enabled() -> bool {
         .unwrap_or(false)
 }
 
+#[cfg(motorbridge_dm_device_supported)]
 fn format_payload(data: &[u8]) -> String {
     data.iter()
         .map(|b| format!("{b:02X}"))
@@ -350,6 +403,7 @@ fn format_payload(data: &[u8]) -> String {
         .join(" ")
 }
 
+#[cfg(motorbridge_dm_device_supported)]
 struct ErrorBuf {
     buf: [c_char; 512],
 }
@@ -380,4 +434,13 @@ impl ErrorBuf {
             String::from_utf8_lossy(&bytes).into_owned()
         }
     }
+}
+
+#[cfg(not(motorbridge_dm_device_supported))]
+fn unsupported_platform_error() -> MotorError {
+    MotorError::Unsupported(format!(
+        "DM_Device SDK is not bundled for platform {}/{}; add a matching library under third_party/dm_device/v1.1.0 to enable --transport dm-device",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    ))
 }
