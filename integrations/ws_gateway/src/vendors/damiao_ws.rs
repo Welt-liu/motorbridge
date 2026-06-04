@@ -24,6 +24,20 @@ pub(crate) fn ensure_control_mode_soft(
     }
 }
 
+fn dm_device_scan_channels(dm_device_type: &str) -> Vec<Option<String>> {
+    let normalized = dm_device_type.to_ascii_lowercase().replace('_', "-");
+    match normalized.as_str() {
+        "usb2canfd" => vec![Some("0".to_string())],
+        "linkx4c" => vec![
+            Some("0".to_string()),
+            Some("1".to_string()),
+            Some("2".to_string()),
+            Some("3".to_string()),
+        ],
+        _ => vec![Some("0".to_string()), Some("1".to_string())],
+    }
+}
+
 pub(crate) fn cmd_scan_damiao(v: &Value, base: &Target) -> Result<Value, String> {
     let transport = parse_transport_in_msg(v, base.transport)?;
     let mut target = base.clone();
@@ -55,11 +69,7 @@ pub(crate) fn cmd_scan_damiao(v: &Value, base: &Target) -> Result<Value, String>
 
     let scan_channels: Vec<Option<String>> =
         if transport == Transport::DmDevice && requested_dm_channel.is_none() {
-            if target.dm_device_type.eq_ignore_ascii_case("usb2canfd") {
-                vec![Some("canfd1".to_string())]
-            } else {
-                vec![Some("canfd1".to_string()), Some("canfd2".to_string())]
-            }
+            dm_device_scan_channels(&target.dm_device_type)
         } else {
             vec![None]
         };

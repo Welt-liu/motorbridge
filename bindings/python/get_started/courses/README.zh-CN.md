@@ -121,7 +121,8 @@
 - `Controller(channel="can0")`
 - `Controller.from_socketcanfd(channel="can0")`
 - `Controller.from_dm_serial(serial_port, baud)`
-- `Controller.from_dm_device(dm_device_type="usb2canfd-dual", dm_channel="canfd1")`
+- `Controller.from_dm_device(dm_device_type="usb2canfd-dual", dm_channel="0")`
+  或 `Controller.from_dm_device(dm_device_type="linkx4c", dm_channel="0")`
 
 生命周期：
 

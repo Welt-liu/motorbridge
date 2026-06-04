@@ -15,28 +15,38 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
-## 更新说明（2026-06）：v0.4.3
+## 更新说明（2026-06）：v0.4.4
 
-- `v0.4.3` 新增 Damiao 专用 `dm-device` 传输链路，通过 DaMiao
-  DM_Device SDK 支持 `USB2CANFD_DUAL` 等适配器。Rust CLI、Python SDK、
-  Python CLI、Python wheel、C ABI 和 `ws_gateway` 已统一到同一套
-  `--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`
-  参数路径。
-- `dm-device` 扫描模式下，不传 `--dm-channel` / `dm_channel` 会同时扫描双通道
-  适配器的 CANFD1 和 CANFD2；只有想限制到单一路物理通道时才传
-  `canfd1` 或 `canfd2`。
-- `v0.4.3` 将 DM_Device SDK runtime 放入 `third_party/dm_device`。
+- `v0.4.4` 新增 Damiao 专用 `dm-device` 传输链路，通过 DaMiao
+  DM_Device SDK 支持 `USB2CANFD`、`USB2CANFD_DUAL` 和 `LINKX4C` 适配器。
+  Rust CLI、Python SDK、Python CLI、Python wheel、C ABI 和 `ws_gateway`
+  已统一到同一套 `--transport dm-device --dm-device-type ... --dm-channel ...`
+  参数路径。该链路当前只配 Damiao 电机协议使用，适配器需要配置/连接为 USB 模式。
+- `dm-device` 扫描模式下，不传 `--dm-channel` / `dm_channel` 会扫描所选适配器
+  的全部通道：`usb2canfd` 为 `0`，`usb2canfd-dual` 为
+  `0`/`1`，`linkx4c` 为 `0`/`1`/`2`/`3`。只有想限制到
+  单一路物理通道时才传 `--dm-channel`。
+
+DM_Device_SDK 是用于控制 CAN/CAN FD 设备的软件开发工具包。motorbridge
+当前支持下面三类 DM_Device 硬件，但 `dm-device` 传输链路只和 Damiao 电机协议组合使用：
+
+| 设备类型 | SDK 枚举值 | 通道数 | `--dm-device-type` | 通道指定 |
+|---|---|---:|---|---|
+| USB2CANFD | `USB2CANFD` | 1 | `usb2canfd` | `--dm-channel 0` |
+| USB2CANFD_DUAL | `USB2CANFD_DUAL` | 2 | `usb2canfd-dual` | `--dm-channel 0` / `1` |
+| LINKX4C | `LINKX4C` | 4 | `linkx4c` | `--dm-channel 0` / `1` / `2` / `3` |
+- `v0.4.4` 将 DM_Device SDK runtime 放入 `third_party/dm_device`。
   `dm-device` 只在该目录存在目标平台匹配 runtime 文件时启用。Python wheel
   不再内置厂商 runtime；Python SDK、Python CLI 或 `motorbridge-gateway`
   首次使用 `dm-device` 时，会解析当前 OS/架构对应的 runtime；如果缺少库，
   会提示用户需要从 `third_party/dm_device` 下载哪个文件以及放到哪里。
   也可以设置 `MOTOR_DM_DEVICE_LIB=/path/to/libdm_device`。
-- `v0.4.3` 使用一个小型 C++ shim 承接 SDK 边界，并在长进程中复用已打开的
+- `v0.4.4` 使用一个小型 C++ shim 承接 SDK 边界，并在长进程中复用已打开的
   SDK handle，避免 WS 连续扫描时每次都重新打开 USB 适配器导致需要重新插拔。
 - Linux x86_64 已完成 release build、wheel build、wheel 安装后运行、真实硬件
-  scan 和 WebSocket scan 验证；USB2CANFD_DUAL 的 CANFD1/CANFD2 均已扫到
-  Damiao 电机。Windows/macOS 的 SDK runtime 与路径选择已就位，但最终运行验证
-  仍需要对应系统主机。
+  scan 和 WebSocket scan 验证；USB2CANFD_DUAL 的通道 0/1 以及
+  LINKX4C 的通道 `0..3` 扫描路径均已验证，可扫到 Damiao 电机。Windows/macOS
+  的 SDK runtime 与路径选择已就位，但最终运行验证仍需要对应系统主机。
 - `v0.4.2` 优化 Damiao `dm-serial` 多电机高频控制路径：`recv(0ms)` 在串口
   没有待读字节时会真正非阻塞返回，同时把同步反馈/寄存器读取的串口 read timeout
   从 2 ms 降到 1 ms。
@@ -66,13 +76,13 @@
 - `[STD-CAN]`：标准 CAN 路径（`socketcan` / `pcan`）
 - `[CAN-FD]`：独立 CAN-FD 路径（`socketcanfd`）
 - `[DM-SERIAL]`：Damiao 串口桥路径（`dm-serial`）
-- `[DM-DEVICE]`：Damiao DM_Device SDK 路径（`dm-device`，例如
-  `USB2CANFD_DUAL` 的 `canfd1`/`canfd2`）
+- `[DM-DEVICE]`：Damiao DM_Device SDK 路径（`dm-device`，支持
+  `USB2CANFD` 单路、`USB2CANFD_DUAL` 双路和 `LINKX4C` 四路；仅 Damiao 电机协议）
 
 当前状态：
 - `[CAN-FD]` 已完成独立链路接入。
 - `[DM-DEVICE]` 已完成 Damiao 接入，并在 Linux x86_64 + USB2CANFD_DUAL
-  的 CANFD1/CANFD2 扫描中完成验证。编译/打包支持范围跟
+  的通道 0/1 以及 LINKX4C 通道 `0..3` 扫描中完成验证。编译/打包支持范围跟
   `third_party/dm_device/v1.1.0` 中实际 vendored 的 SDK runtime 文件一致；
   Python wheel 解析匹配 runtime 并给出缺库安装提示，而不是把它内置进 wheel。
 - 仓库内尚未声明“某个电机型号已完成 CAN-FD 量产级验证矩阵”。
@@ -543,7 +553,7 @@ cargo run -p motor_cli --release -- --vendor damiao \
   - `motor_abi_capabilities_json()`
   - `motor_controller_new_socketcan(channel)`
   - `motor_controller_new_dm_serial(serial_port, baud)`（仅 Damiao 串口桥；跨平台，可用 `/dev/ttyACM0` 或 `COM3`）
-  - `motor_controller_new_dm_device(dm_device_type, dm_channel)`（仅 Damiao DM_Device SDK 链路，例如 `usb2canfd-dual` + `canfd1|canfd2`）
+  - `motor_controller_new_dm_device(dm_device_type, dm_channel)`（仅 Damiao DM_Device SDK 链路，例如 `usb2canfd` + `0`、`usb2canfd-dual` + `0|1`、`linkx4c` + `0|1|2|3`）
   - Damiao: `motor_controller_add_damiao_motor(...)`
   - Hexfellow: `motor_controller_add_hexfellow_motor(...)`（通过 `socketcanfd` 走 CAN-FD）
   - RobStride: `motor_controller_add_robstride_motor(...)`
@@ -554,7 +564,7 @@ cargo run -p motor_cli --release -- --vendor damiao \
   - `motorbridge.abi_capabilities()`
   - `Controller(channel="can0")`
   - `Controller.from_dm_serial("/dev/ttyACM0", 921600)`（仅 Damiao）
-  - `Controller.from_dm_device("usb2canfd-dual", "canfd1")`（仅 Damiao DM_Device SDK 链路）
+  - `Controller.from_dm_device("usb2canfd-dual", "0")` / `Controller.from_dm_device("linkx4c", "0")`（仅 Damiao DM_Device SDK 链路）
   - `Controller.add_damiao_motor(...)`
   - `Controller.add_hexfellow_motor(...)`
   - `Controller.add_robstride_motor(...)`
@@ -638,7 +648,7 @@ Python wheel 不内置 DaMiao DM_Device runtime。第一次真正使用 `dm-devi
 
 | 平台 / 架构 | 官方 Python wheel | DM_Device runtime 可用 | runtime 文件 | OS/runtime ABI 依赖 | 硬件实测状态 |
 |---|---|---|---|---|---|
-| Linux x86_64 | 支持 | 支持 | `linux/x86_64/libdm_device.so` | 需要 `libusb-1.0.so.0`，以及带 `GLIBCXX_3.4.32` 的 `libstdc++.so.6`，`GLIBC_2.14+` | 已实测 USB2CANFD_DUAL CANFD1/CANFD2 扫描 |
+| Linux x86_64 | 支持 | 支持 | `linux/x86_64/libdm_device.so` | 需要 `libusb-1.0.so.0`，以及带 `GLIBCXX_3.4.32` 的 `libstdc++.so.6`，`GLIBC_2.14+` | 已实测 USB2CANFD_DUAL channel 0/1 和 LINKX4C 通道 `0..3` 扫描 |
 | Linux aarch64 | 支持 | 支持 | `linux/arm64/libdm_device.so` | 需要 `libusb-1.0.so.0`，`GLIBC_2.17+`，`GLIBCXX_3.4.22+` | 待对应主机验证 |
 | Windows x86_64 | 支持 | 支持 | `windows/msvc/dm_device.dll` | 需要 libusb runtime/驱动和 Microsoft Visual C++ runtime（`MSVCP140*.dll`、`VCRUNTIME140*.dll`） | 待对应主机验证 |
 | macOS arm64 | 支持 | 支持 | `macos/arm64/libdm_device.dylib` | 链接系统 `libc++`、`libSystem`、`libobjc`；最低 macOS 版本待主机验证 | 待对应主机验证 |

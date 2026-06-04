@@ -72,7 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .cloned()
             .unwrap_or_else(|| "all".to_string())
     } else {
-        get_str(&args, "dm-channel", "canfd1")
+        get_str(&args, "dm-channel", "0")
     };
 
     let model_is_default = !args.contains_key("model");

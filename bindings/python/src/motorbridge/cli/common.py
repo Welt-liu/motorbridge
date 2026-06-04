@@ -42,7 +42,11 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
         default="usb2canfd-dual",
         help="DM_Device SDK adapter type for dm-device, e.g. usb2canfd-dual",
     )
-    p.add_argument("--dm-channel", default="canfd1", help="DM_Device physical channel: canfd1 or canfd2")
+    p.add_argument(
+        "--dm-channel",
+        default="0",
+        help="DM_Device SDK channel number: usb2canfd=0, usb2canfd-dual=0|1, linkx4c=0|1|2|3",
+    )
     p.add_argument("--model", default="4340", help="model name/hint, e.g. 4340P or rs-00")
     p.add_argument("--motor-id", default="0x01", help="command/device ID, hex or decimal")
     p.add_argument(

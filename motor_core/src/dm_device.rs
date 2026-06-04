@@ -86,12 +86,35 @@ impl DmDeviceType {
 }
 
 pub fn parse_dm_channel(raw: &str) -> Result<u8> {
+    parse_dm_channel_for_device(DmDeviceType::Usb2CanFdDual, raw)
+}
+
+fn parse_dm_channel_for_device(device_type: DmDeviceType, raw: &str) -> Result<u8> {
     match raw.to_ascii_lowercase().as_str() {
-        "0" | "1" | "canfd1" | "can1" | "ch0" | "channel0" => Ok(0),
-        "2" | "canfd2" | "can2" | "ch1" | "channel1" => Ok(1),
-        _ => Err(MotorError::InvalidArgument(format!(
-            "unknown --dm-channel {raw}, expected canfd1|canfd2"
-        ))),
+        "canfd1" | "can1" | "ch0" | "channel0" => Ok(0),
+        "canfd2" | "can2" | "ch1" | "channel1" => Ok(1),
+        "canfd3" | "can3" | "ch2" | "channel2" if matches!(device_type, DmDeviceType::LinkX4C) => {
+            Ok(2)
+        }
+        "canfd4" | "can4" | "ch3" | "channel3" if matches!(device_type, DmDeviceType::LinkX4C) => {
+            Ok(3)
+        }
+        "0" => Ok(0),
+        "1" => Ok(1),
+        "2" if matches!(device_type, DmDeviceType::LinkX4C) => Ok(2),
+        "3" if matches!(device_type, DmDeviceType::LinkX4C) => Ok(3),
+        _ => {
+            let expected = if matches!(device_type, DmDeviceType::LinkX4C) {
+                "0|1|2|3"
+            } else if matches!(device_type, DmDeviceType::Usb2CanFdDual) {
+                "0|1"
+            } else {
+                "0"
+            };
+            Err(MotorError::InvalidArgument(format!(
+                "unknown --dm-channel {raw}, expected {expected}"
+            )))
+        }
     }
 }
 
@@ -112,10 +135,20 @@ impl DmDeviceBus {
         can_baudrate: u32,
         canfd_baudrate: u32,
     ) -> Result<Self> {
-        let channel = parse_dm_channel(dm_channel)?;
+        let channel = parse_dm_channel_for_device(device_type, dm_channel)?;
         if matches!(device_type, DmDeviceType::Usb2CanFd) && channel != 0 {
             return Err(MotorError::InvalidArgument(
-                "usb2canfd has one physical channel; use --dm-channel canfd1".to_string(),
+                "usb2canfd has one physical channel; use --dm-channel 0".to_string(),
+            ));
+        }
+        if matches!(device_type, DmDeviceType::Usb2CanFdDual) && channel > 1 {
+            return Err(MotorError::InvalidArgument(
+                "usb2canfd-dual has two physical channels; use --dm-channel 0|1".to_string(),
+            ));
+        }
+        if matches!(device_type, DmDeviceType::LinkX4C) && channel > 3 {
+            return Err(MotorError::InvalidArgument(
+                "linkx4c has four physical channels; use --dm-channel 0|1|2|3".to_string(),
             ));
         }
 
@@ -444,4 +477,54 @@ fn unsupported_platform_error() -> MotorError {
         std::env::consts::OS,
         std::env::consts::ARCH
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_linkx4c_sdk_channels() {
+        assert_eq!(
+            parse_dm_channel_for_device(DmDeviceType::LinkX4C, "0").unwrap(),
+            0
+        );
+        assert_eq!(
+            parse_dm_channel_for_device(DmDeviceType::LinkX4C, "1").unwrap(),
+            1
+        );
+        assert_eq!(
+            parse_dm_channel_for_device(DmDeviceType::LinkX4C, "2").unwrap(),
+            2
+        );
+        assert_eq!(
+            parse_dm_channel_for_device(DmDeviceType::LinkX4C, "3").unwrap(),
+            3
+        );
+        assert_eq!(
+            parse_dm_channel_for_device(DmDeviceType::LinkX4C, "ch3").unwrap(),
+            3
+        );
+    }
+
+    #[test]
+    fn parse_usb2canfd_dual_uses_sdk_channel_numbers() {
+        assert_eq!(
+            parse_dm_channel_for_device(DmDeviceType::Usb2CanFdDual, "0").unwrap(),
+            0
+        );
+        assert_eq!(
+            parse_dm_channel_for_device(DmDeviceType::Usb2CanFdDual, "1").unwrap(),
+            1
+        );
+        assert!(parse_dm_channel_for_device(DmDeviceType::Usb2CanFdDual, "2").is_err());
+        assert_eq!(
+            parse_dm_channel_for_device(DmDeviceType::Usb2CanFdDual, "canfd1").unwrap(),
+            0
+        );
+        assert_eq!(
+            parse_dm_channel_for_device(DmDeviceType::Usb2CanFdDual, "canfd2").unwrap(),
+            1
+        );
+    }
 }

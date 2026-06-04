@@ -48,7 +48,7 @@ class Controller:
     def from_dm_device(
         cls,
         dm_device_type: str = "usb2canfd-dual",
-        dm_channel: str = "canfd1",
+        dm_channel: str = "0",
     ) -> "Controller":
         self = cls.__new__(cls)
         ensure_dm_device_runtime(quiet=True)

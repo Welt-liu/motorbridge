@@ -6,7 +6,7 @@
 - Linux SocketCAN uses prepared interfaces directly: `can0`, `can1`. For CANable, use candleLight/gs_usb firmware so it appears as a SocketCAN interface such as `can0`.
 - Use PCAN or CANable candleLight/gs_usb for standard CAN.
 - Damiao-only CAN-FD transport is available in CLI (`--transport socketcanfd`), independent from classic `socketcan`.
-- Damiao-only adapter transports are available in CLI: serial bridge (`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`) and DM_Device SDK (`--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`).
+- Damiao-only adapter transports are available in CLI: serial bridge (`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`) and DM_Device SDK (`--transport dm-device --dm-device-type usb2canfd|usb2canfd-dual|linkx4c --dm-channel 0|1|2|3`; Damiao motors only; adapter must be in USB mode).
 - On Linux SocketCAN, do not append bitrate in `--channel` (for example `can0@1000000` is invalid).
 - On Windows (PCAN backend), `can0/can1` map to `PCAN_USBBUS1/2`; optional `@bitrate` suffix is supported.
 
@@ -34,7 +34,7 @@ cargo build -p motor_cli --release
 - `--transport auto|socketcan|socketcanfd|dm-serial|dm-device` (`dm-serial`/`dm-device` are Damiao-only; `socketcanfd` required for Hexfellow)
 - `--channel can0`
 - `--serial-port /dev/ttyACM0 --serial-baud 921600` (used with `--transport dm-serial`)
-- `--dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2` (used with `--transport dm-device`; in scan mode, omit `--dm-channel` to scan both CANFD1/CANFD2 on dual-channel adapters)
+- `--dm-device-type usb2canfd|usb2canfd-dual|linkx4c --dm-channel 0|1|2|3` (used with `--transport dm-device`; in scan mode, omit `--dm-channel` to scan all channels on the selected adapter)
 - `--motor-id <id>`
 - `--loop <n> --dt-ms <ms>`
 

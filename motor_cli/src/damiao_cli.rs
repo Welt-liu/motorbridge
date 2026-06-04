@@ -108,10 +108,15 @@ fn dm_device_scan_channels(
         return Ok(vec![explicit.clone()]);
     }
     let device_type = DmDeviceType::parse(dm_device_type)?;
-    if matches!(device_type, DmDeviceType::Usb2CanFd) {
-        Ok(vec!["canfd1".to_string()])
-    } else {
-        Ok(vec!["canfd1".to_string(), "canfd2".to_string()])
+    match device_type {
+        DmDeviceType::Usb2CanFd => Ok(vec!["0".to_string()]),
+        DmDeviceType::Usb2CanFdDual => Ok(vec!["0".to_string(), "1".to_string()]),
+        DmDeviceType::LinkX4C => Ok(vec![
+            "0".to_string(),
+            "1".to_string(),
+            "2".to_string(),
+            "3".to_string(),
+        ]),
     }
 }
 
@@ -215,7 +220,7 @@ pub fn run_damiao(
     let serial_baud = u32::try_from(serial_baud_u64)
         .map_err(|_| format!("invalid --serial-baud (too large): {serial_baud_u64}"))?;
     let dm_device_type = get_str(args, "dm-device-type", "usb2canfd-dual");
-    let dm_channel = get_str(args, "dm-channel", "canfd1");
+    let dm_channel = get_str(args, "dm-channel", "0");
 
     if transport == "dm-serial" {
         println!(
@@ -254,7 +259,11 @@ pub fn run_damiao(
             println!(
                 "[scan] dm-device channel target: {}",
                 if channel_label == "all" {
-                    "all (canfd1,canfd2)".to_string()
+                    match DmDeviceType::parse(&dm_device_type).ok() {
+                        Some(DmDeviceType::LinkX4C) => "all (0,1,2,3)".to_string(),
+                        Some(DmDeviceType::Usb2CanFdDual) => "all (0,1)".to_string(),
+                        _ => "all (0)".to_string(),
+                    }
                 } else {
                     channel_label.clone()
                 }
@@ -601,6 +610,16 @@ pub fn run_damiao(
             _ => return Err(format!("unknown Damiao mode: {mode}").into()),
         }
 
+        if mode == "enable" || mode == "disable" {
+            for _ in 0..20 {
+                let _ = controller.poll_feedback_once();
+                if motor.latest_state().is_some() {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(5));
+            }
+        }
+
         if let Some(s) = motor.latest_state() {
             let base = format!(
                 "#{i} id={} arb=0x{:03X} pos={:+.3} vel={:+.3} torq={:+.3} status={}({}) t_mos={:.1}C t_rotor={:.1}C",
@@ -649,6 +668,11 @@ pub fn run_damiao(
                 }
                 _ => println!("{base}"),
             }
+        } else if mode == "enable" || mode == "disable" {
+            println!(
+                "[ok] Damiao {} command sent to motor_id=0x{:X} feedback_id=0x{:X}; no feedback frame observed within 100ms",
+                mode, motor_id, feedback_id
+            );
         }
         std::thread::sleep(Duration::from_millis(dt_ms));
     }

@@ -30,13 +30,16 @@ python3 -m pip install -i https://test.pypi.org/simple/ motorbridge==<版本号>
   走 Damiao 串口桥（`SERIAL_PORT` / `SERIAL_BAUD` 生效），只支持 Damiao。
 - `TRANSPORT = "dm-device"`：
   走 DaMiao DM_Device SDK（`DM_DEVICE_TYPE` / `DM_CHANNEL` 生效），只支持 Damiao。
-  扫描脚本中 `DM_CHANNEL = None` 表示扫描 `usb2canfd-dual` 的 CANFD1 和
-  CANFD2；设置 `"canfd1"` / `"canfd2"` 时只扫一路。
+  适配器需要处于 USB 模式。扫描脚本中 `DM_CHANNEL = None` 表示扫描所选适配器
+  的全部通道：`usb2canfd` 单路 `0`，`usb2canfd-dual` 为
+  `0`/`1`，`linkx4c` 为 SDK 通道 `0..3`；设置 `DM_CHANNEL` 时只扫一路。
 
 快速判断：
 - 你用 CAN 设备（PCAN/CANable candleLight/gs_usb）就用 `auto/socketcan`。
 - 你用 Damiao 串口桥（如 `/dev/ttyACM0`）就用 `dm-serial`。
-- 你用 Damiao USB2CANFD_DUAL 就用 `dm-device`，并通过 `DM_CHANNEL=canfd1/canfd2` 选择物理通道。
+- 你用 Damiao USB2CANFD / USB2CANFD_DUAL / LINKX4C 就用 `dm-device`；
+  通过 `DM_DEVICE_TYPE` 选择设备类型，通过 `DM_CHANNEL=0/1/2/3`
+  选择物理通道。
 
 ## 3）快速命令（无需源码）
 
@@ -67,8 +70,9 @@ motorbridge-cli run --vendor damiao --channel can0 --model 4340P --motor-id 0x01
 - `LOOP`：循环次数（越大发送越久）
 - `DT_MS`：循环周期毫秒（总线忙时增大到 30/50）
 - `SERIAL_PORT` / `SERIAL_BAUD`：仅 `dm-serial` 使用
-- `DM_DEVICE_TYPE` / `DM_CHANNEL`：仅 `dm-device` 使用
-  （扫描脚本里 `DM_CHANNEL=None` 表示双路扫描）
+- `DM_DEVICE_TYPE` / `DM_CHANNEL`：仅 `dm-device` 使用；支持
+  `usb2canfd` / `usb2canfd-dual` / `linkx4c`
+  （扫描脚本里 `DM_CHANNEL=None` 表示扫描所选适配器全部通道）
 
 ## 5）课程化系列（强烈推荐）
 

@@ -15,28 +15,41 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
   Standalone web control UI built on top of `ws_gateway`.
 
-## Update (2026-06): v0.4.3
+## Update (2026-06): v0.4.4
 
-- `v0.4.3` adds the Damiao-only `dm-device` transport for DaMiao
-  `USB2CANFD_DUAL` adapters through the DM_Device SDK. Rust CLI, Python SDK,
-  Python CLI, Python wheels, C ABI, and `ws_gateway` now share the same
-  `--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`
-  path.
-- In `dm-device` scan mode, omit `--dm-channel` / `dm_channel` to scan both
-  CANFD1 and CANFD2 on dual-channel adapters; pass `canfd1` or `canfd2` only
-  when you want one physical channel.
-- `v0.4.3` vendors the DM_Device SDK runtime under `third_party/dm_device`.
+- `v0.4.4` adds the Damiao-only `dm-device` transport for DaMiao
+  `USB2CANFD`, `USB2CANFD_DUAL`, and `LINKX4C` adapters through the
+  DM_Device SDK. Rust CLI, Python SDK, Python CLI, Python wheels, C ABI, and
+  `ws_gateway` now share the same
+  `--transport dm-device --dm-device-type ... --dm-channel ...` path. This
+  transport is currently wired only to Damiao motor protocol, and the adapter
+  must be configured/connected in USB mode.
+- In `dm-device` scan mode, omit `--dm-channel` / `dm_channel` to scan all
+  channels on the selected adapter: channel `0` on `usb2canfd`, channels `0|1` on
+  `usb2canfd-dual`, or channels `0|1|2|3` on `linkx4c`.
+
+DM_Device_SDK is a software development kit for CAN/CAN FD adapter devices.
+motorbridge currently supports these DM_Device hardware types, while the
+`dm-device` motor transport is wired only to Damiao motor protocol:
+
+| Device Type | SDK Enum | Channels | `--dm-device-type` | Channel Selection |
+|---|---|---:|---|---|
+| USB2CANFD | `USB2CANFD` | 1 | `usb2canfd` | `--dm-channel 0` |
+| USB2CANFD_DUAL | `USB2CANFD_DUAL` | 2 | `usb2canfd-dual` | `--dm-channel 0` / `1` |
+| LINKX4C | `LINKX4C` | 4 | `linkx4c` | `--dm-channel 0` / `1` / `2` / `3` |
+- `v0.4.4` vendors the DM_Device SDK runtime under `third_party/dm_device`.
   `dm-device` is enabled only for targets that have a matching SDK runtime
   file there. Python wheels do not bundle that vendor runtime; when Python SDK,
   Python CLI, or `motorbridge-gateway` first uses `dm-device`, motorbridge
   resolves the matching OS/arch runtime and, if it is missing, tells the user
   which file to download from `third_party/dm_device` and where to place it.
   Users can also set `MOTOR_DM_DEVICE_LIB=/path/to/libdm_device`.
-- `v0.4.3` uses a small C++ shim for the SDK boundary and reuses the already
+- `v0.4.4` uses a small C++ shim for the SDK boundary and reuses the already
   opened SDK handle in long-running processes, which keeps repeated WS scans
   from requiring a USB unplug/replug cycle.
 - Linux x86_64 has been release-build, wheel-build, installed-wheel, hardware
-  scan, and WebSocket-scan verified for USB2CANFD_DUAL CANFD1 and CANFD2.
+  scan, and WebSocket-scan verified for USB2CANFD_DUAL channel 0/1 and
+  LINKX4C channel 0..3.
   Windows/macOS SDK runtimes are vendored and path-selected, but final runtime
   validation still requires those hosts.
 - `v0.4.2` optimizes Damiao `dm-serial` high-rate multi-motor control by
@@ -76,13 +89,15 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `[STD-CAN]`: classic CAN path (`socketcan`/`pcan`)
 - `[CAN-FD]`: dedicated FD path (`socketcanfd`)
 - `[DM-SERIAL]`: Damiao serial-bridge path (`dm-serial`)
-- `[DM-DEVICE]`: Damiao DM_Device SDK path (`dm-device`, for example
-  `USB2CANFD_DUAL` with `canfd1`/`canfd2`)
+- `[DM-DEVICE]`: Damiao DM_Device SDK path (`dm-device`; supports
+  single-channel `USB2CANFD`, dual-channel `USB2CANFD_DUAL`, and four-channel
+  `LINKX4C`; Damiao motor protocol only)
 
 Current status:
 - `[CAN-FD]` has been integrated as an independent transport path.
 - `[DM-DEVICE]` is integrated for Damiao and verified on Linux x86_64 with
-  USB2CANFD_DUAL CANFD1/CANFD2 scans. Build/package support follows the SDK
+  USB2CANFD_DUAL channel 0/1 scans plus LINKX4C SDK channel `0..3` scans.
+  Build/package support follows the SDK
   runtime files vendored in `third_party/dm_device/v1.1.0`; Python wheels
   resolve the matching runtime and print setup instructions instead of
   embedding it.
@@ -555,7 +570,7 @@ Interpretation:
   - `motor_abi_capabilities_json()`
   - `motor_controller_new_socketcan(channel)`
   - `motor_controller_new_dm_serial(serial_port, baud)` (Damiao-only serial bridge; cross-platform, e.g. `/dev/ttyACM0` or `COM3`)
-  - `motor_controller_new_dm_device(dm_device_type, dm_channel)` (Damiao-only DM_Device SDK path; e.g. `usb2canfd-dual` + `canfd1|canfd2`)
+  - `motor_controller_new_dm_device(dm_device_type, dm_channel)` (Damiao-only DM_Device SDK path; e.g. `usb2canfd` + `0`, `usb2canfd-dual` + `0|1`, or `linkx4c` + `0|1|2|3`)
   - Damiao: `motor_controller_add_damiao_motor(...)`
   - Hexfellow: `motor_controller_add_hexfellow_motor(...)` (CAN-FD path via `socketcanfd`)
   - RobStride: `motor_controller_add_robstride_motor(...)`
@@ -566,7 +581,7 @@ Interpretation:
   - `motorbridge.abi_capabilities()`
   - `Controller(channel="can0")`
   - `Controller.from_dm_serial("/dev/ttyACM0", 921600)` (Damiao-only)
-  - `Controller.from_dm_device("usb2canfd-dual", "canfd1")` (Damiao-only DM_Device SDK path)
+  - `Controller.from_dm_device("usb2canfd-dual", "0")` / `Controller.from_dm_device("linkx4c", "0")` (Damiao-only DM_Device SDK path)
   - `Controller.add_damiao_motor(...)`
   - `Controller.add_hexfellow_motor(...)`
   - `Controller.add_robstride_motor(...)`
@@ -650,7 +665,7 @@ prints the required file name, GitHub URL, and valid install paths.
 
 | Platform / Arch | Published Python Wheel | DM_Device Runtime Available | Runtime File | OS/runtime ABI notes | Hardware Verified |
 |---|---|---|---|---|---|
-| Linux x86_64 | yes | yes | `linux/x86_64/libdm_device.so` | needs `libusb-1.0.so.0`, `libstdc++.so.6` with `GLIBCXX_3.4.32`, `GLIBC_2.14+` | yes, USB2CANFD_DUAL CANFD1/CANFD2 scan |
+| Linux x86_64 | yes | yes | `linux/x86_64/libdm_device.so` | needs `libusb-1.0.so.0`, `libstdc++.so.6` with `GLIBCXX_3.4.32`, `GLIBC_2.14+` | yes, USB2CANFD_DUAL channel 0/1 and LINKX4C channel 0..3 scan |
 | Linux aarch64 | yes | yes | `linux/arm64/libdm_device.so` | needs `libusb-1.0.so.0`, `GLIBC_2.17+`, `GLIBCXX_3.4.22+` | pending host validation |
 | Windows x86_64 | yes | yes | `windows/msvc/dm_device.dll` | needs libusb runtime/driver and Microsoft Visual C++ runtime (`MSVCP140*.dll`, `VCRUNTIME140*.dll`) | pending host validation |
 | macOS arm64 | yes | yes | `macos/arm64/libdm_device.dylib` | links system `libc++`, `libSystem`, `libobjc`; final OS floor pending macOS host validation | pending host validation |

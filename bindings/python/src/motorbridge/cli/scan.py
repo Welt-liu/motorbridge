@@ -12,9 +12,12 @@ def _dm_device_scan_channels(args: argparse.Namespace) -> list[str]:
     explicit = getattr(args, "dm_channel", None)
     if explicit:
         return [explicit]
-    if getattr(args, "dm_device_type", "usb2canfd-dual") == "usb2canfd":
-        return ["canfd1"]
-    return ["canfd1", "canfd2"]
+    device_type = getattr(args, "dm_device_type", "usb2canfd-dual").lower().replace("_", "-")
+    if device_type == "usb2canfd":
+        return ["0"]
+    if device_type == "linkx4c":
+        return ["0", "1", "2", "3"]
+    return ["0", "1"]
 
 
 def _scan_damiao_dm_device_channel(

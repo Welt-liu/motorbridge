@@ -5,10 +5,11 @@
 
 - Linux SocketCAN 直接使用已初始化的接口名：`can0`、`can1`。CANable 请刷 candleLight/gs_usb 固件，让系统识别为 `can0` 这类 SocketCAN 接口。
 - 标准 CAN 推荐 PCAN 或 CANable candleLight/gs_usb。
-- 仅 Damiao 可选两类适配器链路：串口桥 `--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`，以及 DM_Device SDK `--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`。
+- 仅 Damiao 可选两类适配器链路：串口桥 `--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`，以及 DM_Device SDK `--transport dm-device --dm-device-type usb2canfd|usb2canfd-dual|linkx4c --dm-channel 0|1|2|3`。DM_Device 链路当前只配 Damiao 电机协议使用，适配器需处于 USB 模式。
 - 仅 Damiao 可选 DM_Device SDK 链路：
-  `--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`。
-  Linux x86_64 下 USB2CANFD_DUAL 的 CANFD1/CANFD2 扫描已实测通过。
+  `--transport dm-device --dm-device-type usb2canfd|usb2canfd-dual|linkx4c`。
+  适配器需要处于 USB 模式。Linux x86_64 下 USB2CANFD_DUAL 的通道 0/1
+  和 LINKX4C 通道 `0..3` 扫描已实测通过。
 - Damiao 串口桥完整接口与命令模板见 `motor_cli/README.zh-CN.md` 第 `3.6` 节（英文见 `motor_cli/README.md`）。
 - Linux SocketCAN 下 `--channel` 不要带 `@bitrate`（例如 `can0@1000000` 无效）。
 - Windows（PCAN 后端）中，`can0/can1` 映射 `PCAN_USBBUS1/2`，可选 `@bitrate` 后缀。
@@ -158,7 +159,22 @@ cargo run -p ws_gateway --release -- \
   --vendor damiao \
   --transport dm-device \
   --dm-device-type usb2canfd-dual \
-  --dm-channel canfd2 \
+  --dm-channel 1 \
+  --model 4310 \
+  --motor-id 0x04 \
+  --feedback-id 0x14 \
+  --dt-ms 20
+```
+
+Damiao 通过 DM_Device SDK / LINKX4C 通道 0：
+
+```bash
+cargo run -p ws_gateway --release -- \
+  --bind 127.0.0.1:9002 \
+  --vendor damiao \
+  --transport dm-device \
+  --dm-device-type linkx4c \
+  --dm-channel 0 \
   --model 4310 \
   --motor-id 0x04 \
   --feedback-id 0x14 \
@@ -194,12 +210,15 @@ cargo run -p ws_gateway --release -- \
 
 说明：
 
-- `dm_channel=canfd1` 对应 SDK channel 0；`dm_channel=canfd2` 对应 SDK channel 1。
-- scan 请求不带 `dm_channel` 时会扫描 `usb2canfd-dual` 的 CANFD1 和
-  CANFD2；带 `dm_channel` 时只扫描指定物理通道。
+- `dm_channel=0` 对应 SDK channel 0；`dm_channel=1` 对应 SDK channel 1。
+- `dm_device_type=usb2canfd` 只有一路（`0` / SDK channel 0）。
+- `dm_device_type=linkx4c` 使用 SDK 通道 `0`、`1`、`2`、`3`。
+- scan 请求不带 `dm_channel` 时会扫描所选适配器全部通道：`usb2canfd` 为
+  `0`，`usb2canfd-dual` 为 `0|1`，`linkx4c` 为 `0|1|2|3`；带
+  `dm_channel` 时只扫描指定物理通道。
 - 网关会在同一进程内复用已打开的 DM_Device SDK handle，避免 Linux 下 SDK/libusb
   反复 reopen 造成的打开失败。
-- 同一个 USB2CANFD_DUAL 不要被两个独立进程同时打开。
+- 同一个 DM_Device USB 适配器不要被两个独立进程同时打开。
 
 ## Windows 实验支持（PCAN-USB）
 

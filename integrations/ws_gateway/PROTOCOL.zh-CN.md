@@ -59,7 +59,13 @@ cargo run -p ws_gateway --release -- --bind 127.0.0.1:9002 --vendor damiao --tra
 Damiao / DM_Device SDK USB2CANFD_DUAL：
 
 ```bash
-cargo run -p ws_gateway --release -- --bind 127.0.0.1:9002 --vendor damiao --transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd2 --model 4310 --motor-id 0x04 --feedback-id 0x14 --dt-ms 20
+cargo run -p ws_gateway --release -- --bind 127.0.0.1:9002 --vendor damiao --transport dm-device --dm-device-type usb2canfd-dual --dm-channel 1 --model 4310 --motor-id 0x04 --feedback-id 0x14 --dt-ms 20
+```
+
+Damiao / DM_Device SDK LINKX4C：
+
+```bash
+cargo run -p ws_gateway --release -- --bind 127.0.0.1:9002 --vendor damiao --transport dm-device --dm-device-type linkx4c --dm-channel 0 --model 4310 --motor-id 0x04 --feedback-id 0x14 --dt-ms 20
 ```
 
 RobStride：
@@ -101,7 +107,7 @@ motorbridge-gateway -- --bind 127.0.0.1:9002 --vendor robstride --channel can0@1
 | `--serial-port` | string | `/dev/ttyACM0` | Damiao `dm-serial` 串口设备 |
 | `--serial-baud` | u32 | `921600` | Damiao `dm-serial` 波特率 |
 | `--dm-device-type` | string | `usb2canfd-dual` | Damiao `dm-device` 适配器类型：`usb2canfd` / `usb2canfd-dual` / `linkx4c` |
-| `--dm-channel` | string | `canfd1` | Damiao `dm-device` 控制通道：`canfd1` / `canfd2`；scan 消息不带 `dm_channel` 时会扫描双通道适配器的 CANFD1/CANFD2 |
+| `--dm-channel` | string | `0` | Damiao `dm-device` 控制通道：`usb2canfd` 用 `0`，`usb2canfd-dual` 用 `0` / `1`，`linkx4c` 用 SDK 通道 `0` / `1` / `2` / `3`；scan 消息不带 `dm_channel` 时会扫描所选适配器全部通道 |
 | `--model` | string | 厂商默认 | 电机型号，例如 `4340P` / `rs-00` |
 | `--motor-id` | u16 | `0x01` | 电机命令 ID / device ID |
 | `--feedback-id` | u16 | 厂商默认 | 反馈 ID。RobStride 中它是 host_id，不是 motor_id |
@@ -283,7 +289,11 @@ RobStride 返回：
 Damiao / DM_Device SDK：
 
 ```json
-{"op":"set_target","vendor":"damiao","transport":"dm-device","dm_device_type":"usb2canfd-dual","dm_channel":"canfd2","model":"4310","motor_id":"0x04","feedback_id":"0x14"}
+{"op":"set_target","vendor":"damiao","transport":"dm-device","dm_device_type":"usb2canfd-dual","dm_channel":"1","model":"4310","motor_id":"0x04","feedback_id":"0x14"}
+```
+
+```json
+{"op":"set_target","vendor":"damiao","transport":"dm-device","dm_device_type":"linkx4c","dm_channel":"0","model":"4310","motor_id":"0x04","feedback_id":"0x14"}
 ```
 
 RobStride：
@@ -1292,7 +1302,7 @@ RobStride 返回：
 | `serial_port` | string | 当前 serial_port | `dm-serial` 串口 |
 | `serial_baud` | u32 | 当前 serial_baud | `dm-serial` 波特率 |
 | `dm_device_type` | string | 当前 dm_device_type | `dm-device` 适配器类型 |
-| `dm_channel` | string | 不传则 all | `dm-device` 扫描通道；不传会扫描双通道适配器的 CANFD1/CANFD2，传 `canfd1`/`canfd2` 则只扫指定通道 |
+| `dm_channel` | string | 不传则 all | `dm-device` 扫描通道；不传会扫描所选适配器全部通道：`usb2canfd` 为 `0`，`usb2canfd-dual` 为 `0|1`，`linkx4c` 为 `0|1|2|3`；传通道则只扫指定通道 |
 | `start_id` | u16 | 厂商默认 | 起始 ID |
 | `end_id` | u16 | 厂商默认 | 结束 ID |
 | `timeout_ms` | u64 | 厂商默认 | 单 ID 超时 |
@@ -1306,13 +1316,19 @@ Damiao：
 Damiao / DM_Device SDK：
 
 ```json
-{"op":"scan","vendor":"damiao","transport":"dm-device","dm_device_type":"usb2canfd-dual","dm_channel":"canfd2","model":"4310","start_id":1,"end_id":16,"feedback_base":16,"timeout_ms":80}
+{"op":"scan","vendor":"damiao","transport":"dm-device","dm_device_type":"usb2canfd-dual","dm_channel":"1","model":"4310","start_id":1,"end_id":16,"feedback_base":16,"timeout_ms":80}
 ```
 
-不带 `dm_channel` 时会同时扫描 CANFD1 和 CANFD2：
+不带 `dm_channel` 时会扫描所选适配器全部通道。USB2CANFD_DUAL 示例：
 
 ```json
 {"op":"scan","vendor":"damiao","transport":"dm-device","dm_device_type":"usb2canfd-dual","model":"4310","start_id":1,"end_id":16,"feedback_base":16,"timeout_ms":80}
+```
+
+LINKX4C 全四路扫描：
+
+```json
+{"op":"scan","vendor":"damiao","transport":"dm-device","dm_device_type":"linkx4c","model":"4310","start_id":1,"end_id":16,"feedback_base":16,"timeout_ms":80}
 ```
 
 RobStride：

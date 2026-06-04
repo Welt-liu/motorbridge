@@ -312,6 +312,13 @@ extern "C" int mb_dm_open(const char* library_path, int device_type, uint8_t sel
             delete h;
             return -1;
         }
+    } else if (device_type == LINKX4C) {
+        for (uint8_t channel = 0; channel < 4; ++channel) {
+            if (!configure_channel(h, channel, can_baudrate, canfd_baudrate, err_buf, err_len)) {
+                delete h;
+                return -1;
+            }
+        }
     } else if (!configure_channel(h, selected_channel, can_baudrate, canfd_baudrate, err_buf, err_len)) {
         delete h;
         return -1;

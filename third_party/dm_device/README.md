@@ -7,6 +7,29 @@ It exists so motorbridge can build, run, and package the USB/CAN adapter
 support without depending on a developer's local copy of
 `dm-device-sdk/C&C++/lib/v1.1.0`.
 
+## Hardware Scope In Motorbridge
+
+DaMiao DM_Device_SDK is a software development kit for controlling CAN/CAN FD
+adapter devices. The SDK exposes these device families, and motorbridge maps
+them as follows:
+
+| SDK Device Type | SDK Enum | Physical Channels | motorbridge `--dm-device-type` | motorbridge `--dm-channel` |
+|---|---|---:|---|---|
+| USB2CANFD | `USB2CANFD` | 1 CAN FD channel | `usb2canfd` | `0` or SDK channel `0` |
+| USB2CANFD_DUAL | `USB2CANFD_DUAL` | 2 CAN FD channels | `usb2canfd-dual` | `0` / `1` |
+| LINKX4C | `LINKX4C` | 4 CAN channels | `linkx4c` | SDK channels `0` / `1` / `2` / `3` |
+
+Important scope notes:
+
+- motorbridge's `dm-device` transport is currently intended for Damiao motors
+  only. The SDK can send generic CAN/CAN FD frames, but the motorbridge vendor
+  controller layered on this transport is the Damiao protocol path.
+- The adapter must be configured/connected in USB mode. Non-USB operating modes
+  of a multi-interface adapter are outside this transport path.
+- In scan mode, omitting `--dm-channel` scans every channel for the selected
+  device type: one channel for `usb2canfd`, two channels for
+  `usb2canfd-dual`, and four channels for `linkx4c`.
+
 ## Contents
 
 `v1.1.0/dmcan.h`
@@ -96,7 +119,7 @@ is what controls which architectures support `dm-device`.
 
 | Platform / Architecture | Runtime Path | Python Wheel | `dm-device` Runtime | OS/runtime ABI notes | Hardware Verified |
 |---|---|---|---|---|---|
-| Linux x86_64 | `v1.1.0/linux/x86_64/libdm_device.so` | yes | supported | needs `libusb-1.0.so.0`, `libstdc++.so.6` with `GLIBCXX_3.4.32`, `GLIBC_2.14+` | yes, USB2CANFD_DUAL CANFD1/CANFD2 scan |
+| Linux x86_64 | `v1.1.0/linux/x86_64/libdm_device.so` | yes | supported | needs `libusb-1.0.so.0`, `libstdc++.so.6` with `GLIBCXX_3.4.32`, `GLIBC_2.14+` | yes, USB2CANFD_DUAL channel 0/1 and LINKX4C channel `0..3` scan |
 | Linux aarch64 / arm64 | `v1.1.0/linux/arm64/libdm_device.so` | yes | supported | needs `libusb-1.0.so.0`, `GLIBC_2.17+`, `GLIBCXX_3.4.22+` | pending host validation |
 | Windows x86_64 MSVC | `v1.1.0/windows/msvc/dm_device.dll` | yes | supported | needs libusb runtime/driver and Microsoft Visual C++ runtime (`MSVCP140*.dll`, `VCRUNTIME140*.dll`) | pending host validation |
 | Windows x86_64 MinGW | `v1.1.0/windows/mingw/libdm_device.dll` | ABI/CLI build support | supported | needs `libusb-1.0.dll`, `libstdc++-6.dll`, `libgcc_s_seh-1.dll`, Universal CRT | pending host validation |
@@ -147,19 +170,34 @@ After that, vendor code such as the Damiao controller can simply open:
 
 ```text
 --transport dm-device
---dm-device-type usb2canfd-dual
---dm-channel canfd1
+--dm-device-type usb2canfd
+--dm-channel 0
 ```
 
 or:
 
 ```text
---dm-channel canfd2
+--transport dm-device
+--dm-device-type usb2canfd-dual
+--dm-channel 0
 ```
 
-For `motor_cli --mode scan`, omit `--dm-channel` on `usb2canfd-dual` to scan
-both CANFD1 and CANFD2. Add `--dm-channel canfd1` or `--dm-channel canfd2`
-only when you want to scan one physical channel.
+or:
+
+```text
+--dm-channel 1
+```
+
+or:
+
+```text
+--transport dm-device
+--dm-device-type linkx4c
+--dm-channel 0
+```
+
+For `motor_cli --mode scan`, omit `--dm-channel` to scan every physical channel
+for the selected adapter. Pass a number only when you want one physical channel.
 
 ## Why A C++ Shim Exists
 
@@ -190,8 +228,9 @@ Currently supported through motorbridge:
 
 - `usb2canfd`
 - `usb2canfd-dual`
-- `linkx4c` parsing/open path
-- `canfd1` and `canfd2` channel selection
+- `linkx4c`
+- `0` / `1` channel selection for CAN FD adapters
+- SDK channel `0..3` selection for `linkx4c`
 - classic CAN frames up to 8 bytes
 - standard and extended CAN identifiers
 
@@ -199,12 +238,12 @@ Known current limits:
 
 - The active implementation sends classic CAN frames, not 64-byte CAN-FD
   payloads.
-- `usb2canfd-dual` opens/configures both physical channels, then filters RX/TX
-  to the selected `--dm-channel`.
+- Multi-channel adapters open/configure all physical channels, then filter
+  RX/TX to the selected `--dm-channel`.
 - The first matching DM_Device adapter is opened; there is not yet a serial
   number/device-index selector.
 - The SDK appears to be exclusive per USB adapter. Do not open the same
-  USB2CANFD_DUAL from two motorbridge processes at the same time.
+  DM_Device USB adapter from two motorbridge processes at the same time.
 
 ## Packaging
 
@@ -226,10 +265,13 @@ When updating DaMiao DM_Device SDK:
 2. Update `motor_core/build.rs` include path if the header version changes.
 3. Update `motor_core/src/dm_device.rs` runtime search paths.
 4. Rebuild `motor_core`, `motor_abi`, and `motor_cli`.
-5. Test both channels on USB2CANFD_DUAL:
+5. Test all supported adapter/channel mappings available on your bench:
 
 ```text
+cargo run -p motor_cli -- --vendor damiao --transport dm-device --dm-device-type usb2canfd --model 4310 --mode scan --start-id 1 --end-id 16
 cargo run -p motor_cli -- --vendor damiao --transport dm-device --dm-device-type usb2canfd-dual --model 4310 --mode scan --start-id 1 --end-id 16
-cargo run -p motor_cli -- --vendor damiao --transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1 --model 4310 --mode scan --start-id 1 --end-id 16
-cargo run -p motor_cli -- --vendor damiao --transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd2 --model 4310 --mode scan --start-id 1 --end-id 16
+cargo run -p motor_cli -- --vendor damiao --transport dm-device --dm-device-type usb2canfd-dual --dm-channel 0 --model 4310 --mode scan --start-id 1 --end-id 16
+cargo run -p motor_cli -- --vendor damiao --transport dm-device --dm-device-type usb2canfd-dual --dm-channel 1 --model 4310 --mode scan --start-id 1 --end-id 16
+cargo run -p motor_cli -- --vendor damiao --transport dm-device --dm-device-type linkx4c --model 4310 --mode scan --start-id 1 --end-id 16
+cargo run -p motor_cli -- --vendor damiao --transport dm-device --dm-device-type linkx4c --dm-channel 0 --model 4310 --mode scan --start-id 1 --end-id 16
 ```

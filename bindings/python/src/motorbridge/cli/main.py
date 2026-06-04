@@ -106,7 +106,7 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument(
         "--dm-channel",
         default=None,
-        help="DM_Device physical channel: canfd1 or canfd2; omitted scans both on dual-channel adapters",
+        help="DM_Device SDK channel number; omitted scans all channels for the selected adapter",
     )
     scan.add_argument("--model", default="4340", help="model hint used by vendor scanner")
     scan.add_argument("--start-id", default="0x01", help="first motor/device ID to probe")

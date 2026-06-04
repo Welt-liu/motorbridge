@@ -54,13 +54,15 @@ motor_cli -h
 - `[DM-SERIAL]` => `--transport dm-serial`（仅 Damiao）
 - `[DM-DEVICE]` => `--transport dm-device`（仅 Damiao，走 DM_Device SDK；
   只有 `third_party/dm_device` 中存在目标平台 SDK runtime 时才启用；
-  `usb2canfd-dual` 的 `canfd1`/`canfd2` 已在 Linux x86_64 实测）
+  支持 `usb2canfd`、`usb2canfd-dual` 和 `linkx4c`，适配器需处于 USB 模式；
+  Linux x86_64 下 USB2CANFD_DUAL 和 LINKX4C 扫描已实测）
 
 当前状态：
 - Hexfellow：`socketcanfd` 路径已实测，统一 `mit` / `pos-vel` 可用。
 - HighTorque：标准 CAN 下统一 `mit` / `vel` 已实测可用（协议层忽略 `kp/kd`）。
 - Damiao：统一 `mit` / `pos-vel` / `vel` / `force-pos` 的基线实现；
-  `dm-device` 已在 USB2CANFD_DUAL 的 CANFD1/CANFD2 扫描中验证。
+  `dm-device` 已在 USB2CANFD_DUAL 的通道 0/1 和 LINKX4C SDK 通道
+  `0..3` 扫描中验证。
 
 ## 1. 参数解析规则
 
@@ -125,7 +127,7 @@ motor_cli \
 | `--serial-port` | string | `/dev/ttyACM0` | `--transport dm-serial` 时使用 |
 | `--serial-baud` | u64 | `921600` | `--transport dm-serial` 时使用 |
 | `--dm-device-type` | string | `usb2canfd-dual` | `--transport dm-device` 时使用；可选 `usb2canfd` / `usb2canfd-dual` / `linkx4c` |
-| `--dm-channel` | string | 控制默认 `canfd1`；扫描不传则 all | `--transport dm-device` 时使用；可选 `canfd1` / `canfd2`。`--mode scan` 时不传会扫描双通道适配器的 CANFD1 和 CANFD2。 |
+| `--dm-channel` | string | 控制默认 `0`；扫描不传则 all | `--transport dm-device` 时使用；`usb2canfd` 使用 `0`，`usb2canfd-dual` 使用 `0` / `1`，`linkx4c` 使用 `0` / `1` / `2` / `3`。`--mode scan` 时不传会扫描所选适配器的全部通道。 |
 | `--model` | string | 按 vendor 决定 | Damiao 默认 `4340`；RobStride 默认 `rs-00`；HighTorque 默认 `hightorque`；MyActuator 默认 `X8` |
 | `--motor-id` | u16(hex/dec) | `0x01` | 电机 CAN ID |
 | `--feedback-id` | u16(hex/dec) | 按 vendor 决定 | Damiao 默认 `0x11`；RobStride 默认 `0xFD`；HighTorque 默认 `0x01`；MyActuator 默认 `0x241`（motor-id=1） |
@@ -157,7 +159,8 @@ motor_cli \
 
 ### 2.3 Damiao DM_Device SDK 速查（`--transport dm-device`）
 
-- 该链路通过 DaMiao `libdm_device` 接入 USB2CANFD/USB2CANFD_DUAL 等适配器。
+- 该链路通过 DaMiao `libdm_device` 接入 USB2CANFD/USB2CANFD_DUAL/LINKX4C
+  适配器，当前只配 Damiao 电机协议使用，适配器需要处于 USB 模式。
 - USB2CANFD_DUAL 扫描示例：
 
 ```bash
@@ -171,15 +174,20 @@ motor_cli \
   --end-id 16
 ```
 
-- `canfd1` 对应 SDK channel 0；`canfd2` 对应 SDK channel 1。
-- 扫描模式下不传 `--dm-channel` 会同时扫描 `usb2canfd-dual` 的 CANFD1 和
-  CANFD2；如果只想扫一路，再显式加 `--dm-channel canfd1` 或
-  `--dm-channel canfd2`。
+- `usb2canfd` 只有一路：`0` / SDK channel 0。
+- `usb2canfd-dual` 有两路：`0` 对应 SDK channel 0；`1` 对应
+  SDK channel 1。
+- 扫描模式下不传 `--dm-channel` 会扫描所选适配器全部物理通道；如果只想扫一路，
+  再显式加 `--dm-channel ...`。
+- LinkX4C 使用 `--dm-device-type linkx4c`；SDK 通道 `0..3` 对应四个物理
+  CAN 口。扫描模式下不传 `--dm-channel` 会扫描四路；控制或单路扫描时使用
+  `--dm-channel 0`、`1`、`2` 或 `3`。
 - 编译支持范围跟 `third_party/dm_device/v1.1.0` 中实际 vendored 的 SDK
   runtime 文件一致；没有对应 runtime 的目标架构仍可编译，但
   `--transport dm-device` 会返回 unsupported-platform 错误。
-- Linux x86_64 下 USB2CANFD_DUAL 的 CANFD1/CANFD2 扫描已实测通过。
-- 同一个 USB2CANFD_DUAL 不要被两个进程同时打开。
+- Linux x86_64 下 USB2CANFD_DUAL 的通道 0/1 和 LINKX4C 通道 `0..3`
+  扫描已实测通过。
+- 同一个 DM_Device USB 适配器不要被两个进程同时打开。
 
 ### 2.4 Damiao 独立 CAN-FD 链路速查（`--transport socketcanfd`）
 

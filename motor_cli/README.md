@@ -54,13 +54,15 @@ motor_cli -h
 - `[DM-SERIAL]` => `--transport dm-serial` (Damiao-only)
 - `[DM-DEVICE]` => `--transport dm-device` (Damiao-only DM_Device SDK path;
   enabled only on targets with a matching SDK runtime in `third_party/dm_device`;
-  `usb2canfd-dual` with `canfd1`/`canfd2` is Linux x86_64 verified)
+  `usb2canfd`, `usb2canfd-dual`, and `linkx4c` are supported when the adapter
+  is in USB mode; Linux x86_64 USB2CANFD_DUAL and LINKX4C scans are verified)
 
 Current status:
 - Hexfellow: validated on `socketcanfd` with unified `mit` / `pos-vel`.
 - HighTorque: validated on standard CAN with unified `mit` / `vel` (`kp/kd` ignored by protocol).
 - Damiao: baseline implementation for unified `mit` / `pos-vel` / `vel` / `force-pos`;
-  `dm-device` scan verified on USB2CANFD_DUAL CANFD1/CANFD2.
+  `dm-device` scan verified on USB2CANFD_DUAL channel 0/1 and LINKX4C SDK
+  channel `0..3`.
 
 ## Validated Capability Matrix (Damiao + RobStride, 2026-04)
 
@@ -101,7 +103,7 @@ Notes:
 | `--serial-port` | string | `/dev/ttyACM0` | Used when `--transport dm-serial` |
 | `--serial-baud` | u64 | `921600` | Used when `--transport dm-serial` |
 | `--dm-device-type` | string | `usb2canfd-dual` | Used when `--transport dm-device`; accepted values: `usb2canfd`, `usb2canfd-dual`, `linkx4c` |
-| `--dm-channel` | string | control: `canfd1`; scan: all if omitted | Used when `--transport dm-device`; accepted values: `canfd1`, `canfd2`. In `--mode scan`, omit it to scan CANFD1 and CANFD2 on dual-channel adapters. |
+| `--dm-channel` | string | control: `0`; scan: all if omitted | Used when `--transport dm-device`; `usb2canfd` accepts `0`, `usb2canfd-dual` accepts `0`/`1`, and `linkx4c` accepts `0`/`1`/`2`/`3`. In `--mode scan`, omit it to scan all channels for the selected adapter. |
 | `--model` | string | vendor dependent | `4340` for Damiao, `rs-00` for RobStride, `hightorque` for HighTorque, `X8` for MyActuator |
 | `--motor-id` | u16 (hex/dec) | `0x01` | Motor CAN ID |
 | `--feedback-id` | u16 (hex/dec) | vendor dependent | Damiao `0x11`, RobStride `0xFD`, HighTorque `0x01`, MyActuator `0x241` (for motor-id `1`) |
@@ -140,6 +142,8 @@ Notes:
 ### 2.4 Damiao DM_Device SDK Quick Reference (`--transport dm-device`)
 
 - This path uses DaMiao `libdm_device` through motorbridge's `DmDeviceBus`.
+- It is currently a Damiao motor protocol transport. The adapter must be in
+  USB mode.
 - Typical USB2CANFD_DUAL scan:
 
 ```bash
@@ -153,15 +157,21 @@ motor_cli \
   --end-id 16
 ```
 
-- `canfd1` maps to SDK channel 0; `canfd2` maps to SDK channel 1.
-- In scan mode, omitting `--dm-channel` scans both CANFD1 and CANFD2 on
-  `usb2canfd-dual`; add `--dm-channel canfd1` or `--dm-channel canfd2` to scan
-  only one physical channel.
+- `usb2canfd` has one channel: `0` / SDK channel 0.
+- `usb2canfd-dual` has two channels: `0` maps to SDK channel 0;
+  `1` maps to SDK channel 1.
+- In scan mode, omitting `--dm-channel` scans every physical channel for the
+  selected adapter. Add `--dm-channel ...` to scan only one physical channel.
+- LinkX4C is supported as `--dm-device-type linkx4c`; SDK channels `0..3`
+  map to the four physical ports. In scan mode, omitting `--dm-channel` scans
+  all four LinkX4C channels; use `--dm-channel 0`, `1`, `2`, or `3` to control
+  or scan one port.
 - Build support follows the vendored SDK runtime files under
   `third_party/dm_device/v1.1.0`; unsupported target architectures still build,
   but `--transport dm-device` returns an unsupported-platform error.
-- Linux x86_64 USB2CANFD_DUAL CANFD1/CANFD2 scans are verified.
-- Do not open the same USB2CANFD_DUAL from two processes at the same time.
+- Linux x86_64 USB2CANFD_DUAL channel 0/1 and LinkX4C channel 0..3 scans are
+  verified.
+- Do not open the same DM_Device USB adapter from two processes at the same time.
 
 ## 3. Vendor = `damiao`
 

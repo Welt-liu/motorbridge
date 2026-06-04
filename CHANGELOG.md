@@ -7,18 +7,22 @@ Versioning.
 
 ## [Unreleased]
 
-## [0.4.3] - 2026-06-03
+No unreleased changes yet.
+
+## [0.4.4] - 2026-06-04
 
 ### Added
 
 - Added Damiao `dm-device` transport backed by DaMiao DM_Device SDK
-  (`USB2CANFD`, `USB2CANFD_DUAL`, and `LINKX4C` device-type parsing).
+  (`USB2CANFD`, `USB2CANFD_DUAL`, and `LINKX4C`). This transport is currently
+  intended for Damiao motor protocol, and the adapter must be in USB mode.
 - Added vendored DM_Device SDK runtime files under `third_party/dm_device`
   with platform-specific Linux/macOS/Windows libraries.
 - Added `DmDeviceBus` in `motor_core` and a C++ SDK shim that exposes a stable
   C ABI for Rust while preserving the SDK's native frame/callback layout.
 - Added Rust CLI flags `--transport dm-device`, `--dm-device-type`, and
-  `--dm-channel canfd1|canfd2`.
+  `--dm-channel`. `usb2canfd` uses `0`, `usb2canfd-dual` uses
+  `0`/`1`, and `linkx4c` uses SDK channels `0..3`.
 - Added ABI constructor `motor_controller_new_dm_device(...)`.
 - Added Python `Controller.from_dm_device(...)` and Python CLI
   `--transport dm-device` support.
@@ -38,8 +42,8 @@ Versioning.
 - Aligned Damiao `dm-device` scans in Rust CLI, Python CLI, and WebSocket
   gateway to use the stable feedback request path.
 - Updated `dm-device` scan semantics so omitting `--dm-channel` / `dm_channel`
-  scans both CANFD1 and CANFD2 on dual-channel adapters; specifying
-  `canfd1` or `canfd2` restricts the scan to one physical channel.
+  scans every channel for the selected adapter; specifying a channel restricts
+  the scan to one physical channel.
 - Changed Python wheel packaging to omit `libdm_device.so`/`.dylib`/`.dll` by
   default. This avoids Linux manylinux `auditwheel` failures caused by the
   vendor x86_64 library requiring `GLIBCXX_3.4.32`.
@@ -57,9 +61,11 @@ Versioning.
 
 - Verified Linux x86_64 wheel build includes `libmotor_abi.so` and
   `ws_gateway`, and does not embed `libdm_device.so`.
-- Verified installed wheel can scan USB2CANFD_DUAL CANFD1 and CANFD2 Damiao
+- Verified installed wheel can scan USB2CANFD_DUAL channel 0 and channel 1 Damiao
   motors on Linux x86_64 when the matching DM_Device runtime is available.
-- Verified a single WebSocket gateway process can scan CANFD2 and then CANFD1
+- Verified LINKX4C SDK channel `0..3` scan path on Linux x86_64, with Damiao
+  motor feedback observed on channel `0`.
+- Verified a single WebSocket gateway process can scan DM_Device channel 1 and then channel 0
   through `dm-device`.
 - Documented runtime ABI requirements: Linux x86_64 requires
   `libusb-1.0.so.0`, `GLIBC_2.14+`, and `libstdc++.so.6` with
@@ -71,10 +77,10 @@ Versioning.
 
 ### Changed
 
-- Python package version advanced to `0.4.3`.
-- Rust workspace package version advanced to `0.4.3` for release/tag
+- Python package version advanced to `0.4.4`.
+- Rust workspace package version advanced to `0.4.4` for release/tag
   alignment.
-- C++ package metadata advanced to `0.4.3`.
+- C++ package metadata advanced to `0.4.4`.
 - Documentation and API surface metadata updated for `dm-device`.
 
 ## [0.4.2] - 2026-06-03

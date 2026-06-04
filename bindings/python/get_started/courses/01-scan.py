@@ -19,7 +19,7 @@ END_ID = "255"
 SERIAL_PORT = "/dev/ttyACM0"
 SERIAL_BAUD = 921600
 DM_DEVICE_TYPE = "usb2canfd-dual"
-DM_CHANNEL = None  # None scans both CANFD1/CANFD2 for dm-device; use "canfd1" or "canfd2" for one channel.
+DM_CHANNEL = None  # None scans all dm-device channels; use "0", "1", "2", or "3" for one channel.
 # RobStride tip:
 # - keep VENDOR="robstride" for focused scan
 # - common device id seen in field: 127

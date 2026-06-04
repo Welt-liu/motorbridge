@@ -30,8 +30,10 @@ python3 -m pip install -i https://test.pypi.org/simple/ motorbridge==<version>
   use Damiao serial bridge (`SERIAL_PORT` / `SERIAL_BAUD` are used), Damiao only.
 - `TRANSPORT = "dm-device"`:
   use DaMiao DM_Device SDK (`DM_DEVICE_TYPE` / `DM_CHANNEL` are used), Damiao only.
-  In scan scripts, set `DM_CHANNEL = None` to scan both CANFD1 and CANFD2 on
-  `usb2canfd-dual`, or set `"canfd1"`/`"canfd2"` for one channel.
+  The adapter must be in USB mode. In scan scripts, set `DM_CHANNEL = None` to
+  scan every channel for the selected adapter: `usb2canfd` => `0`,
+  `usb2canfd-dual` => `0`/`1`, `linkx4c` => SDK channels `0..3`.
+  Set `DM_CHANNEL` when you want one physical channel.
 
 ## 3) Quick Commands (no source checkout required)
 
@@ -61,8 +63,9 @@ For beginners, this is easier to follow and avoids duplicate entry points.
 - `LOOP`: send loop count
 - `DT_MS`: control period in ms
 - `SERIAL_PORT` / `SERIAL_BAUD`: used only for `dm-serial`
-- `DM_DEVICE_TYPE` / `DM_CHANNEL`: used only for `dm-device`
-  (`DM_CHANNEL=None` means both channels for scan)
+- `DM_DEVICE_TYPE` / `DM_CHANNEL`: used only for `dm-device`; supported
+  device types are `usb2canfd`, `usb2canfd-dual`, and `linkx4c`
+  (`DM_CHANNEL=None` means all channels for scan)
 
 ## 5) Course Series (workflow-first)
 

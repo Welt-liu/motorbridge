@@ -205,7 +205,7 @@ Common args:\n\
   --serial-port  default /dev/ttyACM0 (used when --transport dm-serial)\n\
   --serial-baud  default 921600 (used when --transport dm-serial)\n\
   --dm-device-type  usb2canfd|usb2canfd-dual|linkx4c, default usb2canfd-dual (used when --transport dm-device)\n\
-  --dm-channel      canfd1|canfd2 (dm-device control default canfd1; scan omitted scans both on dual-channel adapters)\n\
+  --dm-channel      SDK channel number: usb2canfd=0, usb2canfd-dual=0|1, linkx4c=0|1|2|3 (control default 0; scan omitted scans all)\n\
   --model        default depends on vendor (damiao=4340, robstride=rs-00, hightorque=hightorque[hint only], myactuator=X8)\n\
   --motor-id     default 0x01\n\
   --feedback-id  default 0x11 for Damiao, 0xFD for RobStride, 0x01 for HighTorque, 0x241 for MyActuator\n\

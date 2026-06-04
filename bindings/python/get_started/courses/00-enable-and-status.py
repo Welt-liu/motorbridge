@@ -20,7 +20,7 @@ CHANNEL = "can0"
 SERIAL_PORT = "/dev/ttyACM0"
 SERIAL_BAUD = 921600
 DM_DEVICE_TYPE = "usb2canfd-dual"
-DM_CHANNEL = "canfd1"
+DM_CHANNEL = "0"
 
 VENDOR = "damiao"  # damiao/myactuator/robstride/hightorque/hexfellow
 MODEL = "4310"

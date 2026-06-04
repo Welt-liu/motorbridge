@@ -10,7 +10,7 @@ pub(crate) fn parse_args() -> Result<ServerConfig, String> {
     let mut serial_port = "/dev/ttyACM0".to_string();
     let mut serial_baud = 921600u32;
     let mut dm_device_type = "usb2canfd-dual".to_string();
-    let mut dm_channel = "canfd1".to_string();
+    let mut dm_channel = "0".to_string();
     let mut model = "auto".to_string();
     let mut motor_id = 0x01u16;
     let mut feedback_id = 0x11u16;
@@ -50,7 +50,7 @@ Optional defaults (only used when WS message omits target fields):\n\
   --serial-port /dev/ttyACM0    used only by --transport dm-serial\n\
   --serial-baud 921600          used only by --transport dm-serial\n\
   --dm-device-type usb2canfd-dual  used only by --transport dm-device\n\
-  --dm-channel canfd1           dm-device control default; scan JSON omitted dm_channel scans both channels\n\
+  --dm-channel 0                dm-device SDK channel number; scan JSON omitted dm_channel scans all adapter channels\n\
   --model auto                  default model hint when WS message omits model\n\
   --motor-id 0x01               default command/device ID when WS message omits motor_id\n\
   --feedback-id 0x11            default feedback/host ID; RobStride defaults to 0xFD if omitted\n\
@@ -60,7 +60,7 @@ Transport notes:\n\
   socketcan:   classic Linux SocketCAN, usually can0/can1 after adapter setup\n\
   socketcanfd: CAN-FD path, required for Hexfellow\n\
   dm-serial:   Damiao serial bridge only; does not support RobStride/MyActuator/Hexfellow\n\
-  dm-device:   DaMiao DM_Device SDK USB2CANFD/USB2CANFD_DUAL transport, Damiao only\n\
+  dm-device:   DaMiao DM_Device SDK USB2CANFD/USB2CANFD_DUAL/LINKX4C transport, Damiao only\n\
 \n\
 Platform hints:\n\
   Linux SocketCAN: use --channel can0 after bringing the CAN interface UP.\n\

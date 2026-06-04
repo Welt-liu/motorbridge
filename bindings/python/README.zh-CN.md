@@ -6,11 +6,13 @@
 - Linux SocketCAN 直接使用已初始化的接口名：`can0`、`can1`。CANable 请刷 candleLight/gs_usb 固件，让系统识别为 `can0` 这类 SocketCAN 接口。
 - 标准 CAN 推荐 PCAN 或 CANable candleLight/gs_usb。
 - CAN-FD 链路可通过 CLI（`--transport socketcanfd`）和 Python SDK（`Controller.from_socketcanfd(...)`）使用，Hexfellow 必须走该链路。
-- 仅 Damiao 可选两类适配器链路：串口桥 `--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`，以及 DM_Device SDK `--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`。
+- 仅 Damiao 可选两类适配器链路：串口桥 `--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`，以及 DM_Device SDK `--transport dm-device --dm-device-type usb2canfd|usb2canfd-dual|linkx4c --dm-channel 0|1|2|3`。DM_Device 链路当前只配 Damiao 电机协议使用，适配器需处于 USB 模式。
 - 仅 Damiao 可选 DM_Device SDK 链路：
-  `--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`；
-  Python SDK 入口为 `Controller.from_dm_device(...)`。Linux x86_64 下
-  USB2CANFD_DUAL 的 CANFD1/CANFD2 扫描已实测通过。
+  `--transport dm-device --dm-device-type usb2canfd|usb2canfd-dual|linkx4c`；
+  Python SDK 入口为 `Controller.from_dm_device(...)`。适配器需要处于 USB 模式。
+  通道映射：`usb2canfd` => `0`，`usb2canfd-dual` =>
+  `0`/`1`，`linkx4c` => SDK 通道 `0..3`。Linux x86_64 下
+  USB2CANFD_DUAL 的通道 0/1 和 LINKX4C 通道 `0..3` 扫描已实测通过。
 - Damiao 串口桥完整接口与命令模板见 `motor_cli/README.zh-CN.md` 第 `3.6` 节（英文见 `motor_cli/README.md`）。
 - Linux SocketCAN 下 `--channel` 不要带 `@bitrate`（例如 `can0@1000000` 无效）。
 - Windows（PCAN 后端）中，`can0/can1` 映射 `PCAN_USBBUS1/2`，可选 `@bitrate` 后缀。
@@ -45,7 +47,7 @@
 
 ## 范围
 
-- 当前目标包版本：`0.4.3`。
+- 当前目标包版本：`0.4.4`。
 - wheel 会随包携带当前平台对应的 `motor_abi` 和 `ws_gateway`，但不再内置
   DaMiao DM_Device SDK runtime。真正使用 `Controller.from_dm_device(...)`、
   Python CLI `--transport dm-device` 或
@@ -65,7 +67,7 @@
 
 | 平台 / 架构 | 官方 Python wheel | DM_Device runtime 可用 | runtime 文件 | OS/runtime ABI 依赖 | 硬件实测状态 |
 | --- | --- | --- | --- | --- | --- |
-| Linux x86_64 | 支持 | 支持 | `linux/x86_64/libdm_device.so` | 需要 `libusb-1.0.so.0`，以及带 `GLIBCXX_3.4.32` 的 `libstdc++.so.6`，`GLIBC_2.14+` | 已实测 USB2CANFD_DUAL CANFD1/CANFD2 扫描 |
+| Linux x86_64 | 支持 | 支持 | `linux/x86_64/libdm_device.so` | 需要 `libusb-1.0.so.0`，以及带 `GLIBCXX_3.4.32` 的 `libstdc++.so.6`，`GLIBC_2.14+` | 已实测 USB2CANFD_DUAL channel 0/1 和 LINKX4C 通道 `0..3` 扫描 |
 | Linux aarch64 | 支持 | 支持 | `linux/arm64/libdm_device.so` | 需要 `libusb-1.0.so.0`，`GLIBC_2.17+`，`GLIBCXX_3.4.22+` | 待对应主机验证 |
 | Windows x86_64 | 支持 | 支持 | `windows/msvc/dm_device.dll` | 需要 libusb runtime/驱动和 Microsoft Visual C++ runtime（`MSVCP140*.dll`、`VCRUNTIME140*.dll`） | 待对应主机验证 |
 | macOS arm64 | 支持 | 支持 | `macos/arm64/libdm_device.dylib` | 链接系统 `libc++`、`libSystem`、`libobjc`；最低 macOS 版本待主机验证 | 待对应主机验证 |
@@ -75,13 +77,13 @@
 - ABI 元数据 helper：
   - `motorbridge.abi_version()` 返回当前加载的 ABI 库版本。
   - `motorbridge.abi_capabilities()` 返回当前加载 ABI 的能力 JSON（Python `dict`）。
-- `0.4.3` 新增 Damiao `dm-device` 传输、Python
+- `0.4.4` 新增 Damiao `dm-device` 传输、Python
   `Controller.from_dm_device(...)`、Python CLI `--transport dm-device`，并在
   目标平台存在 vendored SDK runtime 时显式解析
   `libdm_device.so`/`.dylib`/`.dll`。
 - Python CLI 使用 `--transport dm-device` 扫描时，不传 `--dm-channel` 会扫描
-  `usb2canfd-dual` 的 CANFD1 和 CANFD2；传 `--dm-channel canfd1` 或
-  `--dm-channel canfd2` 则只扫一路。
+  所选适配器的全部通道：`usb2canfd` 为 `0`，`usb2canfd-dual` 为 `0|1`，
+  `linkx4c` 的 SDK 通道 `0..3`；传 `--dm-channel ...` 则只扫一路。
 - `0.4.2` 优化 Damiao `dm-serial` 多电机控制：串口无待读字节时 `recv(0ms)`
   会非阻塞返回，并将有界同步读取的串口 read timeout 降到 1 ms。
 - `0.4.1` 新增 ABI 版本/能力发现，并让 C++ RobStride wrapper 与 Python SDK
@@ -113,10 +115,10 @@
     `PKG_DIR="$(python3 -c "import motorbridge, pathlib; print(pathlib.Path(motorbridge.__file__).resolve().parent)")"`
     `DYLD_LIBRARY_PATH="$PKG_DIR/lib:${DYLD_LIBRARY_PATH:-}" "$GW" --bind 127.0.0.1:9002 --vendor damiao --channel can0 --model auto --motor-id 0x01 --feedback-id 0x11 --dt-ms 20`
 - Controller 构造入口：
-  - `Controller(channel=\"can0\")`（SocketCAN/PCAN 路径）
-  - `Controller.from_socketcanfd(channel=\"can0\")`（CAN-FD 路径，Hexfellow 必须使用）
-  - `Controller.from_dm_serial(serial_port=\"/dev/ttyACM0\", baud=921600)`（仅 Damiao 串口桥 + DM_Device）
-  - `Controller.from_dm_device(dm_device_type=\"usb2canfd-dual\", dm_channel=\"canfd1\")`（仅 Damiao DM_Device SDK 链路）
+  - `Controller(channel="can0")`（SocketCAN/PCAN 路径）
+  - `Controller.from_socketcanfd(channel="can0")`（CAN-FD 路径，Hexfellow 必须使用）
+  - `Controller.from_dm_serial(serial_port="/dev/ttyACM0", baud=921600)`（仅 Damiao 串口桥）
+  - `Controller.from_dm_device(dm_device_type="usb2canfd-dual", dm_channel="0")` / `Controller.from_dm_device(dm_device_type="linkx4c", dm_channel="0")`（仅 Damiao DM_Device SDK 链路）
 - 厂商入口:
   - Damiao: `add_damiao_motor(...)`
   - Hexfellow: `add_hexfellow_motor(...)`

@@ -6,11 +6,13 @@
 - Linux SocketCAN uses prepared interfaces directly: `can0`, `can1`. For CANable, use candleLight/gs_usb firmware so it appears as a SocketCAN interface such as `can0`.
 - Use PCAN or CANable candleLight/gs_usb for standard CAN.
 - CAN-FD transport is available both in CLI (`--transport socketcanfd`) and Python SDK (`Controller.from_socketcanfd(...)`), and is required for Hexfellow.
-- Damiao-only adapter transports are available in CLI: serial bridge (`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`) and DM_Device SDK (`--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`).
+- Damiao-only adapter transports are available in CLI: serial bridge (`--transport dm-serial --serial-port /dev/ttyACM0 --serial-baud 921600`) and DM_Device SDK (`--transport dm-device --dm-device-type usb2canfd|usb2canfd-dual|linkx4c --dm-channel 0|1|2|3`; Damiao motors only; adapter must be in USB mode).
 - Damiao-only DM_Device SDK transport is available in CLI
-  (`--transport dm-device --dm-device-type usb2canfd-dual --dm-channel canfd1|canfd2`)
-  and Python SDK (`Controller.from_dm_device(...)`). Linux x86_64
-  USB2CANFD_DUAL CANFD1/CANFD2 scans are verified.
+  (`--transport dm-device --dm-device-type usb2canfd|usb2canfd-dual|linkx4c`)
+  and Python SDK (`Controller.from_dm_device(...)`). The adapter must be in USB
+  mode. Channel mapping: `usb2canfd` => `0`, `usb2canfd-dual` =>
+  `0`/`1`, `linkx4c` => SDK channels `0..3`. Linux x86_64
+  USB2CANFD_DUAL channel 0/1 and LINKX4C channel `0..3` scans are verified.
 - Full Damiao serial-bridge interface list and command patterns are documented in `motor_cli/README.md` (section `3.6` in `motor_cli/README.zh-CN.md`).
 - On Linux SocketCAN, do not append bitrate in `--channel` (for example `can0@1000000` is invalid).
 - On Windows (PCAN backend), `can0/can1` map to `PCAN_USBBUS1/2`; optional `@bitrate` suffix is supported.
@@ -46,7 +48,7 @@ Notes:
 ## Scope
 Packaging note:
 
-- Current package target version: `0.4.3`.
+- Current package target version: `0.4.4`.
 - Published wheel includes `motor_abi` shared library and `ws_gateway` binary for that platform.
 - Published wheels do not bundle the DaMiao DM_Device SDK runtime. When
   `Controller.from_dm_device(...)`, Python CLI `--transport dm-device`, or
@@ -67,7 +69,7 @@ Packaging note:
 
 | Platform / Arch | Published Python Wheel | DM_Device Runtime Available | Runtime File | OS/runtime ABI notes | Hardware Verified |
 | --- | --- | --- | --- | --- | --- |
-| Linux x86_64 | yes | yes | `linux/x86_64/libdm_device.so` | needs `libusb-1.0.so.0`, `libstdc++.so.6` with `GLIBCXX_3.4.32`, `GLIBC_2.14+` | yes, USB2CANFD_DUAL CANFD1/CANFD2 scan |
+| Linux x86_64 | yes | yes | `linux/x86_64/libdm_device.so` | needs `libusb-1.0.so.0`, `libstdc++.so.6` with `GLIBCXX_3.4.32`, `GLIBC_2.14+` | yes, USB2CANFD_DUAL channel 0/1 and LINKX4C channel `0..3` scan |
 | Linux aarch64 | yes | yes | `linux/arm64/libdm_device.so` | needs `libusb-1.0.so.0`, `GLIBC_2.17+`, `GLIBCXX_3.4.22+` | pending host validation |
 | Windows x86_64 | yes | yes | `windows/msvc/dm_device.dll` | needs libusb runtime/driver and Microsoft Visual C++ runtime (`MSVCP140*.dll`, `VCRUNTIME140*.dll`) | pending host validation |
 | macOS arm64 | yes | yes | `macos/arm64/libdm_device.dylib` | links system `libc++`, `libSystem`, `libobjc`; final OS floor pending macOS host validation | pending host validation |
@@ -77,13 +79,14 @@ Packaging note:
 - ABI metadata helpers:
   - `motorbridge.abi_version()` returns the loaded ABI library version.
   - `motorbridge.abi_capabilities()` returns the loaded ABI capability JSON as a Python `dict`.
-- `0.4.3` adds Damiao `dm-device` transport, Python
+- `0.4.4` adds Damiao `dm-device` transport, Python
   `Controller.from_dm_device(...)`, Python CLI `--transport dm-device`, and
   explicit runtime resolution for `libdm_device.so`/`.dylib`/`.dll` when the
   target platform has a vendored SDK runtime.
 - For Python CLI scans with `--transport dm-device`, omit `--dm-channel` to scan
-  both CANFD1 and CANFD2 on `usb2canfd-dual`; pass `--dm-channel canfd1` or
-  `--dm-channel canfd2` to scan one channel.
+  every channel for the selected adapter: `0` on `usb2canfd`, `0|1` on
+  `usb2canfd-dual`, or `0|1|2|3` on `linkx4c`. Pass `--dm-channel ...` to scan
+  one physical channel.
 - `0.4.2` optimizes Damiao `dm-serial` multi-motor control by making
   `recv(0ms)` non-blocking when no serial bytes are pending and by reducing the
   bounded serial read timeout to 1 ms.
@@ -129,7 +132,7 @@ Packaging note:
   - `Controller(channel="can0")` (SocketCAN/PCAN path)
   - `Controller.from_socketcanfd(channel="can0")` (CAN-FD path, required by Hexfellow)
   - `Controller.from_dm_serial(serial_port="/dev/ttyACM0", baud=921600)` (Damiao-only serial bridge)
-  - `Controller.from_dm_device(dm_device_type="usb2canfd-dual", dm_channel="canfd1")` (Damiao-only DM_Device SDK transport)
+  - `Controller.from_dm_device(dm_device_type="usb2canfd-dual", dm_channel="0")` / `Controller.from_dm_device(dm_device_type="linkx4c", dm_channel="0")` (Damiao-only DM_Device SDK transport)
 - Vendors:
   - Damiao: `add_damiao_motor(...)`
   - Hexfellow: `add_hexfellow_motor(...)`
