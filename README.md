@@ -145,6 +145,14 @@ RobStride has three independent protocol paths in this workspace:
 
 The standard-frame paths (`robstride_cia402` and especially `robstride_mit`) are good candidates for the DM Device SDK (`dm-device-sdk/C&C++`) because that SDK can send and receive raw CAN 2.0 frames. Today that is only a future integration path in `motorbridge`: `--transport dm-device` is not yet wired as a generic backend for these RobStride vendors. Treat the SDK as a CAN adapter backend, not as a RobStride protocol implementation; RobStride frame encoding still belongs in `motor_vendors/robstride_cia402` or `motor_vendors/robstride_mit`.
 
+RobStride ID roles differ by protocol. In this repository, `--motor-id` always means "the motor to control". For RobStride private and MIT protocols, `--feedback-id` is better understood as the host/master ID, not another motor ID. CANopen/CiA402 does not use that host-ID reply convention; it uses standard CANopen COB-IDs derived from the node ID.
+
+| Vendor | `--motor-id` means | `--feedback-id` means | Send IDs | Receive matching |
+|---|---|---|---|---|
+| `robstride` | Private-protocol target motor ID | Host/master ID, default `0xFD` | 29-bit extended ID `(comm_type << 24) | (extra_data << 8) | motor_id`; many commands put host ID in `extra_data` | Extended reply is accepted when decoded `device_id == motor_id` |
+| `robstride_cia402` | CANopen node ID, normally `1..127` | Ignored/unused | NMT `0x000`; SDO request `0x600 + node`; protocol switch uses extended `0xFFF` | SDO reply `0x580 + node`; heartbeat `0x700 + node` |
+| `robstride_mit` | MIT target motor CAN ID | Host/master feedback ID, default `0xFD` | Basic commands and packed MIT control use standard ID `motor_id`; typed commands use `0x100 + motor_id`, `0x200 + motor_id`, `0x300 + motor_id`, `0x400 + motor_id` | Feedback is accepted when standard ID equals `feedback_id` and `data[0] == motor_id`; parameter replies use typed reply ID |
+
 ## Update (2026-04): Damiao / RobStride Capability Convergence
 
 - Damiao production baseline now covers: `scan / enable / disable / MIT / POS_VEL / VEL / FORCE_POS / set-id / set-zero`.

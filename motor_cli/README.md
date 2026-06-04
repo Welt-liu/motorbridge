@@ -263,6 +263,16 @@ This path is the RobStride private extended-CAN protocol. Use `robstride_cia402`
 
 After switching to the standard-frame paths, `robstride_cia402` and `robstride_mit` can be compatible with the DM Device SDK (`dm-device-sdk/C&C++`) at the CAN-adapter level. This is not wired in the CLI yet: today `--transport dm-device` is mainly for Damiao, so these RobStride standard-frame vendors should not be treated as ready to use through DM_Device SDK. The SDK can send and receive raw CAN 2.0 frames; RobStride protocol encoding still belongs in this repository's vendor backends.
 
+### 4.0.1 RobStride ID Roles
+
+In all three RobStride paths, `--motor-id` means "the motor to control". In the private and MIT protocols, `--feedback-id` is really the host/master ID. It is not another motor ID. CANopen/CiA402 does not use that host-ID reply convention; it uses standard CANopen COB-IDs derived from the node ID.
+
+| Vendor | `--motor-id` means | `--feedback-id` means | Send IDs | Receive matching |
+|---|---|---|---|---|
+| `robstride` | Private-protocol target motor ID | Host/master ID, default `0xFD` | 29-bit extended ID `(comm_type << 24) | (extra_data << 8) | motor_id`; many commands put host ID in `extra_data` | Extended reply is accepted when decoded `device_id == motor_id` |
+| `robstride_cia402` | CANopen node ID, normally `1..127` | Ignored/unused | NMT `0x000`; SDO request `0x600 + node`; protocol switch uses extended `0xFFF` | SDO reply `0x580 + node`; heartbeat `0x700 + node` |
+| `robstride_mit` | MIT target motor CAN ID | Host/master feedback ID, default `0xFD` | Basic commands and packed MIT control use standard ID `motor_id`; typed commands use `0x100 + motor_id`, `0x200 + motor_id`, `0x300 + motor_id`, `0x400 + motor_id` | Feedback is accepted when standard ID equals `feedback_id` and `data[0] == motor_id`; parameter replies use typed reply ID |
+
 ### 4.1 Supported Modes
 
 - `ping`

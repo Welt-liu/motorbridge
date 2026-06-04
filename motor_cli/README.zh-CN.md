@@ -333,6 +333,16 @@ motor_cli $DM_SERIAL --motor-id 0x04 --feedback-id 0x14 \
 
 `robstride_cia402` 和 `robstride_mit` 切到标准帧以后，理论上可以和 `dm-device-sdk/C&C++` 在 CAN 适配器层兼容：DM_Device SDK 能发送/接收原始 CAN 2.0 帧，RobStride 的协议编码仍由本项目的 vendor backend 完成。但当前 CLI 里 `--transport dm-device` 还主要服务 Damiao，RobStride 这两条标准帧链路现在还不能直接当作已完善的 DM_Device SDK 链路使用；后续值得把 DM_Device SDK 抽象成通用 `CanBus` backend。
 
+### 4.0.1 RobStride ID 角色说明
+
+三条 RobStride 链路里，`--motor-id` 都表示“要控制的目标电机”。在私有协议和 MIT 协议里，`--feedback-id` 更准确地说是 host/master ID，不是另一个电机 ID。CANopen/CiA402 不走这个 host-ID 回复机制，而是使用 CANopen 根据 node ID 推导出来的标准 COB-ID。
+
+| vendor | `--motor-id` 含义 | `--feedback-id` 含义 | 发送 ID | 接收判断 |
+|---|---|---|---|---|
+| `robstride` | 私有协议目标电机 ID | host/master ID，默认 `0xFD` | 29-bit 扩展 ID：`(comm_type << 24) | (extra_data << 8) | motor_id`；很多命令把 host ID 放在 `extra_data` | 解析扩展回复帧后，`device_id == motor_id` 才认为是这台电机的回复 |
+| `robstride_cia402` | CANopen node ID，通常 `1..127` | 忽略/不使用 | NMT `0x000`；SDO 请求 `0x600 + node`；协议切换用扩展帧 `0xFFF` | SDO 回复 `0x580 + node`；心跳 `0x700 + node` |
+| `robstride_mit` | MIT 目标电机 CAN ID | host/master feedback ID，默认 `0xFD` | 普通命令和 packed MIT 控制用标准 ID `motor_id`；带类型命令用 `0x100 + motor_id`、`0x200 + motor_id`、`0x300 + motor_id`、`0x400 + motor_id` | 反馈帧标准 ID 必须等于 `feedback_id`，并且 `data[0] == motor_id`；参数回复走对应 typed reply ID |
+
 ### 4.1 支持模式
 
 - `ping`
