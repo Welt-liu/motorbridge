@@ -103,6 +103,38 @@ Current status:
   embedding it.
 - No motor model is officially marked as CAN-FD validated in this repository yet.
 
+## Supported Hardware Gallery
+
+Images live under [`media`](media/README.md). Adapter images are referenced
+from the README now; motor images can be added later when real device photos are
+available.
+
+### Motor Families
+
+| Motor family | Vendor path | Main protocol path |
+|---|---|---|
+| Damiao | `damiao` | MIT / POS_VEL / VEL over classic CAN, Damiao serial bridge, or Damiao DM_Device SDK |
+| RobStride | `robstride` | Private protocol `F_CMD=0`, 29-bit extended CAN |
+| RobStride CiA402 | `robstride_cia402` | CANopen/CiA402 `F_CMD=1`, mostly 11-bit standard CAN; experimental/incomplete |
+| RobStride MIT | `robstride_mit` | MIT `F_CMD=2`, 11-bit standard CAN; experimental/incomplete |
+| MyActuator | `myactuator` | MyActuator standard CAN protocol |
+| HighTorque | `hightorque` | Native `ht_can v1.5.5` direct CAN path |
+| Hexfellow | `hexfellow` | CANopen-over-CAN-FD path |
+
+### CAN Adapters And Bridge Modules
+
+Adapter images live under [`media/adapters`](media/adapters/). Replace or add
+files there when new hardware photos become available.
+
+| Adapter / module | CLI transport | Typical use | Image |
+|---|---|---|---|
+| [CANable / candleLight](media/adapters/canable.png) | `socketcan` | Classic CAN through Linux SocketCAN, usually `can0` | <img src="media/adapters/canable.png" alt="CANable adapter" width="160"> |
+| [PCAN-USB](media/adapters/pcan.png) | `socketcan` / PCAN backend | PCAN adapter on Windows/macOS/Linux backends | <img src="media/adapters/pcan.png" alt="PCAN-USB adapter" width="160"> |
+| [Damiao USB2CAN](media/adapters/dm-usb2can.jpg) | `dm-serial` / Damiao bridge path | Damiao USB-to-CAN bridge module | <img src="media/adapters/dm-usb2can.jpg" alt="Damiao USB2CAN adapter" width="160"> |
+| [Damiao USB2CANFD](media/adapters/dm-usb2canfd.jpg) | `dm-device` | Damiao-only DM_Device SDK path, one SDK channel | <img src="media/adapters/dm-usb2canfd.jpg" alt="Damiao USB2CANFD adapter" width="160"> |
+| [Damiao USB2CANFD_DUAL](media/adapters/dm-usb2canfd-dual.jpg) | `dm-device` | Damiao-only DM_Device SDK path, SDK channels `0` and `1` | <img src="media/adapters/dm-usb2canfd-dual.jpg" alt="Damiao USB2CANFD Dual adapter" width="160"> |
+| [Damiao LINKX4C](media/adapters/DM-LinkX-4C.jpg) | `dm-device` | Damiao-only DM_Device SDK path, SDK channels `0..3` | <img src="media/adapters/DM-LinkX-4C.jpg" alt="Damiao LINKX4C adapter" width="160"> |
+
 ## Current Vendor Support
 
 - Damiao:
