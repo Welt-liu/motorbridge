@@ -45,39 +45,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
     let model = get_str(&args, "model", default_model);
     let motor_id = get_u16_hex_or_dec(&args, "motor-id", 0x01)?;
-    let feedback_default = if vendor == "robstride" {
-        0x00FD
-    } else if vendor == "robstride_mit" {
-        0x00FD
-    } else if vendor == "robstride_cia402" {
-        0x0000
-    } else if vendor == "hightorque" {
-        0x0001
-    } else if vendor == "myactuator" {
-        0x0241
-    } else if vendor == "hexfellow" {
-        0x0000
-    } else {
-        0x0011
+    let feedback_default = match vendor.as_str() {
+        "robstride" | "robstride_mit" => 0x00FD,
+        "robstride_cia402" | "hexfellow" => 0x0000,
+        "hightorque" => 0x0001,
+        "myactuator" => 0x0241,
+        _ => 0x0011,
     };
     let feedback_id = get_u16_hex_or_dec(&args, "feedback-id", feedback_default)?;
     let mode = get_str(
         &args,
         "mode",
-        if vendor == "robstride" {
-            "ping"
-        } else if vendor == "robstride_mit" {
-            "status"
-        } else if vendor == "robstride_cia402" {
-            "status"
-        } else if vendor == "hightorque" {
-            "read"
-        } else if vendor == "myactuator" || vendor == "hexfellow" {
-            "status"
-        } else if vendor == "all" {
-            "scan"
-        } else {
-            "mit"
+        match vendor.as_str() {
+            "robstride" => "ping",
+            "robstride_mit" | "robstride_cia402" | "myactuator" | "hexfellow" => "status",
+            "hightorque" => "read",
+            "all" => "scan",
+            _ => "mit",
         },
     );
     let dm_channel = if mode == "scan" && transport == "dm-device" {
