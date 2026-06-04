@@ -20,6 +20,37 @@ impl CommunicationType {
     pub const SET_PROTOCOL: u32 = 25;
 }
 
+pub const PROTOCOL_PRIVATE: u8 = 0;
+pub const PROTOCOL_CANOPEN: u8 = 1;
+pub const PROTOCOL_MIT: u8 = 2;
+
+pub fn validate_protocol_cmd(protocol_cmd: u8) -> Result<()> {
+    if matches!(
+        protocol_cmd,
+        PROTOCOL_PRIVATE | PROTOCOL_CANOPEN | PROTOCOL_MIT
+    ) {
+        Ok(())
+    } else {
+        Err(MotorError::InvalidArgument(format!(
+            "invalid RobStride protocol command {protocol_cmd}, expected 0(private), 1(canopen), or 2(mit)"
+        )))
+    }
+}
+
+pub fn protocol_name(protocol_cmd: u8) -> &'static str {
+    match protocol_cmd {
+        PROTOCOL_PRIVATE => "private",
+        PROTOCOL_CANOPEN => "canopen",
+        PROTOCOL_MIT => "mit",
+        _ => "unknown",
+    }
+}
+
+pub fn encode_set_protocol(protocol_cmd: u8) -> Result<[u8; 8]> {
+    validate_protocol_cmd(protocol_cmd)?;
+    Ok([1, 2, 3, 4, 5, 6, protocol_cmd, 0])
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct StatusFlags {
     pub uncalibrated: bool,

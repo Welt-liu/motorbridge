@@ -43,6 +43,7 @@ pub enum ParameterId {
     AlveolousOpen = 0x702C,
     IqTest = 0x702D,
     DccSet = 0x702E,
+    ProtocolFlag = 0x2022,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -95,6 +96,7 @@ pub static PARAMETER_TABLE: &[ParameterInfo] = &[
     param!(0x201E, "spd_step_value", Float32),
     param!(0x201F, "vol_max", Float32),
     param!(0x2020, "acc_set", Float32),
+    param!(0x2022, "protocol_1", UInt8),
     param!(0x3000, "timeUse0", UInt16),
     param!(0x3001, "timeUse1", UInt16),
     param!(0x3002, "timeUse2", UInt16),

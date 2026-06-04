@@ -3,14 +3,18 @@ mod damiao_cli;
 mod hexfellow_cli;
 mod hightorque_cli;
 mod myactuator_cli;
+mod robstride_cia402_cli;
 mod robstride_cli;
+mod robstride_mit_cli;
 
 use args::{get_str, get_u16_hex_or_dec, print_help};
 use damiao_cli::run_damiao;
 use hexfellow_cli::run_hexfellow;
 use hightorque_cli::run_hightorque;
 use myactuator_cli::run_myactuator;
+use robstride_cia402_cli::run_robstride_cia402;
 use robstride_cli::run_robstride;
+use robstride_mit_cli::run_robstride_mit;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = args::parse_args();
@@ -27,21 +31,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let channel = get_str(&args, "channel", "can0");
     let transport = get_str(&args, "transport", "auto");
     let dm_device_type = get_str(&args, "dm-device-type", "usb2canfd-dual");
-    let default_model = if vendor == "robstride" {
-        "rs-00"
-    } else if vendor == "hightorque" {
-        "hightorque"
-    } else if vendor == "myactuator" {
-        "X8"
-    } else if vendor == "hexfellow" {
-        "hexfellow"
-    } else {
-        "4340"
-    };
+    let default_model =
+        if vendor == "robstride" || vendor == "robstride_cia402" || vendor == "robstride_mit" {
+            "rs-00"
+        } else if vendor == "hightorque" {
+            "hightorque"
+        } else if vendor == "myactuator" {
+            "X8"
+        } else if vendor == "hexfellow" {
+            "hexfellow"
+        } else {
+            "4340"
+        };
     let model = get_str(&args, "model", default_model);
     let motor_id = get_u16_hex_or_dec(&args, "motor-id", 0x01)?;
     let feedback_default = if vendor == "robstride" {
         0x00FD
+    } else if vendor == "robstride_mit" {
+        0x00FD
+    } else if vendor == "robstride_cia402" {
+        0x0000
     } else if vendor == "hightorque" {
         0x0001
     } else if vendor == "myactuator" {
@@ -57,6 +66,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "mode",
         if vendor == "robstride" {
             "ping"
+        } else if vendor == "robstride_mit" {
+            "status"
+        } else if vendor == "robstride_cia402" {
+            "status"
         } else if vendor == "hightorque" {
             "read"
         } else if vendor == "myactuator" || vendor == "hexfellow" {
@@ -156,6 +169,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             0x00FD,
             "robstride",
         )?;
+        let mut rs_cia402_args = args.clone();
+        rs_cia402_args.insert("mode".to_string(), "scan".to_string());
+        let _ = run_robstride_cia402(&rs_cia402_args, &channel, &robstride_model, motor_id, 0);
+        let mut rs_mit_args = args.clone();
+        rs_mit_args.insert("mode".to_string(), "scan".to_string());
+        let _ = run_robstride_mit(&rs_mit_args, &channel, &robstride_model, motor_id, 0x00FD);
         let mut ht_args = args.clone();
         ht_args.insert("mode".to_string(), "scan".to_string());
         if !ht_args.contains_key("start-id") {
@@ -173,6 +192,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match vendor.as_str() {
         "damiao" => run_damiao(&args, &channel, &model, motor_id, feedback_id),
         "robstride" => run_robstride(&args, &channel, &model, motor_id, feedback_id, "robstride"),
+        "robstride_cia402" => run_robstride_cia402(&args, &channel, &model, motor_id, feedback_id),
+        "robstride_mit" => run_robstride_mit(&args, &channel, &model, motor_id, feedback_id),
         "hightorque" => run_hightorque(&args, &channel, motor_id),
         "myactuator" => run_myactuator(&args, &channel, &model, motor_id, feedback_id),
         "hexfellow" => run_hexfellow(&args, &channel, &model, motor_id, feedback_id),

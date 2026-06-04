@@ -97,17 +97,17 @@ Notes:
 | Argument | Type | Default | Notes |
 |---|---|---|---|
 | `--help` | flag | off | Prints CLI help and exits |
-| `--vendor` | string | `damiao` | `damiao`, `robstride`, `hightorque`, `myactuator`, `hexfellow`, `all` |
+| `--vendor` | string | `damiao` | `damiao`, `robstride`, `robstride_cia402`, `robstride_mit`, `hightorque`, `myactuator`, `hexfellow`, `all` |
 | `--transport` | string | `auto` | `auto`, `socketcan`, `socketcanfd`, `dm-serial`, `dm-device` (`socketcanfd` is Hexfellow-required path; `dm-serial`/`dm-device` are Damiao-only) |
 | `--channel` | string | `can0` | Linux: SocketCAN interface name (`can0`); Windows (PCAN backend): `can0`/`can1` with optional `@bitrate` suffix (for example `can0@1000000`); macOS (PCBUSB backend): `can0`/`can1` |
 | `--serial-port` | string | `/dev/ttyACM0` | Used when `--transport dm-serial` |
 | `--serial-baud` | u64 | `921600` | Used when `--transport dm-serial` |
 | `--dm-device-type` | string | `usb2canfd-dual` | Used when `--transport dm-device`; accepted values: `usb2canfd`, `usb2canfd-dual`, `linkx4c` |
 | `--dm-channel` | string | control: `0`; scan: all if omitted | Used when `--transport dm-device`; `usb2canfd` accepts `0`, `usb2canfd-dual` accepts `0`/`1`, and `linkx4c` accepts `0`/`1`/`2`/`3`. In `--mode scan`, omit it to scan all channels for the selected adapter. |
-| `--model` | string | vendor dependent | `4340` for Damiao, `rs-00` for RobStride, `hightorque` for HighTorque, `X8` for MyActuator |
+| `--model` | string | vendor dependent | `4340` for Damiao, `rs-00` for RobStride / RobStride CiA402 / RobStride MIT, `hightorque` for HighTorque, `X8` for MyActuator |
 | `--motor-id` | u16 (hex/dec) | `0x01` | Motor CAN ID |
-| `--feedback-id` | u16 (hex/dec) | vendor dependent | Damiao `0x11`, RobStride `0xFD`, HighTorque `0x01`, MyActuator `0x241` (for motor-id `1`) |
-| `--mode` | string | vendor dependent | Damiao `mit`, RobStride `ping`, HighTorque `read`, MyActuator `status`, `all` -> `scan` |
+| `--feedback-id` | u16 (hex/dec) | vendor dependent | Damiao `0x11`, RobStride `0xFD`, RobStride MIT host id `0xFD`, RobStride CiA402 unused/`0`, HighTorque `0x01`, MyActuator `0x241` (for motor-id `1`) |
+| `--mode` | string | vendor dependent | Damiao `mit`, RobStride `ping`, RobStride CiA402 `status`, RobStride MIT `status`, HighTorque `read`, MyActuator `status`, `all` -> `scan` |
 | `--loop` | u64 | `1` | Control loop cycles |
 | `--dt-ms` | u64 | `20` | Loop interval in ms |
 | `--ensure-mode` | `0/1` | `1` | Auto-switch mode before control |
@@ -251,6 +251,18 @@ motor_cli \
 
 ## 4. Vendor = `robstride`
 
+This path is the RobStride private extended-CAN protocol. Use `robstride_cia402` for RobStride motors that have been switched to CANopen/CiA402 mode, and `robstride_mit` for motors switched to F_CMD=2 MIT protocol.
+
+### 4.0 RobStride Protocol Path Comparison
+
+| Vendor | Protocol | CAN ID / frame | Data length | Better fit | Current status |
+|---|---|---|---|---|---|
+| `robstride` | private protocol, `F_CMD=0` | 29-bit extended CAN. The extended ID carries `comm_type`, host ID, and motor ID. | CAN 2.0, 8 bytes | Factory-style configuration, parameter read/write, ID changes, diagnostics, private MIT-like motion control | Most mature RobStride path |
+| `robstride_cia402` | CANopen/CiA402, `F_CMD=1` | Mostly 11-bit standard CAN: NMT `0x000`, SDO `0x600+node` / `0x580+node`, heartbeat `0x700+node`. Protocol switching is the documented 29-bit extended frame `0xFFF`. | CAN 2.0, 8 bytes | CANopen master integration, standard state machine, object dictionary control | Experimental/incomplete for production: core CLI path exists, but EDS/PDO/SYNC, real-device validation, and `dm-device` transport support are not completed |
+| `robstride_mit` | MIT protocol, `F_CMD=2` | 11-bit standard CAN. Control uses `motor_id`; typed commands use `(type << 8) \| motor_id`, for example position `0x100+id`, velocity `0x200+id`, parameter read `0x300+id`. | CAN 2.0, 8 bytes | High-rate joint control, `pos/vel/kp/kd/tau`, direct position/velocity commands | Experimental/incomplete for production: core CLI path exists, but high-rate loop ergonomics, real-device validation, and `dm-device` transport support are not completed |
+
+After switching to the standard-frame paths, `robstride_cia402` and `robstride_mit` can be compatible with the DM Device SDK (`dm-device-sdk/C&C++`) at the CAN-adapter level. This is not wired in the CLI yet: today `--transport dm-device` is mainly for Damiao, so these RobStride standard-frame vendors should not be treated as ready to use through DM_Device SDK. The SDK can send and receive raw CAN 2.0 frames; RobStride protocol encoding still belongs in this repository's vendor backends.
+
 ### 4.1 Supported Modes
 
 - `ping`
@@ -262,6 +274,8 @@ motor_cli \
 - `vel`
 - `read-param`
 - `write-param`
+- `get-protocol`
+- `set-protocol`
 
 ### 4.2 RobStride Extra Arguments
 
@@ -340,6 +354,20 @@ motor_cli \
   --vendor robstride --channel can0 --model rs-06 --motor-id 20 --feedback-id 0xFD \
   --mode write-param --param-id 0x7005 --param-value 2
 
+# Query / switch protocol flag in private protocol
+motor_cli \
+  --vendor robstride --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
+  --mode get-protocol
+
+# Query current private-protocol control mode run_mode
+motor_cli \
+  --vendor robstride --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
+  --mode get-mode
+
+motor_cli \
+  --vendor robstride --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
+  --mode set-protocol --protocol mit
+
 # Set motor ID (old 1 -> new 11) and persist
 motor_cli \
   --vendor robstride --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
@@ -356,11 +384,133 @@ motor_cli \
   --mode zero --zero-exp 1 --store 1
 ```
 
-## 5. Vendor = `all`
+## 5. Vendor = `robstride_cia402`
+
+This path is RobStride CANopen/CiA402 over classic CAN. It keeps the same CLI surface as the other vendors, but internally uses CiA402 objects such as `6040` controlword, `6060` mode, `607A` target position, `60FF` target velocity, and `6071` target torque.
+
+Status: experimental/incomplete. The command surface is present, but EDS/PDO/SYNC coverage, real-device validation, and `dm-device` transport support are not complete yet.
+
+### 5.1 Supported Modes
+
+- `scan`
+- `status`
+- `enable`
+- `disable`
+- `quick-stop`
+- `clear-error`
+- `zero`
+- `watchdog`
+- `set-protocol`
+- `pos-vel` (CiA402 Profile Position, mode `1`)
+- `vel` (CiA402 velocity mode, mode `3`)
+- `torque` (CiA402 torque mode, mode `4`)
+- `mit` (mapped to CSP, mode `5`; `kp`/`kd` are ignored)
+
+### 5.2 RobStride CiA402 Examples
+
+```bash
+# Scan CANopen node IDs
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --mode scan --start-id 1 --end-id 127
+
+# Read CiA402 status and feedback objects
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 --mode status
+
+# Enable drive
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 --mode enable
+
+# Switch motor protocol; power-cycle after this command
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --mode set-protocol --protocol canopen
+
+# Set current position as zero
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 --mode zero
+
+# Enable CAN watchdog; manual says raw 20000 means 1 second
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 \
+  --mode watchdog --watchdog-s 1.0
+
+# Profile Position: pos(rad), vlim(rad/s), acc(rad/s^2)
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 \
+  --mode pos-vel --pos 1.57 --vlim 1.0 --acc 4.0 \
+  --position-window 0.01 --position-window-time-ms 20 --loop 1
+
+# Velocity mode: vel(rad/s)
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 \
+  --mode vel --vel 2.0 --loop 100 --dt-ms 20
+
+# Torque mode: tau(Nm)
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 \
+  --mode torque --tau 0.2 --loop 100 --dt-ms 20
+```
+
+## 6. Vendor = `robstride_mit`
+
+This path is RobStride F_CMD=2 MIT protocol over classic CAN standard frames. It is separate from `robstride --mode mit`: the old path is the private 29-bit extended-frame protocol, while this path uses the manual's chapter 6 standard-frame MIT protocol.
+
+Status: experimental/incomplete. The command surface is present, but high-rate loop ergonomics, real-device validation, and `dm-device` transport support are not complete yet.
+
+### 6.1 Supported Modes
+
+- `scan`
+- `status`
+- `enable`
+- `disable`
+- `clear-error`
+- `zero`
+- `set-mode`
+- `set-can-id`
+- `set-host-id`
+- `set-protocol`
+- `save`
+- `active-report`
+- `mit` (packed `pos/vel/kp/kd/tau`)
+- `pos-vel` (typed ID `(1<<8)|motor_id`, float `pos + vel`)
+- `vel` (typed ID `(2<<8)|motor_id`, float `vel + current_limit`)
+- `read-param`
+- `write-param`
+
+### 6.2 RobStride MIT Examples
+
+```bash
+# Scan MIT protocol motors; feedback-id is host id
+motor_cli \
+  --vendor robstride_mit --channel can0 --model rs-00 --feedback-id 0xFD \
+  --mode scan --start-id 1 --end-id 127
+
+# Switch a motor to MIT protocol; power-cycle after this command
+motor_cli \
+  --vendor robstride_mit --channel can0 --model rs-00 --motor-id 1 \
+  --mode set-protocol --protocol mit
+
+# MIT dynamic control
+motor_cli \
+  --vendor robstride_mit --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
+  --mode mit --pos 0.0 --vel 0.0 --kp 20.0 --kd 0.5 --tau 0.0 --loop 100 --dt-ms 20
+
+# Position mode: float position(rad) + float velocity(rad/s)
+motor_cli \
+  --vendor robstride_mit --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
+  --mode pos-vel --pos 1.57 --vlim 1.0 --loop 1
+
+# Velocity mode: float velocity(rad/s) + float current limit(A)
+motor_cli \
+  --vendor robstride_mit --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
+  --mode vel --vel 2.0 --current 2.0 --loop 100 --dt-ms 20
+```
+
+## 7. Vendor = `all`
 
 `vendor=all` currently supports only `--mode scan`.
 
-### 5.1 Additional Arguments for all-scan
+### 7.1 Additional Arguments for all-scan
 
 | Argument | Default | Notes |
 |---|---|---|
@@ -371,14 +521,14 @@ motor_cli \
 | `--start-id` | `1` | Passed to all scans |
 | `--end-id` | `255` | Passed to Damiao/RobStride; MyActuator path auto-clamps to `32` |
 
-### 5.2 Example
+### 7.2 Example
 
 ```bash
 motor_cli \
   --vendor all --channel can0 --mode scan --start-id 1 --end-id 255
 ```
 
-## 5.3 Vendor = `hightorque` (native `ht_can` v1.5.5)
+## 8. Vendor = `hightorque` (native `ht_can` v1.5.5)
 
 - This path uses native HighTorque `ht_can` v1.5.5 direct-CAN protocol.
 - It is intended for setups where motors are exposed directly on SocketCAN (`can0` etc.).
@@ -391,9 +541,9 @@ motor_cli \
   - `--kp`, `--kd` are accepted for MIT signature compatibility but ignored by `ht_can`.
   - Raw debug parameters: `--raw-pos`, `--raw-vel`, `--raw-tqe`.
 
-## 6. Vendor = `myactuator`
+## 9. Vendor = `myactuator`
 
-### 6.1 Supported Modes
+### 9.1 Supported Modes
 
 - `scan`
 - `enable`
@@ -407,7 +557,7 @@ motor_cli \
 - `version`
 - `mode-query`
 
-### 6.2 MyActuator Extra Arguments
+### 9.2 MyActuator Extra Arguments
 
 | Argument | Type | Default | Used In | Notes |
 |---|---|---|---|---|
@@ -423,7 +573,7 @@ Status output note:
 - `angle` comes from `0x9C` status-2 near-turn angle.
 - `mt_angle` comes from `0x92` multi-turn angle and should be used for absolute-position judgement.
 
-### 6.3 MyActuator Examples
+### 9.3 MyActuator Examples
 
 ```bash
 # Scan IDs in MyActuator range
@@ -451,14 +601,14 @@ motor_cli \
   --mode set-zero --loop 1
 ```
 
-## 7. Vendor = `hexfellow`
+## 10. Vendor = `hexfellow`
 
 Transport constraint:
 - Hexfellow is CAN-FD-only in this repository (`--transport socketcanfd`).
 - Current support scope: scan / status / pos-vel / mit / enable / disable.
 - Current status: transport integrated; model validation matrix pending.
 
-### 7.1 Hexfellow Examples
+### 10.1 Hexfellow Examples
 
 ```bash
 # Scan IDs
@@ -485,7 +635,7 @@ motor_cli \
   --mode mit --pos 0.0 --vel 0.0 --kp 1000 --kd 100 --tau 0
 ```
 
-## 8. Practical Notes
+## 11. Practical Notes
 
 - For Damiao ID updates, prefer keeping `--store 1 --verify-id 1`.
 - If scan intermittently misses motors, retry after CAN restart.

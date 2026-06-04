@@ -78,7 +78,7 @@ motor_cli -h
 
 ```bash
 motor_cli \
-  --vendor <damiao|robstride|hightorque|myactuator|all> \
+  --vendor <damiao|robstride|robstride_cia402|robstride_mit|hightorque|myactuator|hexfellow|all> \
   --transport <auto|socketcan|socketcanfd|dm-serial|dm-device> \
   --channel <can0|can1|can0@1000000...> \
   --model <model-name> \
@@ -121,17 +121,17 @@ motor_cli \
 | 参数 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
 | `--help` | flag | 关闭 | 输出帮助并退出 |
-| `--vendor` | string | `damiao` | `damiao` / `robstride` / `hightorque` / `myactuator` / `hexfellow` / `all` |
+| `--vendor` | string | `damiao` | `damiao` / `robstride` / `robstride_cia402` / `robstride_mit` / `hightorque` / `myactuator` / `hexfellow` / `all` |
 | `--transport` | string | `auto` | `auto` / `socketcan` / `socketcanfd` / `dm-serial` / `dm-device`（`socketcanfd` 为 Hexfellow 必需；`dm-serial`/`dm-device` 仅 Damiao） |
 | `--channel` | string | `can0` | Linux：SocketCAN 网卡名（`can0`）；Windows（PCAN 后端）：`can0`/`can1`，可加 `@bitrate`（如 `can0@1000000`）；macOS（PCBUSB 后端）：`can0`/`can1` |
 | `--serial-port` | string | `/dev/ttyACM0` | `--transport dm-serial` 时使用 |
 | `--serial-baud` | u64 | `921600` | `--transport dm-serial` 时使用 |
 | `--dm-device-type` | string | `usb2canfd-dual` | `--transport dm-device` 时使用；可选 `usb2canfd` / `usb2canfd-dual` / `linkx4c` |
 | `--dm-channel` | string | 控制默认 `0`；扫描不传则 all | `--transport dm-device` 时使用；`usb2canfd` 使用 `0`，`usb2canfd-dual` 使用 `0` / `1`，`linkx4c` 使用 `0` / `1` / `2` / `3`。`--mode scan` 时不传会扫描所选适配器的全部通道。 |
-| `--model` | string | 按 vendor 决定 | Damiao 默认 `4340`；RobStride 默认 `rs-00`；HighTorque 默认 `hightorque`；MyActuator 默认 `X8` |
+| `--model` | string | 按 vendor 决定 | Damiao 默认 `4340`；RobStride / RobStride CiA402 / RobStride MIT 默认 `rs-00`；HighTorque 默认 `hightorque`；MyActuator 默认 `X8` |
 | `--motor-id` | u16(hex/dec) | `0x01` | 电机 CAN ID |
-| `--feedback-id` | u16(hex/dec) | 按 vendor 决定 | Damiao 默认 `0x11`；RobStride 默认 `0xFD`；HighTorque 默认 `0x01`；MyActuator 默认 `0x241`（motor-id=1） |
-| `--mode` | string | 按 vendor 决定 | Damiao 默认 `mit`；RobStride 默认 `ping`；HighTorque 默认 `read`；MyActuator 默认 `status`；`all` 默认 `scan` |
+| `--feedback-id` | u16(hex/dec) | 按 vendor 决定 | Damiao 默认 `0x11`；RobStride 默认 `0xFD`；RobStride MIT 主机 ID 默认 `0xFD`；RobStride CiA402 不使用/默认 `0`；HighTorque 默认 `0x01`；MyActuator 默认 `0x241`（motor-id=1） |
+| `--mode` | string | 按 vendor 决定 | Damiao 默认 `mit`；RobStride 默认 `ping`；RobStride CiA402 默认 `status`；RobStride MIT 默认 `status`；HighTorque 默认 `read`；MyActuator 默认 `status`；`all` 默认 `scan` |
 | `--loop` | u64 | `1` | 控制循环次数 |
 | `--dt-ms` | u64 | `20` | 循环间隔毫秒 |
 | `--ensure-mode` | `0/1` | `1` | 控制前自动切模式 |
@@ -321,6 +321,18 @@ motor_cli $DM_SERIAL --motor-id 0x04 --feedback-id 0x14 \
 
 ## 4. vendor=`robstride`
 
+这条链路是 RobStride 私有扩展 CAN 协议。若电机已经切到 CANopen/CiA402 协议，请使用 `--vendor robstride_cia402`；若电机已经切到 F_CMD=2 MIT 协议，请使用 `--vendor robstride_mit`。
+
+### 4.0 RobStride 三条协议链路对比
+
+| vendor | 协议 | CAN ID / 帧类型 | 数据长度 | 更适合 | 当前状态 |
+|---|---|---|---|---|---|
+| `robstride` | 私有协议 `F_CMD=0` | 29-bit 扩展帧；扩展 ID 里包含 `comm_type`、主机 ID、电机 ID | CAN 2.0，8Byte | 原厂配置、参数读写、改 ID、故障诊断、私有运控 | 当前最成熟 |
+| `robstride_cia402` | CANopen/CiA402 `F_CMD=1` | 主要是 11-bit 标准帧：NMT `0x000`，SDO `0x600+node` / `0x580+node`，心跳 `0x700+node`；协议切换是手册给的 29-bit 扩展帧 `0xFFF` | CAN 2.0，8Byte | CANopen 主站、标准状态机、对象字典控制 | 实验/未完善链路：核心 CLI 已接入，但 EDS/PDO/SYNC、实机验证矩阵、`dm-device` 传输还没有完成 |
+| `robstride_mit` | MIT 协议 `F_CMD=2` | 11-bit 标准帧；普通控制用 `motor_id`，带类型命令用 `(type << 8) \| motor_id`，例如位置 `0x100+id`、速度 `0x200+id`、读参数 `0x300+id` | CAN 2.0，8Byte | 高频关节控制、`pos/vel/kp/kd/tau`、直接位置/速度命令 | 实验/未完善链路：核心 CLI 已接入，但高频循环体验、实机验证矩阵、`dm-device` 传输还没有完成 |
+
+`robstride_cia402` 和 `robstride_mit` 切到标准帧以后，理论上可以和 `dm-device-sdk/C&C++` 在 CAN 适配器层兼容：DM_Device SDK 能发送/接收原始 CAN 2.0 帧，RobStride 的协议编码仍由本项目的 vendor backend 完成。但当前 CLI 里 `--transport dm-device` 还主要服务 Damiao，RobStride 这两条标准帧链路现在还不能直接当作已完善的 DM_Device SDK 链路使用；后续值得把 DM_Device SDK 抽象成通用 `CanBus` backend。
+
 ### 4.1 支持模式
 
 - `ping`
@@ -332,6 +344,8 @@ motor_cli $DM_SERIAL --motor-id 0x04 --feedback-id 0x14 \
 - `vel`
 - `read-param`
 - `write-param`
+- `get-protocol`
+- `set-protocol`
 
 ### 4.2 RobStride 专用参数
 
@@ -410,6 +424,20 @@ motor_cli \
   --vendor robstride --channel can0 --model rs-06 --motor-id 20 --feedback-id 0xFD \
   --mode write-param --param-id 0x7005 --param-value 2
 
+# 查询 / 切换私有协议下的协议标志位
+motor_cli \
+  --vendor robstride --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
+  --mode get-protocol
+
+# 查询私有协议下当前控制模式 run_mode
+motor_cli \
+  --vendor robstride --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
+  --mode get-mode
+
+motor_cli \
+  --vendor robstride --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
+  --mode set-protocol --protocol mit
+
 # 改 ID（旧 1 -> 新 11）并存参
 motor_cli \
   --vendor robstride --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
@@ -426,11 +454,133 @@ motor_cli \
   --mode zero --zero-exp 1 --store 1
 ```
 
-## 5. vendor=`all`
+## 5. vendor=`robstride_cia402`
+
+这条链路是 RobStride 的 CANopen/CiA402 over classic CAN。上层 CLI 参数保持同一套，但内部走 CiA402 对象字典，例如 `6040` controlword、`6060` mode、`607A` target position、`60FF` target velocity、`6071` target torque。
+
+当前状态：实验/未完善链路。命令入口已经有了，但 EDS/PDO/SYNC 覆盖、实机验证矩阵、`dm-device` 传输支持都还没有完成。
+
+### 5.1 支持模式
+
+- `scan`
+- `status`
+- `enable`
+- `disable`
+- `quick-stop`
+- `clear-error`
+- `zero`
+- `watchdog`
+- `set-protocol`
+- `pos-vel`（CiA402 Profile Position，模式 `1`）
+- `vel`（CiA402 速度模式，模式 `3`）
+- `torque`（CiA402 力矩模式，模式 `4`）
+- `mit`（映射为 CSP，模式 `5`；`kp/kd` 会被忽略）
+
+### 5.2 RobStride CiA402 示例
+
+```bash
+# 扫描 CANopen node id
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --mode scan --start-id 1 --end-id 127
+
+# 读取 CiA402 状态与反馈对象
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 --mode status
+
+# 使能
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 --mode enable
+
+# 切换电机协议；发送后需要重新上电
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --mode set-protocol --protocol canopen
+
+# 设置当前位置为零点
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 --mode zero
+
+# 设置 CAN 通信看门狗；手册说明 raw 20000 代表 1 秒
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 \
+  --mode watchdog --watchdog-s 1.0
+
+# 位置模式：pos(rad), vlim(rad/s), acc(rad/s^2)
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 \
+  --mode pos-vel --pos 1.57 --vlim 1.0 --acc 4.0 \
+  --position-window 0.01 --position-window-time-ms 20 --loop 1
+
+# 速度模式：vel(rad/s)
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 \
+  --mode vel --vel 2.0 --loop 100 --dt-ms 20
+
+# 力矩模式：tau(Nm)
+motor_cli \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 \
+  --mode torque --tau 0.2 --loop 100 --dt-ms 20
+```
+
+## 6. vendor=`robstride_mit`
+
+这条链路是 RobStride 的 F_CMD=2 MIT 协议，走 classic CAN 标准帧。它和旧 `robstride --mode mit` 不是一回事：旧路径是私有 29-bit 扩展帧里的运控模式，这条路径是手册第 6 章的标准帧 MIT 协议。
+
+当前状态：实验/未完善链路。命令入口已经有了，但高频循环体验、实机验证矩阵、`dm-device` 传输支持都还没有完成。
+
+### 6.1 支持模式
+
+- `scan`
+- `status`
+- `enable`
+- `disable`
+- `clear-error`
+- `zero`
+- `set-mode`
+- `set-can-id`
+- `set-host-id`
+- `set-protocol`
+- `save`
+- `active-report`
+- `mit`（打包 `pos/vel/kp/kd/tau`）
+- `pos-vel`（标准帧 ID `(1<<8)|motor_id`，float `pos + vel`）
+- `vel`（标准帧 ID `(2<<8)|motor_id`，float `vel + current_limit`）
+- `read-param`
+- `write-param`
+
+### 6.2 RobStride MIT 示例
+
+```bash
+# 扫描 MIT 协议电机；feedback-id 是主机 ID
+motor_cli \
+  --vendor robstride_mit --channel can0 --model rs-00 --feedback-id 0xFD \
+  --mode scan --start-id 1 --end-id 127
+
+# 切换到 MIT 协议；发送后需要重新上电
+motor_cli \
+  --vendor robstride_mit --channel can0 --model rs-00 --motor-id 1 \
+  --mode set-protocol --protocol mit
+
+# MIT 动态控制
+motor_cli \
+  --vendor robstride_mit --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
+  --mode mit --pos 0.0 --vel 0.0 --kp 20.0 --kd 0.5 --tau 0.0 --loop 100 --dt-ms 20
+
+# 位置模式：float 位置(rad) + float 速度(rad/s)
+motor_cli \
+  --vendor robstride_mit --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
+  --mode pos-vel --pos 1.57 --vlim 1.0 --loop 1
+
+# 速度模式：float 速度(rad/s) + float 电流限制(A)
+motor_cli \
+  --vendor robstride_mit --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
+  --mode vel --vel 2.0 --current 2.0 --loop 100 --dt-ms 20
+```
+
+## 7. vendor=`all`
 
 `vendor=all` 当前仅支持 `--mode scan`。
 
-### 5.1 all-scan 额外参数
+### 7.1 all-scan 额外参数
 
 | 参数 | 默认值 | 说明 |
 |---|---|---|
@@ -441,14 +591,14 @@ motor_cli \
 | `--start-id` | `1` | 同时传给各扫描流程 |
 | `--end-id` | `255` | 传给 Damiao/RobStride；MyActuator 会自动截断到 `32` |
 
-### 5.2 示例
+### 7.2 示例
 
 ```bash
 motor_cli \
   --vendor all --channel can0 --mode scan --start-id 1 --end-id 255
 ```
 
-## 5.3 vendor=`hightorque`（原生 `ht_can` v1.5.5）
+## 8. vendor=`hightorque`（原生 `ht_can` v1.5.5）
 
 - 当前实现走 HighTorque 原生 `ht_can` v1.5.5 直连 CAN 协议路径。
 - 用于 SocketCAN（`can0` 等）直连电机场景。
@@ -461,9 +611,9 @@ motor_cli \
   - `--kp`、`--kd` 为统一 MIT 参数签名保留，`ht_can` 协议本身不使用。
   - 原始调试参数：`--raw-pos`、`--raw-vel`、`--raw-tqe`。
 
-## 6. vendor=`myactuator`
+## 9. vendor=`myactuator`
 
-### 6.1 支持模式
+### 9.1 支持模式
 
 - `scan`
 - `enable`
@@ -477,7 +627,7 @@ motor_cli \
 - `version`
 - `mode-query`
 
-### 6.2 MyActuator 专用参数
+### 9.2 MyActuator 专用参数
 
 | 参数 | 类型 | 默认值 | 作用范围 | 说明 |
 |---|---|---|---|---|
@@ -493,7 +643,7 @@ motor_cli \
 - `angle` 来自 `0x9C` 状态2近圈角。
 - `mt_angle` 来自 `0x92` 多圈角，绝对位置判定应优先看它。
 
-### 6.3 MyActuator 示例
+### 9.3 MyActuator 示例
 
 ```bash
 # 扫描 1..32
@@ -521,14 +671,14 @@ motor_cli \
   --mode set-zero --loop 1
 ```
 
-## 7. vendor=`hexfellow`
+## 10. vendor=`hexfellow`
 
 链路限制：
 - Hexfellow 在本仓库按“仅 CAN-FD”接入（`--transport socketcanfd`）。
 - 当前支持范围：`scan / status / pos-vel / mit / enable / disable`。
 - 当前状态：链路已接入，电机验证矩阵待补。
 
-### 7.1 Hexfellow 示例
+### 10.1 Hexfellow 示例
 
 ```bash
 # 扫描 ID
@@ -555,7 +705,7 @@ motor_cli \
   --mode mit --pos 0.0 --vel 0.0 --kp 1000 --kd 100 --tau 0
 ```
 
-## 8. 实用建议
+## 11. 实用建议
 
 - Damiao 改 ID 建议始终使用 `--store 1 --verify-id 1`。
 - 若扫描偶发漏检，重启 CAN 后重试。

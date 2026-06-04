@@ -113,6 +113,16 @@ Current status:
   - modes: `scan`, `ping`, `enable`, `disable`, `MIT`, `POS_VEL`, `POS_VEL_PP`, `POS_VEL_CSP`, `VEL`, parameter read/write, `set-id`, `zero`
   - host/feedback default: `0xFD` (with `0xFF/0xFE` fallback probing)
   - note: torque/current control is currently parameter-level only (`write-param` on `iq_ref`/limits), not a first-class unified mode
+- RobStride CiA402:
+  - models: `rs-00`, `rs-01`, `rs-02`, `rs-03`, `rs-04`, `rs-05`, `rs-06`
+  - modes: `scan`, `status`, `enable`, `disable`, `quick-stop`, `clear-error`, `zero`, `watchdog`, `set-protocol`, `pos-vel`, `vel`, `torque`, `mit` (mapped to CSP)
+  - note: this is for RobStride motors switched to CANopen/CiA402; plain `robstride` remains the private extended-CAN path
+  - status: experimental/incomplete; do not treat it as a production-ready RobStride path yet
+- RobStride MIT:
+  - models: `rs-00`, `rs-01`, `rs-02`, `rs-03`, `rs-04`, `rs-05`, `rs-06`
+  - modes: `scan`, `status`, `enable`, `disable`, `clear-error`, `zero`, `set-mode`, `set-can-id`, `set-host-id`, `set-protocol`, `save`, `active-report`, `mit`, `pos-vel`, `vel`, parameter read/write
+  - note: this is for RobStride motors switched to F_CMD=2 MIT protocol; it uses classic CAN standard frames, not the private extended-CAN `robstride --mode mit` path
+  - status: experimental/incomplete; do not treat it as a production-ready RobStride path yet
 - MyActuator:
   - models: `X8` (runtime string; protocol is ID-based)
   - modes: `scan`, `enable`, `disable`, `stop`, `set-zero`, `status`, `current`, `vel`, `pos`, `version`, `mode-query`
@@ -123,10 +133,22 @@ Current status:
   - models: `hexfellow` (runtime string; CANopen profile)
   - modes: `scan`, `status`, `enable`, `disable`, `pos-vel`, `mit` (via `socketcanfd`)
 
+## RobStride Protocol Paths
+
+RobStride has three independent protocol paths in this workspace:
+
+| Vendor | Motor protocol | CAN ID / frame | Data length | Best use | Current status |
+|---|---|---|---|---|---|
+| `robstride` | private protocol, `F_CMD=0` | 29-bit extended CAN. The extended ID carries `comm_type`, host ID, and motor ID. | CAN 2.0, 8 bytes | Factory-style configuration, parameter read/write, ID changes, diagnostics, private MIT-like motion control | Most mature RobStride path in this repository |
+| `robstride_cia402` | CANopen/CiA402, `F_CMD=1` | Mostly 11-bit standard CAN: NMT `0x000`, SDO `0x600+node` / `0x580+node`, heartbeat `0x700+node`. Protocol switching is a documented 29-bit extended frame `0xFFF`. | CAN 2.0, 8 bytes | CANopen master integration, standard state machine, object-dictionary based control | Experimental/incomplete for production: core CLI path exists, but EDS/PDO/SYNC coverage, real-device validation matrix, and `dm-device` transport support are not completed |
+| `robstride_mit` | MIT protocol, `F_CMD=2` | 11-bit standard CAN. Control uses `motor_id`; typed commands use `(type << 8) \| motor_id`, for example position `0x100+id`, velocity `0x200+id`, parameter read `0x300+id`. | CAN 2.0, 8 bytes | Lightweight real-time joint control with `pos/vel/kp/kd/tau`, plus direct position/velocity commands | Experimental/incomplete for production: core CLI path exists, but high-rate control ergonomics, real-device validation matrix, and `dm-device` transport support are not completed |
+
+The standard-frame paths (`robstride_cia402` and especially `robstride_mit`) are good candidates for the DM Device SDK (`dm-device-sdk/C&C++`) because that SDK can send and receive raw CAN 2.0 frames. Today that is only a future integration path in `motorbridge`: `--transport dm-device` is not yet wired as a generic backend for these RobStride vendors. Treat the SDK as a CAN adapter backend, not as a RobStride protocol implementation; RobStride frame encoding still belongs in `motor_vendors/robstride_cia402` or `motor_vendors/robstride_mit`.
+
 ## Update (2026-04): Damiao / RobStride Capability Convergence
 
 - Damiao production baseline now covers: `scan / enable / disable / MIT / POS_VEL / VEL / FORCE_POS / set-id / set-zero`.
-- RobStride production baseline now covers: `scan / ping / enable / disable / MIT / POS_VEL / VEL / parameter read-write / set-id / zero`.
+- RobStride private-protocol production baseline now covers: `scan / ping / enable / disable / MIT / POS_VEL / VEL / parameter read-write / set-id / zero`.
 - RobStride default host/feedback path is `0xFD`; scan now tries `0xFD,0xFF,0xFE,0x00,0xAA` by default.
 - RobStride `feedback_id` / `host_id` is host-side addressing, not the motor `device_id`; scan hits report the motor ID as `probe` / `device_id`.
 - In RobStride `pos-vel`, `--vel/--kd/--tau` are intentionally ignored and reported as warnings (no hard error).
@@ -145,12 +167,16 @@ flowchart TB
   MANUAL --> CACHE
   CORE --> DAMIAO["motor_vendors/damiao"]
   CORE --> ROBSTRIDE["motor_vendors/robstride"]
+  CORE --> ROBSTRIDE_CIA402["motor_vendors/robstride_cia402"]
+  CORE --> ROBSTRIDE_MIT["motor_vendors/robstride_mit"]
   CORE --> MYACT["motor_vendors/myactuator"]
   CORE --> HIGHTORQUE["motor_vendors/hightorque"]
   CORE --> HEXFELLOW["motor_vendors/hexfellow"]
   CORE --> TEMPLATE["motor_vendors/template (onboarding scaffold)"]
   DAMIAO --> CAN["CAN bus backend"]
   ROBSTRIDE --> CAN
+  ROBSTRIDE_CIA402 --> CAN
+  ROBSTRIDE_MIT --> CAN
   MYACT --> CAN
   HIGHTORQUE --> CAN
   HEXFELLOW --> CAN
@@ -174,6 +200,8 @@ flowchart LR
   VENDORS --> VH["hexfellow"]
   VENDORS --> VHT["hightorque"]
   VENDORS --> VR["robstride"]
+  VENDORS --> VRC["robstride_cia402"]
+  VENDORS --> VRM["robstride_mit"]
   VENDORS --> VM["myactuator"]
   VENDORS --> VT["template"]
   INTS --> ROS["ros2_bridge"]
@@ -202,6 +230,8 @@ flowchart TB
 - [`motor_vendors/hexfellow`](motor_vendors/hexfellow): Hexfellow CANopen-over-CAN-FD implementation
 - [`motor_vendors/hightorque`](motor_vendors/hightorque): HighTorque native ht_can protocol implementation
 - [`motor_vendors/robstride`](motor_vendors/robstride): RobStride extended CAN protocol / models / parameters
+- [`motor_vendors/robstride_cia402`](motor_vendors/robstride_cia402): RobStride CANopen/CiA402 over classic CAN
+- [`motor_vendors/robstride_mit`](motor_vendors/robstride_mit): RobStride F_CMD=2 MIT protocol over classic CAN standard frames
 - [`motor_vendors/myactuator`](motor_vendors/myactuator): MyActuator CAN protocol implementation
 - [`motor_cli`](motor_cli): unified Rust CLI
   - full parameters (English): [`motor_cli/README.md`](motor_cli/README.md)
@@ -273,7 +303,7 @@ cargo run -p motor_cli --release -- \
   --mode vel --vel 0.3 --loop 40 --dt-ms 50
 ```
 
-RobStride MIT / POS_VEL quick checks:
+RobStride private-protocol MIT / POS_VEL quick checks:
 
 ```bash
 cargo run -p motor_cli --release -- \
@@ -284,6 +314,30 @@ cargo run -p motor_cli --release -- \
 cargo run -p motor_cli --release -- \
   --vendor robstride --channel can0 --model rs-00 --motor-id 2 --feedback-id 0xFD \
   --mode pos-vel --pos 1.5 --vlim 1.0 --loc-kp 5.0 --loop 1 --dt-ms 20
+```
+
+RobStride CiA402 CLI:
+
+```bash
+cargo run -p motor_cli --release -- \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 \
+  --mode status
+
+cargo run -p motor_cli --release -- \
+  --vendor robstride_cia402 --channel can0 --model rs-00 --motor-id 1 \
+  --mode pos-vel --pos 1.57 --vlim 1.0 --acc 4.0 --loop 1
+```
+
+RobStride F_CMD=2 MIT protocol CLI:
+
+```bash
+cargo run -p motor_cli --release -- \
+  --vendor robstride_mit --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
+  --mode mit --pos 0 --vel 0 --kp 20 --kd 0.5 --tau 0 --loop 100 --dt-ms 20
+
+cargo run -p motor_cli --release -- \
+  --vendor robstride_mit --channel can0 --model rs-00 --motor-id 1 --feedback-id 0xFD \
+  --mode pos-vel --pos 1.57 --vlim 1.0 --loop 1
 ```
 
 HighTorque CLI (native ht_can v1.5.5):

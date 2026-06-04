@@ -73,6 +73,23 @@ fn is_mode_word(s: &str) -> bool {
             | "rezero"
             | "conf-write"
             | "timed-read"
+            | "clear-error"
+            | "clear-fault"
+            | "quick-stop"
+            | "emergency-stop"
+            | "watchdog"
+            | "set-protocol"
+            | "protocol-switch"
+            | "fault"
+            | "set-mode"
+            | "set-can-id"
+            | "set-host-id"
+            | "active-report"
+            | "get-protocol"
+            | "query-protocol"
+            | "protocol"
+            | "get-mode"
+            | "query-mode"
     )
 }
 
@@ -185,12 +202,18 @@ Vendors:\n\
   --vendor robstride\n\
   --vendor hightorque (native ht_can v1.5.5 direct-CAN mode)\n\
   --vendor hexfellow (CANopen over dedicated CAN-FD path)\n\
+  --vendor robstride_cia402 (RobStride CANopen/CiA402 over classic CAN; experimental/incomplete)\n\
+  --vendor robstride_mit (RobStride F_CMD=2 MIT protocol over classic CAN standard frames; experimental/incomplete)\n\
   --vendor myactuator\n\
   --vendor all       scan all vendors\n\n\
 Damiao modes:\n\
   --mode scan | enable | disable | mit | pos-vel | vel | force-pos | read-param | write-param\n\n\
 RobStride modes:\n\
-  --mode ping | scan | enable | disable | clear-error | active-report | zero | set-zero | save | zero-by-offset | mit | pos-vel | pos-vel-pp | pos-vel-csp | vel | read-param | write-param\n\n\
+  --mode ping | scan | enable | disable | clear-error | active-report | zero | set-zero | save | zero-by-offset | get-protocol | get-mode | set-protocol | mit | pos-vel | pos-vel-pp | pos-vel-csp | vel | read-param | write-param\n\n\
+RobStride CiA402 modes:\n\
+  --mode scan | status | enable | disable | quick-stop | clear-error | zero | watchdog | get-protocol | set-protocol | pos-vel | vel | mit | torque\n\n\
+RobStride MIT protocol modes:\n\
+  --mode scan | status | enable | disable | clear-error | zero | set-mode | set-can-id | set-host-id | get-protocol | set-protocol | save | active-report | mit | pos-vel | vel | read-param | write-param\n\n\
 HighTorque modes:\n\
   --mode ping | scan | read | mit | pos | vel | tqe | volt | cur | pos-vel-tqe | stop | brake | rezero | conf-write | timed-read\n\n\
 MyActuator modes:\n\
@@ -206,9 +229,9 @@ Common args:\n\
   --serial-baud  default 921600 (used when --transport dm-serial)\n\
   --dm-device-type  usb2canfd|usb2canfd-dual|linkx4c, default usb2canfd-dual (used when --transport dm-device)\n\
   --dm-channel      SDK channel number: usb2canfd=0, usb2canfd-dual=0|1, linkx4c=0|1|2|3 (control default 0; scan omitted scans all)\n\
-  --model        default depends on vendor (damiao=4340, robstride=rs-00, hightorque=hightorque[hint only], myactuator=X8)\n\
+  --model        default depends on vendor (damiao=4340, robstride=rs-00, robstride_cia402=rs-00, robstride_mit=rs-00, hightorque=hightorque[hint only], myactuator=X8)\n\
   --motor-id     default 0x01\n\
-  --feedback-id  default 0x11 for Damiao, 0xFD for RobStride, 0x01 for HighTorque, 0x241 for MyActuator\n\
+  --feedback-id  default 0x11 for Damiao, 0xFD for RobStride/RobStride MIT host_id, ignored/0 for RobStride CiA402, 0x01 for HighTorque, 0x241 for MyActuator\n\
   --loop         send cycles, default 1\n\
   --dt-ms        period ms, default 20\n\
   --ensure-mode  1/0, default 1\n\n\
@@ -231,6 +254,8 @@ RobStride extras:\n\
   --timeout-ms <ms>         for scan ping timeout, default 80\n\
   --param-timeout-ms <ms>   for scan parameter fallback timeout, default 120\n\
   --active-report 1/0       for active-report mode, default 1 (RobStride comm_type=24)\n\
+  --protocol private|canopen|mit|0|1|2 for set-protocol mode; power-cycle required\n\
+  --wait-ack 1/0            for private set-protocol, default 1\n\
   --zero-exp 1/0            for zero/set-zero, default 0 (run experimental sequence: disable -> set-zero -> optional save)\n\
   --offset-negate 1/0       accepted for zero-by-offset, but zero-by-offset is temporarily disabled\n\
   --store 1/0               for write-param store/save, default 0; for zero-exp, default 1\n\
@@ -240,6 +265,21 @@ RobStride extras:\n\
   Note: zero-by-offset currently prints a firmware-safety warning and sends no calibration CAN frames.\n\
   (scan auto-fallbacks to blind pulse probing if no ping/parameter replies)\n\
 \n\
+RobStride CiA402 extras:\n\
+  --watchdog-s <seconds>       for watchdog mode; 0 disables\n\
+  --watchdog-raw <u32>         raw watchdog value; manual says 20000 means 1s\n\
+  --position-window <rad>      optional PP/CSP position window (6067)\n\
+  --position-window-time-ms    optional PP/CSP position window time (6068)\n\
+  --protocol private|canopen|mit|0|1|2 for set-protocol mode; power-cycle required\n\
+\n\
+RobStride MIT protocol extras:\n\
+  --run-mode mit|position|velocity|0|1|2 for set-mode\n\
+  --set-motor-id <id>       for set-can-id\n\
+  --set-host-id <id>        for set-host-id\n\
+  --protocol private|canopen|mit|0|1|2 for set-protocol; power-cycle required\n\
+  --current/--ilim <A>      current limit for --mode vel\n\
+  --param-id <hex|dec> --param-value <number> --param-type f32|u8|i8|u16|i16|u32|i32\n\
+\n\
 Run-mode effective arguments:\n\
   Damiao mit:        --pos --vel --kp --kd --tau\n\
   Damiao pos-vel:    --pos --vlim\n\
@@ -248,6 +288,12 @@ Run-mode effective arguments:\n\
   RobStride mit:     --pos --vel --kp --kd --tau\n\
   RobStride pos-vel: --pos --vlim --loc-kp (or --kp fallback); --vel/--kd/--tau are ignored with warning\n\
   RobStride vel:     --vel\n\
+  RobStride CiA402 pos-vel: --pos --vlim [--acc] [--position-window] [--position-window-time-ms]\n\
+  RobStride CiA402 vel:     --vel\n\
+  RobStride CiA402 torque:  --tau\n\
+  RobStride MIT mit:        --pos --vel --kp --kd --tau\n\
+  RobStride MIT pos-vel:    --pos --vlim\n\
+  RobStride MIT vel:        --vel --current(or --ilim)\n\
   HighTorque mit:    --pos --vel --tau; --kp/--kd are ignored by ht_can v1.5.5\n\
   Hexfellow mit:     --pos --vel --kp --kd --tau\n\
   Hexfellow pos-vel: --pos --vlim\n\

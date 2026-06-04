@@ -273,6 +273,8 @@ dependencies = [
  "motor_vendor_hexfellow",
  "motor_vendor_myactuator",
  "motor_vendor_robstride",
+ "motor_vendor_robstride_cia402",
+ "motor_vendor_robstride_mit",
 ]
 
 [[package]]
@@ -314,6 +316,20 @@ dependencies = [
 
 [[package]]
 name = "motor_vendor_robstride"
+version = "0.4.4"
+dependencies = [
+ "motor_core",
+]
+
+[[package]]
+name = "motor_vendor_robstride_cia402"
+version = "0.4.4"
+dependencies = [
+ "motor_core",
+]
+
+[[package]]
+name = "motor_vendor_robstride_mit"
 version = "0.4.4"
 dependencies = [
  "motor_core",

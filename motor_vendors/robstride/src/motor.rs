@@ -1,7 +1,8 @@
 use crate::protocol::{
     build_ext_id, decode_fault_report, decode_ping_reply, decode_read_parameter_value,
     decode_status_frame, encode_mit_command, encode_parameter_read, encode_parameter_value,
-    encode_parameter_write, ext_id_parts, CommunicationType, FaultReport, PingReply,
+    encode_parameter_write, encode_set_protocol, ext_id_parts, validate_protocol_cmd,
+    CommunicationType, FaultReport, PingReply,
 };
 use crate::registers::{parameter_info, ParameterDataType, ParameterId};
 use motor_core::bus::{CanBus, CanFrame};
@@ -375,6 +376,24 @@ impl RobstrideMotor {
         )
     }
 
+    pub fn get_protocol_flag(&self, timeout: Duration) -> Result<u8> {
+        match self.get_parameter(ParameterId::ProtocolFlag as u16, timeout)? {
+            ParameterValue::U8(v) => Ok(v),
+            other => Err(MotorError::Protocol(format!(
+                "protocol flag parameter returned unexpected value {other:?}"
+            ))),
+        }
+    }
+
+    pub fn set_protocol(&self, protocol_cmd: u8, timeout: Duration) -> Result<()> {
+        validate_protocol_cmd(protocol_cmd)?;
+        let data = encode_set_protocol(protocol_cmd)?;
+        if timeout.is_zero() {
+            return self.send_ext(CommunicationType::SET_PROTOCOL, self.host_id_u16(), data, 8);
+        }
+        self.send_with_response_ack(CommunicationType::SET_PROTOCOL, data, 8, timeout)
+    }
+
     pub fn set_device_id(&self, new_id: u8) -> Result<()> {
         Self::validate_device_id(u16::from(new_id), "new_device_id")?;
         let extra = (u16::from(new_id) << 8) | u16::from(self.host_id_u8());
@@ -736,6 +755,7 @@ impl MotorDevice for RobstrideMotor {
         match comm_type {
             CommunicationType::GET_DEVICE_ID => device_id == self.motor_id,
             CommunicationType::READ_PARAMETER => device_id == self.motor_id,
+            CommunicationType::SET_PROTOCOL => device_id == self.motor_id,
             // Status/fault frames must belong to this motor. Accepting only by responder_id
             // can pollute state with frames from other motors on the same bus.
             CommunicationType::OPERATION_STATUS | CommunicationType::FAULT_REPORT => {

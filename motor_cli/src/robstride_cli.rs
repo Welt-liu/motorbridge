@@ -3,8 +3,9 @@ use crate::args::{
     parse_u16_hex_or_dec,
 };
 use motor_vendor_robstride::{
-    model_limits as robstride_model_limits, ControlMode as RobstrideControlMode, ParameterDataType,
-    ParameterValue, RobstrideController,
+    model_limits as robstride_model_limits, protocol_name, ControlMode as RobstrideControlMode,
+    ParameterDataType, ParameterValue, RobstrideController, PROTOCOL_CANOPEN, PROTOCOL_MIT,
+    PROTOCOL_PRIVATE,
 };
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -53,6 +54,28 @@ fn print_robstride_param_value(param_id: u16, value: ParameterValue) {
         ParameterValue::U16(v) => println!("param 0x{param_id:04X} ({name}) = {v}"),
         ParameterValue::U32(v) => println!("param 0x{param_id:04X} ({name}) = {v}"),
         ParameterValue::F32(v) => println!("param 0x{param_id:04X} ({name}) = {v:.6}"),
+    }
+}
+
+fn robstride_run_mode_name(mode: i8) -> &'static str {
+    match mode {
+        0 => "mit/private-motion",
+        1 => "position-pp",
+        2 => "velocity",
+        3 => "current",
+        5 => "position-csp",
+        _ => "unknown",
+    }
+}
+
+fn parse_protocol_cmd(raw: &str) -> Result<u8, String> {
+    match raw.to_ascii_lowercase().as_str() {
+        "0" | "private" | "siyou" => Ok(PROTOCOL_PRIVATE),
+        "1" | "canopen" | "cia402" => Ok(PROTOCOL_CANOPEN),
+        "2" | "mit" => Ok(PROTOCOL_MIT),
+        _ => Err(format!(
+            "invalid --protocol {raw}, expected private|canopen|mit or 0|1|2"
+        )),
     }
 }
 
@@ -415,6 +438,43 @@ pub fn run_robstride(
             let param_id = get_u16_hex_or_dec(args, "param-id", 0)?;
             let value = motor.get_parameter(param_id, Duration::from_millis(500))?;
             print_robstride_param_value(param_id, value);
+            controller.close_bus()?;
+            return Ok(());
+        }
+        "get-protocol" | "protocol" | "query-protocol" => {
+            let value = motor.get_protocol_flag(Duration::from_millis(500))?;
+            println!(
+                "[protocol] vendor=robstride current={} ({}) note=read protocol_1 param 0x2022",
+                value,
+                protocol_name(value)
+            );
+            controller.close_bus()?;
+            return Ok(());
+        }
+        "get-mode" | "query-mode" => {
+            let value = motor.get_parameter_i8(0x7005, Duration::from_millis(500))?;
+            println!(
+                "[mode] vendor=robstride run_mode={} ({}) note=read run_mode param 0x7005",
+                value,
+                robstride_run_mode_name(value)
+            );
+            controller.close_bus()?;
+            return Ok(());
+        }
+        "set-protocol" | "protocol-switch" => {
+            let protocol = parse_protocol_cmd(&get_str(args, "protocol", "private"))?;
+            let wait_ack = get_u64(args, "wait-ack", 1)? != 0;
+            let timeout = if wait_ack {
+                Duration::from_millis(get_u64(args, "timeout-ms", 500)?)
+            } else {
+                Duration::ZERO
+            };
+            motor.set_protocol(protocol, timeout)?;
+            println!(
+                "[ok] robstride private protocol switch sent target={} ({}) via comm_type=25; power-cycle motor to apply",
+                protocol,
+                protocol_name(protocol)
+            );
             controller.close_bus()?;
             return Ok(());
         }
