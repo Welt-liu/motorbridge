@@ -17,7 +17,10 @@ use std::time::{Duration, Instant};
 const REGISTER_POLL_INTERVAL_MS: u64 = 2;
 const SET_ZERO_SETTLE_MS: u64 = 20;
 const ENSURE_MODE_VERIFY_ATTEMPTS: usize = 3;
-const ENSURE_MODE_VERIFY_RETRY_GAP_MS: u64 = 10;
+// Conservative shared retry gap across platforms, adapters, and transports.
+// Future transport profiles may tune this separately, e.g. dm-serial 20ms and
+// SocketCAN/PCAN 10ms.
+const ENSURE_MODE_VERIFY_RETRY_GAP_MS: u64 = 20;
 
 const DAMIAO_MODELS: &[MotorModelSpec] = &[
     MotorModelSpec {
@@ -329,16 +332,22 @@ impl DamiaoMotor {
 
     pub fn ensure_control_mode(&self, mode: ControlMode, timeout: Duration) -> Result<()> {
         let desired = mode as u32;
+        let mut last_error;
         match self.get_register_u32(10, timeout) {
             Ok(current) if current == desired => return Ok(()),
-            Ok(_) => {}
-            Err(MotorError::Timeout(_)) => {}
+            Ok(current) => {
+                last_error = Some(MotorError::Protocol(format!(
+                    "control mode verify failed: expected {desired}, got {current}"
+                )));
+            }
+            Err(MotorError::Timeout(e)) => {
+                last_error = Some(MotorError::Timeout(e));
+            }
             Err(e) => return Err(e),
         }
 
         self.write_register_u32(10, desired)?;
 
-        let mut last_error = None;
         for attempt in 0..ENSURE_MODE_VERIFY_ATTEMPTS {
             match self.get_register_u32(10, timeout) {
                 Ok(verify) if verify == desired => return Ok(()),
@@ -353,6 +362,7 @@ impl DamiaoMotor {
                 Err(e) => return Err(e),
             }
             if attempt + 1 < ENSURE_MODE_VERIFY_ATTEMPTS {
+                self.write_register_u32(10, desired)?;
                 std::thread::sleep(Duration::from_millis(ENSURE_MODE_VERIFY_RETRY_GAP_MS));
             }
         }
