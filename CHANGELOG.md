@@ -9,6 +9,37 @@ Versioning.
 
 No unreleased changes yet.
 
+## [0.4.5] - 2026-06-05
+
+### Added
+
+- Added experimental RobStride standard-frame vendor paths:
+  `robstride_cia402` for CANopen/CiA402 (`F_CMD=1`) and `robstride_mit` for
+  MIT protocol (`F_CMD=2`). These paths expose core CLI entry points and
+  documentation, but remain incomplete for production use; real-device
+  validation matrices, high-rate/control ergonomics, EDS/PDO/SYNC coverage, and
+  generic `dm-device` transport wiring are still pending.
+- Added hardware gallery media and adapter documentation for common CAN and
+  Damiao adapter setups.
+
+### Fixed
+
+- Improved Damiao `ensure_control_mode()` so failed mode-register verification
+  attempts retry the `RID 10` write before the next readback attempt, using a
+  conservative shared 20 ms retry gap. This keeps the successful path free of an
+  unconditional post-write sleep while recovering from dropped or ignored mode
+  writes more reliably.
+- Fixed a strict Clippy warning in motor CLI defaults.
+
+### Changed
+
+- Documented RobStride protocol ID roles across the private, CANopen/CiA402,
+  and MIT protocol paths.
+- Python package version advanced to `0.4.5`.
+- Rust workspace package version advanced to `0.4.5` for release/tag
+  alignment.
+- C++ package metadata advanced to `0.4.5`.
+
 ## [0.4.4] - 2026-06-04
 
 ### Added

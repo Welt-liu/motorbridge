@@ -47,7 +47,7 @@
 
 ## 范围
 
-- 当前目标包版本：`0.4.4`。
+- 当前目标包版本：`0.4.5`。
 - wheel 会随包携带当前平台对应的 `motor_abi` 和 `ws_gateway`，但不再内置
   DaMiao DM_Device SDK runtime。真正使用 `Controller.from_dm_device(...)`、
   Python CLI `--transport dm-device` 或
@@ -77,6 +77,9 @@
 - ABI 元数据 helper：
   - `motorbridge.abi_version()` 返回当前加载的 ABI 库版本。
   - `motorbridge.abi_capabilities()` 返回当前加载 ABI 的能力 JSON（Python `dict`）。
+- `0.4.5` 优化 Damiao `ensure_mode` 读回校验：校验失败后会重试写入模式寄存器。
+  同时文档补充 RobStride `robstride_cia402` 和 `robstride_mit` 两条实验 CLI
+  路径；这些路径用于测试/协议 bring-up，当前还不是生产可用链路。
 - `0.4.4` 新增 Damiao `dm-device` 传输、Python
   `Controller.from_dm_device(...)`、Python CLI `--transport dm-device`，并在
   目标平台存在 vendored SDK runtime 时显式解析

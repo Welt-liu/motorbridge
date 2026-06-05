@@ -15,8 +15,18 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
   Standalone web control UI built on top of `ws_gateway`.
 
-## Update (2026-06): v0.4.4
+## Update (2026-06): v0.4.5
 
+- `v0.4.5` improves Damiao `ensure_mode` reliability by retrying the `RID 10`
+  mode-register write after failed readback verification attempts and using a
+  conservative shared 20 ms retry gap across platforms, adapters, and
+  transports.
+- `v0.4.5` adds experimental RobStride standard-frame preview paths:
+  `robstride_cia402` for CANopen/CiA402 (`F_CMD=1`) and `robstride_mit` for
+  MIT protocol (`F_CMD=2`). These command surfaces are documented for testing
+  and protocol bring-up, but are not production-ready yet.
+- `v0.4.5` adds hardware gallery media and adapter documentation for common CAN
+  and Damiao setups.
 - `v0.4.4` adds the Damiao-only `dm-device` transport for DaMiao
   `USB2CANFD`, `USB2CANFD_DUAL`, and `LINKX4C` adapters through the
   DM_Device SDK. Rust CLI, Python SDK, Python CLI, Python wheels, C ABI, and

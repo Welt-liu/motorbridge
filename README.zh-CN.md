@@ -15,8 +15,16 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
-## 更新说明（2026-06）：v0.4.4
+## 更新说明（2026-06）：v0.4.5
 
+- `v0.4.5` 优化 Damiao `ensure_mode` 稳定性：读回校验失败后会重试写入
+  `RID 10` 模式寄存器，并使用跨平台、跨适配器、跨传输链路的保守 20 ms
+  retry gap。
+- `v0.4.5` 新增两条 RobStride 标准帧实验/预览路径：
+  `robstride_cia402` 对应 CANopen/CiA402（`F_CMD=1`），`robstride_mit`
+  对应 MIT 协议（`F_CMD=2`）。这些命令入口用于测试和协议 bring-up，
+  当前还不是生产可用链路。
+- `v0.4.5` 新增常见 CAN / Damiao 适配器的硬件图库和说明文档。
 - `v0.4.4` 新增 Damiao 专用 `dm-device` 传输链路，通过 DaMiao
   DM_Device SDK 支持 `USB2CANFD`、`USB2CANFD_DUAL` 和 `LINKX4C` 适配器。
   Rust CLI、Python SDK、Python CLI、Python wheel、C ABI 和 `ws_gateway`

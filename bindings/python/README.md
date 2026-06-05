@@ -48,7 +48,7 @@ Notes:
 ## Scope
 Packaging note:
 
-- Current package target version: `0.4.4`.
+- Current package target version: `0.4.5`.
 - Published wheel includes `motor_abi` shared library and `ws_gateway` binary for that platform.
 - Published wheels do not bundle the DaMiao DM_Device SDK runtime. When
   `Controller.from_dm_device(...)`, Python CLI `--transport dm-device`, or
@@ -79,6 +79,10 @@ Packaging note:
 - ABI metadata helpers:
   - `motorbridge.abi_version()` returns the loaded ABI library version.
   - `motorbridge.abi_capabilities()` returns the loaded ABI capability JSON as a Python `dict`.
+- `0.4.5` improves Damiao `ensure_mode` readback verification by retrying the
+  mode-register write after failed verification attempts. It also documents the
+  experimental RobStride `robstride_cia402` and `robstride_mit` CLI paths; those
+  paths are for testing/protocol bring-up and are not production-ready yet.
 - `0.4.4` adds Damiao `dm-device` transport, Python
   `Controller.from_dm_device(...)`, Python CLI `--transport dm-device`, and
   explicit runtime resolution for `libdm_device.so`/`.dylib`/`.dll` when the
