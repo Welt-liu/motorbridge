@@ -377,9 +377,12 @@ fn handle_damiao_state_many(v: &Value, ctx: &mut SessionCtx) -> Result<Value, St
             .filter(|s| !SessionCtx::model_is_auto(s))
             .unwrap_or(default_model);
 
-        let motor = ctrl
-            .add_motor(motor_id, feedback_id, model)
-            .map_err(|e| format!("add motor 0x{motor_id:X} failed: {e}"))?;
+        let motor = match ctrl.get_motor(motor_id) {
+            Ok(motor) => motor,
+            Err(_) => ctrl
+                .add_motor(motor_id, feedback_id, model)
+                .map_err(|e| format!("add motor 0x{motor_id:X} failed: {e}"))?,
+        };
         let state = motor
             .request_fresh_state(std::time::Duration::from_millis(timeout_ms))
             .map_err(|e| format!("request state 0x{motor_id:X} failed: {e}"))?;
