@@ -190,7 +190,9 @@ cargo run -p ws_gateway --release -- \
 
 - 默认推荐使用 `127.0.0.1:9002`（本机回环）。
 - 若绑定到非回环地址（例如 `0.0.0.0:9002`），必须设置环境变量 `MOTORBRIDGE_WS_TOKEN`。
-- WS 客户端需在握手请求中带上 `x-motorbridge-token: <token>` 或 `Authorization: Bearer <token>`。
+- macOS/Linux 示例：`export MOTORBRIDGE_WS_TOKEN=your-token`，或 `MOTORBRIDGE_WS_TOKEN=your-token motorbridge-gateway -- --bind 0.0.0.0:9002`
+- PowerShell 示例：`$env:MOTORBRIDGE_WS_TOKEN="your-token"`，然后再启动 `motorbridge-gateway -- --bind 0.0.0.0:9002`
+- WS 客户端可在握手请求中带上 `x-motorbridge-token: <token>`、`Authorization: Bearer <token>`，浏览器客户端也可使用 query `?motorbridge_ws_token=<token>`。
 
 ## Damiao `dm-device` 扫描示例
 

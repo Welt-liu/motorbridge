@@ -187,7 +187,9 @@ Security note:
 
 - `127.0.0.1:9002` is the default and recommended bind for local use.
 - If you bind to non-loopback addresses (for example `0.0.0.0:9002`), you must set `MOTORBRIDGE_WS_TOKEN`.
-- WebSocket clients must provide this token via header `x-motorbridge-token: <token>` or `Authorization: Bearer <token>`.
+- macOS/Linux example: `export MOTORBRIDGE_WS_TOKEN=your-token` or `MOTORBRIDGE_WS_TOKEN=your-token motorbridge-gateway -- --bind 0.0.0.0:9002`
+- PowerShell example: `$env:MOTORBRIDGE_WS_TOKEN="your-token"` and then start `motorbridge-gateway -- --bind 0.0.0.0:9002`
+- WebSocket clients may provide this token via header `x-motorbridge-token: <token>`, `Authorization: Bearer <token>`, or query `?motorbridge_ws_token=<token>` for browser clients.
 
 ## Damiao `dm-device` Scan Example
 

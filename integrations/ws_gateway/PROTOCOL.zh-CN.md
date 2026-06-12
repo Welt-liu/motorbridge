@@ -125,9 +125,16 @@ motorbridge-gateway -- --bind 127.0.0.1:9002 --vendor robstride --channel can0@1
 
 ```bash
 export MOTORBRIDGE_WS_TOKEN=your-token
+MOTORBRIDGE_WS_TOKEN=your-token motorbridge-gateway -- --bind 0.0.0.0:9002
 ```
 
-客户端握手必须带 header：
+PowerShell：
+
+```powershell
+$env:MOTORBRIDGE_WS_TOKEN="your-token"
+```
+
+客户端握手可带 header：
 
 ```text
 x-motorbridge-token: your-token
@@ -139,7 +146,11 @@ x-motorbridge-token: your-token
 Authorization: Bearer your-token
 ```
 
-浏览器原生 `WebSocket` 不能自定义握手 header，因此带 token 的远程部署建议通过受控反向代理或自定义客户端完成。
+浏览器客户端也可直接在 WS URL 上带 query：
+
+```text
+ws://host:9002/?motorbridge_ws_token=your-token
+```
 
 ## 5. JSON 类型与通用规则
 
