@@ -9,6 +9,23 @@ Versioning.
 
 No unreleased changes yet.
 
+## [0.4.6] - 2026-06-12
+
+### Fixed
+
+- Reused existing Damiao motor handles during `damiao_state_many` polling so
+  repeated browser telemetry no longer fails on duplicate motor registration.
+- Allowed browser `ws_gateway` clients to send `MOTORBRIDGE_WS_TOKEN` in the
+  WebSocket URL query as `?motorbridge_ws_token=...` while keeping existing
+  header-based auth and non-loopback token requirements unchanged.
+
+### Changed
+
+- Python package version advanced to `0.4.6`.
+- Rust workspace package version advanced to `0.4.6` for release/tag
+  alignment.
+- C++ package metadata advanced to `0.4.6`.
+
 ## [0.4.5] - 2026-06-05
 
 ### Added

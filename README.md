@@ -15,8 +15,15 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
   Standalone web control UI built on top of `ws_gateway`.
 
-## Update (2026-06): v0.4.5
+## Update (2026-06): v0.4.6
 
+- `v0.4.6` reuses existing Damiao motor handles during `damiao_state_many`
+  polling so repeated browser telemetry does not fail on duplicate motor
+  registration.
+- `v0.4.6` lets browser clients authenticate `ws_gateway` by sending
+  `MOTORBRIDGE_WS_TOKEN` in the WebSocket URL query as
+  `?motorbridge_ws_token=...`, while keeping the existing non-loopback token
+  requirement and header-based auth paths.
 - `v0.4.5` improves Damiao `ensure_mode` reliability by retrying the `RID 10`
   mode-register write after failed readback verification attempts and using a
   conservative shared 20 ms retry gap across platforms, adapters, and

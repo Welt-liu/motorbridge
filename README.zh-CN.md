@@ -15,8 +15,13 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
-## 更新说明（2026-06）：v0.4.5
+## 更新说明（2026-06）：v0.4.6
 
+- `v0.4.6` 在 `damiao_state_many` 轮询中复用已存在的 Damiao motor handle，
+  避免浏览器重复 telemetry 时因重复注册 motor 而失败。
+- `v0.4.6` 新增浏览器对 `ws_gateway` 的 query-token 握手认证，允许通过
+  `?motorbridge_ws_token=...` 传递 `MOTORBRIDGE_WS_TOKEN`，同时保持原有的
+  非回环地址 token 要求和 header 鉴权路径不变。
 - `v0.4.5` 优化 Damiao `ensure_mode` 稳定性：读回校验失败后会重试写入
   `RID 10` 模式寄存器，并使用跨平台、跨适配器、跨传输链路的保守 20 ms
   retry gap。
