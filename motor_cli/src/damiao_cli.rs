@@ -1,8 +1,8 @@
 use crate::args::{get_f32, get_opt_u16_hex_or_dec, get_str, get_u16_hex_or_dec, get_u64};
 use motor_core::dm_device::DmDeviceType;
 use motor_vendor_damiao::{
-    match_models_by_limits, model_limits as damiao_model_limits, suggest_models_by_limits,
-    ControlMode as DamiaoControlMode, DamiaoController, DamiaoMotor,
+    display_models, match_models_by_limits, model_limits as damiao_model_limits,
+    suggest_models_by_limits, ControlMode as DamiaoControlMode, DamiaoController, DamiaoMotor,
 };
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -375,7 +375,7 @@ pub fn run_damiao(
                         let model_guess = if matched.is_empty() {
                             "unknown".to_string()
                         } else {
-                            matched.join(",")
+                            display_models(&matched).join(",")
                         };
                         println!(
                             "[hit] vendor=damiao id={} feedback_id=0x{:X} model_guess={} limits=({:.3},{:.3},{:.3})",

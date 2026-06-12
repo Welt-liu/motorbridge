@@ -1,6 +1,6 @@
 use crate::model::{Target, Transport};
 use motor_core::error::MotorError;
-use motor_vendor_damiao::{match_models_by_limits, ControlMode, DamiaoMotor};
+use motor_vendor_damiao::{display_models, match_models_by_limits, ControlMode, DamiaoMotor};
 use serde_json::{json, Value};
 use std::time::Duration;
 
@@ -159,7 +159,7 @@ pub(crate) fn cmd_scan_damiao(v: &Value, base: &Target) -> Result<Value, String>
                         let model_guess = if matched.is_empty() {
                             "unknown".to_string()
                         } else {
-                            matched.join(",")
+                            display_models(&matched).join(",")
                         };
                         hits.push(json!({
                             "probe": mid,

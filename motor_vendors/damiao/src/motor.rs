@@ -60,6 +60,13 @@ const DAMIAO_MODELS: &[MotorModelSpec] = &[
     },
     MotorModelSpec {
         vendor: "damiao",
+        model: "4340_v20",
+        pmax: 12.5,
+        vmax: 20.0,
+        tmax: 28.0,
+    },
+    MotorModelSpec {
+        vendor: "damiao",
         model: "6006",
         pmax: 12.5,
         vmax: 45.0,
@@ -139,6 +146,24 @@ pub fn model_limits(model: &str) -> Option<(f32, f32, f32)> {
     DAMIAO_CATALOG
         .get(model)
         .map(|spec| (spec.pmax, spec.vmax, spec.tmax))
+}
+
+pub fn display_model_name(model: &str) -> &str {
+    match model {
+        "4340_v20" => "4340X",
+        _ => model,
+    }
+}
+
+pub fn display_models(models: &[&'static str]) -> Vec<&'static str> {
+    let mut out = Vec::new();
+    for model in models {
+        let display = display_model_name(model);
+        if !out.contains(&display) {
+            out.push(display);
+        }
+    }
+    out
 }
 
 pub fn match_models_by_limits(pmax: f32, vmax: f32, tmax: f32, tol: f32) -> Vec<&'static str> {
@@ -641,6 +666,16 @@ mod tests {
         let matched = match_models_by_limits(12.5, 10.0, 28.0, 0.01);
         assert!(matched.contains(&"4340"));
         assert!(matched.contains(&"4340P"));
+    }
+
+    #[test]
+    fn custom_4340_alias_keeps_internal_name_unique_and_display_name_stable() {
+        let (pmax, vmax, tmax) = model_limits("4340_v20").expect("known custom model");
+        assert_eq!(pmax, 12.5);
+        assert_eq!(vmax, 20.0);
+        assert_eq!(tmax, 28.0);
+        assert_eq!(display_model_name("4340_v20"), "4340X");
+        assert_eq!(display_models(&["4340_v20"]), vec!["4340X"]);
     }
 
     #[test]
