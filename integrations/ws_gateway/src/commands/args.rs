@@ -69,7 +69,10 @@ Platform hints:\n\
 \n\
 Security:\n\
   Non-loopback bind requires env MOTORBRIDGE_WS_TOKEN\n\
-  Client headers: x-motorbridge-token or Authorization: Bearer <token>\n\
+  macOS/Linux: export MOTORBRIDGE_WS_TOKEN=your-token\n\
+  macOS/Linux one-shot: MOTORBRIDGE_WS_TOKEN=your-token motorbridge-gateway -- --bind 0.0.0.0:9002\n\
+  PowerShell: $env:MOTORBRIDGE_WS_TOKEN=\"your-token\"\n\
+  Client auth: x-motorbridge-token, Authorization: Bearer <token>, or ?motorbridge_ws_token=<token>\n\
 \n\
 After startup:\n\
   When you see \"ws_gateway listening on ws://127.0.0.1:9002\", connect the UI to ws://127.0.0.1:9002.\n"

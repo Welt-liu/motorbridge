@@ -3,6 +3,7 @@ use crate::model::Vendor;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
 use std::time::Duration;
+use tokio_tungstenite::tungstenite::http::Uri;
 use tokio::net::TcpStream;
 use tokio::time;
 use tokio_tungstenite::{
@@ -31,6 +32,59 @@ where
         .map_err(|e| e.to_string())
 }
 
+fn decode_query_value(value: &str) -> Option<String> {
+    let bytes = value.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0usize;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'+' => {
+                out.push(b' ');
+                i += 1;
+            }
+            b'%' if i + 2 < bytes.len() => {
+                let hi = bytes[i + 1] as char;
+                let lo = bytes[i + 2] as char;
+                let hex = [hi, lo].iter().collect::<String>();
+                let decoded = u8::from_str_radix(&hex, 16).ok()?;
+                out.push(decoded);
+                i += 3;
+            }
+            b => {
+                out.push(b);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8(out).ok()
+}
+
+fn query_token(uri: &Uri) -> Option<String> {
+    uri.query()?.split('&').find_map(|pair| {
+        let (key, value) = pair.split_once('=')?;
+        if key == "motorbridge_ws_token" {
+            decode_query_value(value)
+        } else {
+            None
+        }
+    })
+}
+
+fn request_token(req: &Request) -> Option<String> {
+    req.headers()
+        .get("x-motorbridge-token")
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_owned)
+        .or_else(|| {
+            req.headers()
+                .get("authorization")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.strip_prefix("Bearer "))
+                .map(str::to_owned)
+        })
+        .or_else(|| query_token(req.uri()))
+}
+
 #[allow(clippy::result_large_err)]
 pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Result<(), String> {
     let peer = stream
@@ -43,17 +97,8 @@ pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Resul
     }
     let ws = accept_hdr_async(stream, move |req: &Request, response: Response| {
         if let Some(token) = expected_token.as_deref() {
-            let provided = req
-                .headers()
-                .get("x-motorbridge-token")
-                .and_then(|v| v.to_str().ok())
-                .or_else(|| {
-                    req.headers()
-                        .get("authorization")
-                        .and_then(|v| v.to_str().ok())
-                        .and_then(|v| v.strip_prefix("Bearer "))
-                });
-            if provided != Some(token) {
+            let provided = request_token(req);
+            if provided.as_deref() != Some(token) {
                 let err_resp: ErrorResponse =
                     tokio_tungstenite::tungstenite::http::Response::builder()
                         .status(tokio_tungstenite::tungstenite::http::StatusCode::UNAUTHORIZED)
@@ -275,4 +320,40 @@ pub(crate) async fn handle_socket(stream: TcpStream, cfg: ServerConfig) -> Resul
 
     ctx.disconnect(false);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio_tungstenite::tungstenite::http::Request as HttpRequest;
+
+    #[test]
+    fn query_token_decodes_percent_and_plus() {
+        let uri: Uri = "ws://host:9002/?motorbridge_ws_token=a%2Bb+c".parse().expect("uri");
+        assert_eq!(query_token(&uri).as_deref(), Some("a+b c"));
+    }
+
+    #[test]
+    fn request_token_prefers_header_then_bearer_then_query() {
+        let req = HttpRequest::builder()
+            .uri("ws://host:9002/?motorbridge_ws_token=query-token")
+            .header("authorization", "Bearer bearer-token")
+            .header("x-motorbridge-token", "header-token")
+            .body(())
+            .expect("request");
+        assert_eq!(request_token(&req).as_deref(), Some("header-token"));
+
+        let req = HttpRequest::builder()
+            .uri("ws://host:9002/?motorbridge_ws_token=query-token")
+            .header("authorization", "Bearer bearer-token")
+            .body(())
+            .expect("request");
+        assert_eq!(request_token(&req).as_deref(), Some("bearer-token"));
+
+        let req = HttpRequest::builder()
+            .uri("ws://host:9002/?motorbridge_ws_token=query-token")
+            .body(())
+            .expect("request");
+        assert_eq!(request_token(&req).as_deref(), Some("query-token"));
+    }
 }
