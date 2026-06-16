@@ -21,7 +21,7 @@ pub struct DmSerialBus {
 impl DmSerialBus {
     pub fn open(port: &str, baud: u32) -> Result<Self> {
         let port_obj = serialport::new(port, baud)
-            .timeout(Duration::from_millis(1))
+            .timeout(Duration::from_millis(10))
             .data_bits(DataBits::Eight)
             .stop_bits(StopBits::One)
             .parity(Parity::None)
