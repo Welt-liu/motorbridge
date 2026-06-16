@@ -15,8 +15,13 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
-## 更新说明（2026-06）：v0.4.6
+## 更新说明（2026-06）：v0.4.7
 
+- `v0.4.7` 强化了 Damiao `ensure_mode`：模式切换改为共用一份总超时预算，
+  模式准备阶段复用一次 hold-position 读取，并改进模式寄存器写入校验。
+  这样能减少真实硬件上模式切换和参数持久化时的超时报错。
+- `v0.4.7` 将 `dm-serial` 传输链路的 timeout 从 `1 ms` 提高到 `10 ms`，
+  以降低跨平台场景下更容易出现的串口写失败问题。
 - `v0.4.6` 在 `damiao_state_many` 轮询中复用已存在的 Damiao motor handle，
   避免浏览器重复 telemetry 时因重复注册 motor 而失败。
 - `v0.4.6` 新增浏览器对 `ws_gateway` 的 query-token 握手认证，允许通过

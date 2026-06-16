@@ -15,8 +15,15 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
   Standalone web control UI built on top of `ws_gateway`.
 
-## Update (2026-06): v0.4.6
+## Update (2026-06): v0.4.7
 
+- `v0.4.7` hardens Damiao `ensure_mode` by switching to a shared timeout budget,
+  reusing the hold-position read during mode preparation, and improving mode
+  write verification. This reduces timeout failures during mode changes and
+  parameter persistence on real hardware.
+- `v0.4.7` raises the `dm-serial` transport timeout from `1 ms` to `10 ms` to
+  reduce cross-platform serial write failures under tighter adapter/driver
+  timing.
 - `v0.4.6` reuses existing Damiao motor handles during `damiao_state_many`
   polling so repeated browser telemetry does not fail on duplicate motor
   registration.

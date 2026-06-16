@@ -7,7 +7,19 @@ Versioning.
 
 ## [Unreleased]
 
-No unreleased changes yet.
+## [0.4.7] - 2026-06-16
+
+### Fixed
+
+- Hardened Damiao `ensure_control_mode()` so mode switching stays within one
+  shared timeout budget instead of serially reusing the full timeout across
+  every internal step. This reduces `ensure_mode` timeouts on slower joints and
+  adapters.
+- Improved Damiao mode-switch preparation and verification by reusing the hold
+  position read, validating register writes through write ACKs, and making
+  parameter persistence behave more reliably on real hardware.
+- Raised the `dm-serial` transport timeout from `1 ms` to `10 ms` to reduce
+  cross-platform serial write failures under tighter adapter/driver timing.
 
 ## [0.4.6] - 2026-06-12
 
