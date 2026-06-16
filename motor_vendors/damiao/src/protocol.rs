@@ -98,9 +98,17 @@ pub fn encode_force_pos_cmd(
     out
 }
 
-pub fn is_register_reply(data: &[u8; 8]) -> bool {
+fn is_register_frame(data: &[u8; 8], marker: u8) -> bool {
     let rid = data[3];
-    data[1] <= 0x0F && data[2] == 0x33 && crate::registers::register_info(rid).is_some()
+    data[1] <= 0x0F && data[2] == marker && crate::registers::register_info(rid).is_some()
+}
+
+pub fn is_register_reply(data: &[u8; 8]) -> bool {
+    is_register_frame(data, 0x33)
+}
+
+pub fn is_register_write_ack(data: &[u8; 8]) -> bool {
+    is_register_frame(data, 0x55)
 }
 
 pub fn decode_sensor_feedback(data: [u8; 8], limits: Limits) -> SensorFeedback {
@@ -235,11 +243,14 @@ mod tests {
     #[test]
     fn register_reply_decode_validates_marker_and_rid() {
         let ok = [0x01, 0x01, 0x33, 10, 0x78, 0x56, 0x34, 0x12];
-        let bad = [0x01, 0x01, 0x55, 10, 0x78, 0x56, 0x34, 0x12];
+        let ack = [0x01, 0x01, 0x55, 10, 0x78, 0x56, 0x34, 0x12];
+        let not_a_read_reply = ack;
         let (rid, raw) = decode_register_value(ok).expect("valid register reply");
         assert_eq!(rid, 10);
         assert_eq!(raw, [0x78, 0x56, 0x34, 0x12]);
-        assert!(decode_register_value(bad).is_err());
+        assert!(is_register_write_ack(&ack));
+        assert!(!is_register_write_ack(&ok));
+        assert!(decode_register_value(not_a_read_reply).is_err());
     }
 
     #[test]

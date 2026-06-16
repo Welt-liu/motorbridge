@@ -162,7 +162,10 @@ fn handle_set_active_report(v: &Value, ctx: &mut SessionCtx) -> Result<Value, St
 fn handle_store_parameters(ctx: &mut SessionCtx) -> Result<Value, String> {
     ctx.ensure_connected()?;
     match ctx.motor.as_ref() {
-        Some(MotorHandle::Damiao(m)) => m.store_parameters().map_err(|e| e.to_string())?,
+        Some(MotorHandle::Damiao(m)) => {
+            ctx.active = None;
+            m.store_parameters().map_err(|e| e.to_string())?
+        }
         Some(MotorHandle::Robstride(m)) => m.save_parameters().map_err(|e| e.to_string())?,
         Some(MotorHandle::Hexfellow(_)) => {
             return Err("store_parameters is not supported for hexfellow".to_string())
