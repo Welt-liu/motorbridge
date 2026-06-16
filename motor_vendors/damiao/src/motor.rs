@@ -256,7 +256,6 @@ struct ModeSwitchState {
     hold_position: Option<f32>,
 }
 
-
 #[derive(Default)]
 struct RegisterCache {
     values: HashMap<u8, RegisterValue>,
@@ -500,8 +499,10 @@ impl DamiaoMotor {
         deadline: Instant,
         hold_read_cap: Duration,
     ) -> ModeSwitchState {
-        let hold_position = if matches!(mode, ControlMode::Mit | ControlMode::PosVel | ControlMode::ForcePos)
-        {
+        let hold_position = if matches!(
+            mode,
+            ControlMode::Mit | ControlMode::PosVel | ControlMode::ForcePos
+        ) {
             capped_remaining(deadline, hold_read_cap)
                 .and_then(|read_timeout| self.get_register_f32(80, read_timeout).ok())
         } else {
@@ -522,7 +523,13 @@ impl DamiaoMotor {
     fn finish_mode_switch(&self, mode: ControlMode, switch_state: ModeSwitchState) -> Result<()> {
         match mode {
             ControlMode::Mit => {
-                self.send_cmd_mit(switch_state.hold_position.unwrap_or(0.0), 0.0, 0.0, 0.0, 0.0)?;
+                self.send_cmd_mit(
+                    switch_state.hold_position.unwrap_or(0.0),
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                )?;
             }
             ControlMode::PosVel => {
                 if let Some(position) = switch_state.hold_position {
@@ -564,7 +571,12 @@ impl DamiaoMotor {
         )
     }
 
-    fn wait_for_write_ack(&self, rid: u8, expected: RegisterValue, timeout: Duration) -> Result<()> {
+    fn wait_for_write_ack(
+        &self,
+        rid: u8,
+        expected: RegisterValue,
+        timeout: Duration,
+    ) -> Result<()> {
         let request_at = Instant::now();
         let deadline = request_at + timeout;
         loop {
@@ -726,7 +738,6 @@ impl DamiaoMotor {
         }
     }
 
-
     pub fn latest_state(&self) -> Option<MotorFeedbackState> {
         self.state
             .lock()
@@ -765,7 +776,10 @@ impl DamiaoMotor {
                     let rid = frame.data[3];
                     // decode_register_value() only accepts 0x33 reply frames; the
                     // write-ack path already validated the 0x55 marker and rid.
-                    (rid, [frame.data[4], frame.data[5], frame.data[6], frame.data[7]])
+                    (
+                        rid,
+                        [frame.data[4], frame.data[5], frame.data[6], frame.data[7]],
+                    )
                 }
             };
             let info = register_info(rid)
@@ -945,9 +959,11 @@ mod tests {
                 let (saw_position_read, saw_mode_write, mode_read_count) = {
                     let sent = bus_for_thread.sent.lock().expect("sent lock");
                     (
-                        sent.iter().any(|f| f.data == encode_register_read_cmd(0x01, 80)),
                         sent.iter()
-                            .any(|f| f.data == encode_register_write_cmd(0x01, 10, 2u32.to_le_bytes())),
+                            .any(|f| f.data == encode_register_read_cmd(0x01, 80)),
+                        sent.iter().any(|f| {
+                            f.data == encode_register_write_cmd(0x01, 10, 2u32.to_le_bytes())
+                        }),
                         sent.iter()
                             .filter(|f| f.data == encode_register_read_cmd(0x01, 10))
                             .count(),
@@ -958,7 +974,16 @@ mod tests {
                     responder
                         .process_feedback_frame_impl(CanFrame {
                             arbitration_id: 0x11,
-                            data: [0x01, 0x01, 0x33, 80, position.to_le_bytes()[0], position.to_le_bytes()[1], position.to_le_bytes()[2], position.to_le_bytes()[3]],
+                            data: [
+                                0x01,
+                                0x01,
+                                0x33,
+                                80,
+                                position.to_le_bytes()[0],
+                                position.to_le_bytes()[1],
+                                position.to_le_bytes()[2],
+                                position.to_le_bytes()[3],
+                            ],
                             dlc: 8,
                             is_extended: false,
                             is_rx: true,
@@ -1023,8 +1048,14 @@ mod tests {
             })
             .map(|(idx, _)| idx)
             .expect("position hold command should be sent after mode write");
-        assert!(pos_read_idx < mode_write_idx, "position read should happen before mode write");
-        assert!(mode_write_idx < hold_idx, "position hold should happen after mode write");
+        assert!(
+            pos_read_idx < mode_write_idx,
+            "position read should happen before mode write"
+        );
+        assert!(
+            mode_write_idx < hold_idx,
+            "position hold should happen after mode write"
+        );
     }
 
     #[test]
@@ -1213,8 +1244,7 @@ mod tests {
             .count();
         assert_eq!(hold_reads, 1, "hold position should be read at most once");
         assert_eq!(
-            mode_writes,
-            ENSURE_MODE_VERIFY_ATTEMPTS,
+            mode_writes, ENSURE_MODE_VERIFY_ATTEMPTS,
             "mode write should still retry up to verify attempts"
         );
     }
@@ -1262,7 +1292,6 @@ mod tests {
         assert!(has_store, "store_parameters command frame should be sent");
     }
 
-
     #[test]
     fn store_parameters_disables_motor_before_store_without_reenabling() {
         let bus_impl = Arc::new(MockBus::new());
@@ -1285,7 +1314,10 @@ mod tests {
             .iter()
             .skip(store_idx + 1)
             .any(|f| f.arbitration_id == 0x04 && f.data == encode_enable_cmd());
-        assert!(disable_idx < store_idx, "disable should happen before store");
+        assert!(
+            disable_idx < store_idx,
+            "disable should happen before store"
+        );
         assert!(!enable_after_store, "store should not re-enable motor");
     }
 
@@ -1302,8 +1334,9 @@ mod tests {
             loop {
                 let saw_feedback_request = {
                     let sent = bus_for_thread.sent.lock().expect("sent lock");
-                    sent.iter()
-                        .any(|f| f.arbitration_id == 0x7FF && f.data == encode_feedback_request_cmd(0x04))
+                    sent.iter().any(|f| {
+                        f.arbitration_id == 0x7FF && f.data == encode_feedback_request_cmd(0x04)
+                    })
                 };
                 if saw_feedback_request {
                     responder
@@ -1334,7 +1367,10 @@ mod tests {
         let has_store = sent
             .iter()
             .any(|f| f.arbitration_id == 0x7FF && f.data == encode_store_params_cmd(0x04));
-        assert!(!has_disable, "disable should be skipped when feedback already says disabled");
+        assert!(
+            !has_disable,
+            "disable should be skipped when feedback already says disabled"
+        );
         assert!(has_store, "store should still be sent");
     }
 
@@ -1406,7 +1442,8 @@ mod tests {
                 let (saw_position_read, saw_mode_write, mode_read_count) = {
                     let sent = bus_for_thread.sent.lock().expect("sent lock");
                     (
-                        sent.iter().any(|f| f.data == encode_register_read_cmd(0x01, 80)),
+                        sent.iter()
+                            .any(|f| f.data == encode_register_read_cmd(0x01, 80)),
                         sent.iter().any(|f| {
                             f.data == encode_register_write_cmd(0x01, 10, 4u32.to_le_bytes())
                         }),
@@ -1490,7 +1527,10 @@ mod tests {
             })
             .map(|(idx, _)| idx)
             .expect("force_pos hold command should be sent after mode write");
-        assert!(mode_write_idx < hold_idx, "force_pos hold should happen after mode write");
+        assert!(
+            mode_write_idx < hold_idx,
+            "force_pos hold should happen after mode write"
+        );
     }
 
     #[test]

@@ -3,9 +3,9 @@ use crate::model::Vendor;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
 use std::time::Duration;
-use tokio_tungstenite::tungstenite::http::Uri;
 use tokio::net::TcpStream;
 use tokio::time;
+use tokio_tungstenite::tungstenite::http::Uri;
 use tokio_tungstenite::{
     accept_hdr_async,
     tungstenite::{
@@ -329,7 +329,9 @@ mod tests {
 
     #[test]
     fn query_token_decodes_percent_and_plus() {
-        let uri: Uri = "ws://host:9002/?motorbridge_ws_token=a%2Bb+c".parse().expect("uri");
+        let uri: Uri = "ws://host:9002/?motorbridge_ws_token=a%2Bb+c"
+            .parse()
+            .expect("uri");
         assert_eq!(query_token(&uri).as_deref(), Some("a+b c"));
     }
 
