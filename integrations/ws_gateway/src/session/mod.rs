@@ -28,4 +28,40 @@ impl SessionCtx {
             active: None,
         }
     }
+
+    pub(crate) fn retarget_from_request_if_present(
+        &mut self,
+        vendor: Option<crate::model::Vendor>,
+        model: Option<&str>,
+        motor_id: Option<u16>,
+        feedback_id: Option<u16>,
+    ) -> Result<bool, String> {
+        let Some(motor_id) = motor_id else {
+            return Ok(false);
+        };
+        let mut next = self.target.clone();
+        if let Some(vendor) = vendor {
+            next.vendor = vendor;
+        }
+        if let Some(model) = model {
+            if !model.trim().is_empty() {
+                next.model = model.to_string();
+            }
+        }
+        next.motor_id = motor_id;
+        if let Some(feedback_id) = feedback_id {
+            next.feedback_id = feedback_id;
+        }
+        if next.vendor == self.target.vendor
+            && next.model == self.target.model
+            && next.motor_id == self.target.motor_id
+            && next.feedback_id == self.target.feedback_id
+        {
+            return Ok(false);
+        }
+        self.disconnect(false);
+        self.target = next;
+        self.ensure_connected()?;
+        Ok(true)
+    }
 }

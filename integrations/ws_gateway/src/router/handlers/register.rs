@@ -12,12 +12,12 @@ use std::time::Duration;
 
 pub(crate) fn handle(op: &str, v: &Value, ctx: &mut SessionCtx) -> Option<Result<Value, String>> {
     match op {
-        "clear_error" => Some(handle_clear_error(ctx)),
-        "set_zero_position" => Some(handle_set_zero_position(ctx)),
+        "clear_error" => Some(handle_clear_error(v, ctx)),
+        "set_zero_position" => Some(handle_set_zero_position(v, ctx)),
         "ensure_mode" => Some(handle_ensure_mode(v, ctx)),
-        "request_feedback" => Some(handle_request_feedback(ctx)),
+        "request_feedback" => Some(handle_request_feedback(v, ctx)),
         "set_active_report" => Some(handle_set_active_report(v, ctx)),
-        "store_parameters" => Some(handle_store_parameters(ctx)),
+        "store_parameters" => Some(handle_store_parameters(v, ctx)),
         "set_can_timeout_ms" => Some(handle_set_can_timeout_ms(v, ctx)),
         "write_register_u32" => Some(handle_write_register_u32(v, ctx)),
         "write_register_f32" => Some(handle_write_register_f32(v, ctx)),
@@ -30,7 +30,18 @@ pub(crate) fn handle(op: &str, v: &Value, ctx: &mut SessionCtx) -> Option<Result
     }
 }
 
-fn handle_clear_error(ctx: &mut SessionCtx) -> Result<Value, String> {
+fn handle_clear_error(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
+    ctx.retarget_from_request_if_present(
+        v.get("vendor")
+            .and_then(Value::as_str)
+            .map(crate::model::Vendor::from_str)
+            .transpose()?,
+        v.get("model").and_then(Value::as_str),
+        v.get("motor_id")
+            .map(|_| as_u16(v, "motor_id", ctx.target.motor_id)),
+        v.get("feedback_id")
+            .map(|_| as_u16(v, "feedback_id", ctx.target.feedback_id)),
+    )?;
     ctx.ensure_connected()?;
     match ctx.motor.as_ref() {
         Some(MotorHandle::Damiao(m)) => m.clear_error().map_err(|e| e.to_string())?,
@@ -49,7 +60,18 @@ fn handle_clear_error(ctx: &mut SessionCtx) -> Result<Value, String> {
     Ok(json!({"cleared": true}))
 }
 
-fn handle_set_zero_position(ctx: &mut SessionCtx) -> Result<Value, String> {
+fn handle_set_zero_position(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
+    ctx.retarget_from_request_if_present(
+        v.get("vendor")
+            .and_then(Value::as_str)
+            .map(crate::model::Vendor::from_str)
+            .transpose()?,
+        v.get("model").and_then(Value::as_str),
+        v.get("motor_id")
+            .map(|_| as_u16(v, "motor_id", ctx.target.motor_id)),
+        v.get("feedback_id")
+            .map(|_| as_u16(v, "feedback_id", ctx.target.feedback_id)),
+    )?;
     ctx.ensure_connected()?;
     match ctx.motor.as_ref() {
         Some(MotorHandle::Damiao(m)) => m.set_zero_position().map_err(|e| e.to_string())?,
@@ -111,7 +133,18 @@ fn handle_ensure_mode(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> 
     Ok(json!({"ensured": true}))
 }
 
-fn handle_request_feedback(ctx: &mut SessionCtx) -> Result<Value, String> {
+fn handle_request_feedback(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
+    ctx.retarget_from_request_if_present(
+        v.get("vendor")
+            .and_then(Value::as_str)
+            .map(crate::model::Vendor::from_str)
+            .transpose()?,
+        v.get("model").and_then(Value::as_str),
+        v.get("motor_id")
+            .map(|_| as_u16(v, "motor_id", ctx.target.motor_id)),
+        v.get("feedback_id")
+            .map(|_| as_u16(v, "feedback_id", ctx.target.feedback_id)),
+    )?;
     ctx.ensure_connected()?;
     match (&ctx.controller, &ctx.motor) {
         (Some(ControllerHandle::Damiao(_)), Some(MotorHandle::Damiao(m))) => {
@@ -136,6 +169,17 @@ fn handle_request_feedback(ctx: &mut SessionCtx) -> Result<Value, String> {
 }
 
 fn handle_set_active_report(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
+    ctx.retarget_from_request_if_present(
+        v.get("vendor")
+            .and_then(Value::as_str)
+            .map(crate::model::Vendor::from_str)
+            .transpose()?,
+        v.get("model").and_then(Value::as_str),
+        v.get("motor_id")
+            .map(|_| as_u16(v, "motor_id", ctx.target.motor_id)),
+        v.get("feedback_id")
+            .map(|_| as_u16(v, "feedback_id", ctx.target.feedback_id)),
+    )?;
     ctx.ensure_connected()?;
     let enabled = as_bool(v, "enabled", true);
     match ctx.motor.as_ref() {
@@ -159,7 +203,18 @@ fn handle_set_active_report(v: &Value, ctx: &mut SessionCtx) -> Result<Value, St
     Ok(json!({"active_report": enabled}))
 }
 
-fn handle_store_parameters(ctx: &mut SessionCtx) -> Result<Value, String> {
+fn handle_store_parameters(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
+    ctx.retarget_from_request_if_present(
+        v.get("vendor")
+            .and_then(Value::as_str)
+            .map(crate::model::Vendor::from_str)
+            .transpose()?,
+        v.get("model").and_then(Value::as_str),
+        v.get("motor_id")
+            .map(|_| as_u16(v, "motor_id", ctx.target.motor_id)),
+        v.get("feedback_id")
+            .map(|_| as_u16(v, "feedback_id", ctx.target.feedback_id)),
+    )?;
     ctx.ensure_connected()?;
     match ctx.motor.as_ref() {
         Some(MotorHandle::Damiao(m)) => {

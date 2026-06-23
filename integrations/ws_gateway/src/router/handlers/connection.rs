@@ -2,6 +2,7 @@ use crate::commands::{as_bool, as_u16, as_u64, parse_transport_in_msg, parse_ven
 use crate::model::{ControllerHandle, MotorHandle, Vendor};
 use crate::router::stream::ParamStream;
 use crate::session::SessionCtx;
+use motor_core::MotorDevice;
 use serde_json::{json, Value};
 
 pub(crate) fn handle(
@@ -16,8 +17,8 @@ pub(crate) fn handle(
         "capabilities" => Some(handle_capabilities(ctx)),
         "ping" => Some(handle_ping(v, ctx)),
         "set_target" => Some(handle_set_target(v, ctx)),
-        "enable" => Some(handle_enable(ctx)),
-        "disable" => Some(handle_disable(ctx)),
+        "enable" => Some(handle_enable(v, ctx)),
+        "disable" => Some(handle_disable(v, ctx)),
         "stop" => Some(handle_stop(ctx)),
         "state_once" => Some(handle_state_once(ctx)),
         "damiao_state_many" => Some(handle_damiao_state_many(v, ctx)),
@@ -212,31 +213,51 @@ fn handle_set_target(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
     }))
 }
 
-fn handle_enable(ctx: &mut SessionCtx) -> Result<Value, String> {
+fn handle_enable(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
+    ctx.retarget_from_request_if_present(
+        v.get("vendor")
+            .and_then(Value::as_str)
+            .map(crate::model::Vendor::from_str)
+            .transpose()?,
+        v.get("model").and_then(Value::as_str),
+        v.get("motor_id")
+            .map(|_| as_u16(v, "motor_id", ctx.target.motor_id)),
+        v.get("feedback_id")
+            .map(|_| as_u16(v, "feedback_id", ctx.target.feedback_id)),
+    )?;
     ctx.ensure_connected()?;
-    if let Some(c) = ctx.controller.as_ref() {
-        match c {
-            ControllerHandle::Damiao(ctrl) => ctrl.enable_all().map_err(|e| e.to_string())?,
-            ControllerHandle::Hexfellow(ctrl) => ctrl.enable_all().map_err(|e| e.to_string())?,
-            ControllerHandle::Hightorque(_) => {}
-            ControllerHandle::Myactuator(ctrl) => ctrl.enable_all().map_err(|e| e.to_string())?,
-            ControllerHandle::Robstride(ctrl) => ctrl.enable_all().map_err(|e| e.to_string())?,
-        }
+    match ctx.motor.as_ref() {
+        Some(MotorHandle::Damiao(m)) => m.enable().map_err(|e| e.to_string())?,
+        Some(MotorHandle::Hexfellow(m)) => m.enable().map_err(|e| e.to_string())?,
+        Some(MotorHandle::Hightorque(_)) => {}
+        Some(MotorHandle::Myactuator(m)) => m.enable().map_err(|e| e.to_string())?,
+        Some(MotorHandle::Robstride(m)) => m.enable().map_err(|e| e.to_string())?,
+        None => return Err("motor not connected".to_string()),
     }
     ctx.active = None;
     Ok(json!({"enabled": true}))
 }
 
-fn handle_disable(ctx: &mut SessionCtx) -> Result<Value, String> {
+fn handle_disable(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
+    ctx.retarget_from_request_if_present(
+        v.get("vendor")
+            .and_then(Value::as_str)
+            .map(crate::model::Vendor::from_str)
+            .transpose()?,
+        v.get("model").and_then(Value::as_str),
+        v.get("motor_id")
+            .map(|_| as_u16(v, "motor_id", ctx.target.motor_id)),
+        v.get("feedback_id")
+            .map(|_| as_u16(v, "feedback_id", ctx.target.feedback_id)),
+    )?;
     ctx.ensure_connected()?;
-    if let Some(c) = ctx.controller.as_ref() {
-        match c {
-            ControllerHandle::Damiao(ctrl) => ctrl.disable_all().map_err(|e| e.to_string())?,
-            ControllerHandle::Hexfellow(ctrl) => ctrl.disable_all().map_err(|e| e.to_string())?,
-            ControllerHandle::Hightorque(_) => {}
-            ControllerHandle::Myactuator(ctrl) => ctrl.disable_all().map_err(|e| e.to_string())?,
-            ControllerHandle::Robstride(ctrl) => ctrl.disable_all().map_err(|e| e.to_string())?,
-        }
+    match ctx.motor.as_ref() {
+        Some(MotorHandle::Damiao(m)) => m.disable().map_err(|e| e.to_string())?,
+        Some(MotorHandle::Hexfellow(m)) => m.disable().map_err(|e| e.to_string())?,
+        Some(MotorHandle::Hightorque(_)) => {}
+        Some(MotorHandle::Myactuator(m)) => m.disable().map_err(|e| e.to_string())?,
+        Some(MotorHandle::Robstride(m)) => m.disable().map_err(|e| e.to_string())?,
+        None => return Err("motor not connected".to_string()),
     }
     ctx.active = None;
     Ok(json!({"disabled": true}))

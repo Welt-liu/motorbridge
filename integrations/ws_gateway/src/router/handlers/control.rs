@@ -207,7 +207,7 @@ fn handle_pos_vel(v: &Value, ctx: &mut SessionCtx) -> Result<Value, String> {
 }
 
 fn ensure_robstride_mode(
-    ctx: &SessionCtx,
+    _ctx: &SessionCtx,
     motor: &std::sync::Arc<motor_vendor_robstride::RobstrideMotor>,
     mode: RobstrideControlMode,
     mode_name: &str,
@@ -216,10 +216,8 @@ fn ensure_robstride_mode(
         .ensure_control_mode(mode, Duration::from_millis(1000))
         .map_err(|e| format!("robstride {mode_name} mode switch failed: {e}"))?;
 
-    if let Some(ControllerHandle::Robstride(ctrl)) = ctx.controller.as_ref() {
-        ctrl.enable_all().map_err(|e| e.to_string())?;
-        std::thread::sleep(Duration::from_millis(100));
-    }
+    motor.enable().map_err(|e| e.to_string())?;
+    std::thread::sleep(Duration::from_millis(100));
     Ok(())
 }
 
