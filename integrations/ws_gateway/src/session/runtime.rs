@@ -240,6 +240,12 @@ impl SessionCtx {
             (Some(ControllerHandle::Robstride(ctrl)), Some(MotorHandle::Robstride(motor))) => {
                 ctrl.poll_feedback_once().map_err(|e| e.to_string())?;
                 if let Some(s) = motor.latest_state() {
+                    let status_name = match s.mode_state {
+                        0 => "DISABLED",
+                        1 => "CALI",
+                        2 => "ENABLED",
+                        _ => "UNKNOWN",
+                    };
                     let fault_report = motor.latest_fault_report().map(|f| {
                         json!({
                             "fault_raw": f.fault_raw,
@@ -267,7 +273,8 @@ impl SessionCtx {
                         "has_value": true,
                         "arbitration_id": s.arbitration_id,
                         "device_id": s.device_id,
-                        "status_code": 0,
+                        "status_code": s.mode_state,
+                        "status_name": status_name,
                         "pos": s.position,
                         "vel": s.velocity,
                         "torq": s.torque,

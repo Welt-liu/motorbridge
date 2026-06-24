@@ -53,6 +53,7 @@ pub fn encode_set_protocol(protocol_cmd: u8) -> Result<[u8; 8]> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct StatusFlags {
+    pub mode_state: u8,
     pub uncalibrated: bool,
     pub stall: bool,
     pub magnetic_encoder_fault: bool,
@@ -191,7 +192,10 @@ pub fn decode_status_frame(
     let torque_u16 = u16::from_be_bytes([data[4], data[5]]);
     let temperature_u16 = u16::from_be_bytes([data[6], data[7]]);
 
+    // In the 29-bit CAN ID, mode bits are at bit22..23. After extracting
+    // extra_data = (arbitration_id >> 8) & 0xFFFF, they map to bit14..15.
     let flags = StatusFlags {
+        mode_state: ((extra_data >> 14) & 0x03) as u8,
         uncalibrated: ((extra_data >> 13) & 0x01) != 0,
         stall: ((extra_data >> 12) & 0x01) != 0,
         magnetic_encoder_fault: ((extra_data >> 11) & 0x01) != 0,
@@ -349,6 +353,27 @@ mod tests {
         let unknown =
             decode_read_parameter_value(0xDEAD, payload).expect("unknown param should pass raw");
         assert_eq!(unknown, [0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn status_decode_maps_mode_and_fault_bits_from_extra_data() {
+        let extra_data = (2_u16 << 14) | (1_u16 << 13) | (1_u16 << 11) | (1_u16 << 9) | 0x34_u16;
+        let status = decode_status_frame(
+            extra_data,
+            [0x80, 0, 0x80, 0, 0x80, 0, 0, 0],
+            12.0,
+            50.0,
+            17.0,
+        );
+
+        assert_eq!(status.flags.device_id, 0x34);
+        assert_eq!(status.flags.mode_state, 2);
+        assert!(status.flags.uncalibrated);
+        assert!(status.flags.magnetic_encoder_fault);
+        assert!(status.flags.overcurrent);
+        assert!(!status.flags.stall);
+        assert!(!status.flags.overtemperature);
+        assert!(!status.flags.undervoltage);
     }
 
     #[test]

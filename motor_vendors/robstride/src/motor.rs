@@ -98,6 +98,7 @@ pub enum ParameterValue {
 pub struct MotorFeedbackState {
     pub arbitration_id: u32,
     pub device_id: u8,
+    pub mode_state: u8,
     pub position: f32,
     pub velocity: f32,
     pub torque: f32,
@@ -693,6 +694,7 @@ impl RobstrideMotor {
                     .replace(MotorFeedbackState {
                         arbitration_id: frame.arbitration_id,
                         device_id: status.flags.device_id,
+                        mode_state: status.flags.mode_state,
                         position: status.position,
                         velocity: status.velocity,
                         torque: status.torque,
