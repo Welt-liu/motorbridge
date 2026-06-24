@@ -15,8 +15,12 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
-## 更新说明（2026-06）：v0.4.7
+## 更新说明（2026-06）：v0.4.8
 
+- `v0.4.8` 新增 RobStride 电机状态解析与展示支持，让 bring-up 和调试界面
+  可以看到更完整的状态与故障信息。
+- `v0.4.8` 将 `ws_gateway` 的单电机命令严格限定到显式指定的 target，避免
+  单电机操作误作用到当前已发现的多台电机。
 - `v0.4.7` 强化了 Damiao `ensure_mode`：模式切换改为共用一份总超时预算，
   模式准备阶段复用一次 hold-position 读取，并改进模式寄存器写入校验。
   这样能减少真实硬件上模式切换和参数持久化时的超时报错。

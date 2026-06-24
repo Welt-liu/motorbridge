@@ -15,8 +15,13 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
   Standalone web control UI built on top of `ws_gateway`.
 
-## Update (2026-06): v0.4.7
+## Update (2026-06): v0.4.8
 
+- `v0.4.8` adds RobStride motor status parsing and display support so bring-up
+  and debugging surfaces can show richer state and fault details.
+- `v0.4.8` scopes `ws_gateway` single-motor commands to the explicit requested
+  target so one-motor actions do not accidentally fan out across discovered
+  motors.
 - `v0.4.7` hardens Damiao `ensure_mode` by switching to a shared timeout budget,
   reusing the hold-position read during mode preparation, and improving mode
   write verification. This reduces timeout failures during mode changes and

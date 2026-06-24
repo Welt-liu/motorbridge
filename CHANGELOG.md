@@ -7,6 +7,18 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.4.8] - 2026-06-24
+
+### Added
+
+- Added RobStride motor status parsing and display support so CLI and related
+  surfaces can expose richer fault and state details during bring-up.
+
+### Fixed
+
+- Scoped `ws_gateway` single-motor commands to the explicit requested target so
+  one-motor operations no longer fan out across multiple discovered motors.
+
 ## [0.4.7] - 2026-06-16
 
 ### Fixed
