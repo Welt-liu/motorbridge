@@ -15,6 +15,12 @@ Unified CAN motor control stack with a vendor-agnostic Rust core, stable C ABI, 
 - `motorbridge-studio`: https://github.com/tianrking/motorbridge-studio
   Standalone web control UI built on top of `ws_gateway`.
 
+## Update (2026-07): v0.4.9
+
+- `v0.4.9` aligns the RobStride `rs-00` and `rs-06` torque-limit metadata with
+  vendor-provided values so model specs and downstream validation use the
+  correct maximum torque ranges.
+
 ## Update (2026-06): v0.4.8
 
 - `v0.4.8` adds RobStride motor status parsing and display support so bring-up

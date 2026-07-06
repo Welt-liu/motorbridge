@@ -7,6 +7,14 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.4.9] - 2026-07-06
+
+### Fixed
+
+- Aligned RobStride `rs-00` and `rs-06` torque-limit metadata with the
+  vendor-provided values so model specs, validation, and downstream tooling use
+  the correct maximum torque ranges.
+
 ## [0.4.8] - 2026-06-24
 
 ### Added

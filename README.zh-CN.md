@@ -15,6 +15,11 @@
 - `motorbridge-studio`：https://github.com/tianrking/motorbridge-studio
   基于 `ws_gateway` 的独立 Web 控制台。
 
+## 更新说明（2026-07）：v0.4.9
+
+- `v0.4.9` 将 RobStride `rs-00` 和 `rs-06` 的扭矩上限元数据对齐到厂商提供值，
+  让型号规格、参数校验以及下游工具使用正确的最大扭矩范围。
+
 ## 更新说明（2026-06）：v0.4.8
 
 - `v0.4.8` 新增 RobStride 电机状态解析与展示支持，让 bring-up 和调试界面
