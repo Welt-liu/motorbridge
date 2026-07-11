@@ -107,6 +107,12 @@ pub struct PingReply {
     pub payload: [u8; 8],
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct VersionReply {
+    pub device_id: u8,
+    pub version: [u8; 4],
+}
+
 pub fn build_ext_id(comm_type: u32, extra_data: u16, node_id: u8) -> u32 {
     (comm_type << 24) | (u32::from(extra_data) << 8) | u32::from(node_id)
 }
@@ -161,6 +167,39 @@ pub fn encode_mit_command(
         kd_u16 as u8,
     ];
     (torque_u16, data)
+}
+
+pub const VERSION_REQUEST_MARKER: u8 = 0xC4;
+pub const VERSION_REPLY_SIGNATURE: [u8; 3] = [0x00, 0xC4, 0x56];
+
+pub fn encode_version_request() -> [u8; 8] {
+    // Sent with comm type 4 (DISABLE); the marker byte is what makes the
+    // motor answer its firmware version instead of stopping.
+    let mut out = [0u8; 8];
+    out[1] = VERSION_REQUEST_MARKER;
+    out
+}
+
+pub fn is_version_reply(arbitration_id: u32, data: [u8; 8]) -> bool {
+    // Version replies arrive with comm type 2, same as status frames, so
+    // the payload signature is the only way to tell them apart. Passive
+    // listeners must check this before decode_status_frame, otherwise the
+    // version bytes decode as garbage telemetry.
+    let (comm_type, _, _) = ext_id_parts(arbitration_id);
+    comm_type == CommunicationType::OPERATION_STATUS && data[0..3] == VERSION_REPLY_SIGNATURE
+}
+
+pub fn decode_version_reply(arbitration_id: u32, data: [u8; 8]) -> Result<VersionReply> {
+    if !is_version_reply(arbitration_id, data) {
+        return Err(MotorError::Protocol(
+            "not a firmware-version reply".to_string(),
+        ));
+    }
+    let (_, extra_data, _) = ext_id_parts(arbitration_id);
+    Ok(VersionReply {
+        device_id: (extra_data & 0xFF) as u8,
+        version: [data[3], data[4], data[5], data[6]],
+    })
 }
 
 pub fn decode_ping_reply(arbitration_id: u32, data: [u8; 8]) -> Result<PingReply> {
@@ -309,6 +348,33 @@ mod fault_tests {
 mod tests {
     use super::*;
     use crate::motor::ParameterValue;
+
+    #[test]
+    fn version_request_encoding_sets_only_the_marker() {
+        assert_eq!(
+            encode_version_request(),
+            [0x00, 0xC4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+        );
+    }
+
+    #[test]
+    fn version_reply_decode_matches_hardware_capture() {
+        // Captured from an RS03 (motor id 21, host 0xFD) running 0.3.1.41.
+        let arbitration_id = 0x020015FD;
+        let data = [0x00, 0xC4, 0x56, 0x00, 0x03, 0x01, 0x29, 0x07];
+        assert!(is_version_reply(arbitration_id, data));
+        let reply = decode_version_reply(arbitration_id, data).unwrap();
+        assert_eq!(reply.device_id, 21);
+        assert_eq!(reply.version, [0, 3, 1, 41]);
+    }
+
+    #[test]
+    fn version_reply_check_rejects_status_frames() {
+        let arbitration_id = build_ext_id(CommunicationType::OPERATION_STATUS, 21, 0xFD);
+        let data = [0x80, 0x00, 0x7F, 0xFF, 0x80, 0x12, 0x01, 0x2C];
+        assert!(!is_version_reply(arbitration_id, data));
+        assert!(decode_version_reply(arbitration_id, data).is_err());
+    }
 
     #[test]
     fn ext_id_build_and_parse_roundtrip() {
