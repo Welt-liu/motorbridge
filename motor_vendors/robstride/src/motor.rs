@@ -54,8 +54,8 @@ const ROBSTRIDE_MODELS: &[MotorModelSpec] = &[
         vendor: "robstride",
         model: "rs-05",
         pmax: 4.0 * std::f32::consts::PI,
-        vmax: 33.0,
-        tmax: 17.0,
+        vmax: 50.0,
+        tmax: 5.5,
     },
     MotorModelSpec {
         vendor: "robstride",
